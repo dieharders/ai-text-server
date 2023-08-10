@@ -1,34 +1,41 @@
 # Text to Text Server
 
-This project handles all backend requests from AI apps using a singular api.
+This project handles all requests from client chat apps using a singular api. The goal is to provide a modular architecture that allows rapid development of text-based front-end apps. Client apps need only make HTTP requests to perform any function related to text-based ai workloads.
 
 ---
 
 ## Introduction
 
-This is a hybrid Next.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. This uses Next.js as the UI to support manual configuration of the server which use Python AI libraries.
+This is a hybrid Next.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
+
+- Links to supported apps...
 
 Project forked here [the Next.js GitHub repository](https://github.com/vercel/next.js/)
 
 ---
 
-## Features
+## Features (goal)
 
-- Inference: Run AI text models
-- Embeddings: Create vector embeddings from a string or document
-- Storage: Save data (like messages) to memory, local drive or cloud database
-- Search: Using a vector database and Llama Index to make semantic or similarity queries
-- Messages: Retrieve chat history
+- Inference: Run open-source AI text models.
+- Embeddings: Create vector embeddings from a string or document.
+- Search: Using a vector database and Llama Index to make semantic or similarity queries.
+- Threads: Save/Retrieve chat message history to memory, disk or cloud db.
+- Desktop app binaries (free, use our infra locally)
+
+## Features (upcoming)
+
+- Cloud platform (subscription, host your infra with us)
+- Enterprise service (subscription & paid support, bring your own infra)
 
 ---
 
 ## How It Works
 
-The Python/FastAPI server is mapped into to Next.js app under `/api/`.
+- Startup and shutdown of the backend services are done via `/api/start` and `/api/stop` on `localhost:3000`.
 
-This is implemented using [`next.config.js` rewrites](https://github.com/digitros/nextjs-fastapi/blob/main/next.config.js) to map any request to `/api/:path*` to the FastAPI API, which is hosted in the `/api` folder.
+- The Python/FastAPI server (universal api) is mapped to the Next.js app under `/api/text` on `localhost:8000` (default port:8000).
 
-On localhost, the rewrite will be made to `127.0.0.1:[port]`, which is where the FastAPI server is running.
+- 3rd party client apps will call the universal api to perform all functions needed.
 
 In production, the FastAPI server will be hosted as [Python serverless functions](https://vercel.com/docs/concepts/functions/serverless-functions/runtimes/python) on Vercel. However since this project will be deployed locally as an Electron app these will evaluate locally.
 
@@ -48,7 +55,7 @@ pnpm install
 
 Install dependencies for python listed in your requirements.txt file:
 
-Be sure to run this command with admin privileges. This command is also run on each `pnpm dev`.
+Be sure to run this command with admin privileges. This command is optional and is also run on each `pnpm dev`.
 
 ```
 pip install -r requirements.txt
@@ -74,13 +81,7 @@ pnpm run next-dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-The FastApi server will be running on [http://127.0.0.1:8000](http://127.0.0.1:8000) – feel free to change the port in `package.json` (you'll also need to update it in `next.config.js`).
-
----
-
-## Learn More
-
-- [FastAPI Documentation](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+The FastApi server will be running on [http://localhost:8000](http://localhost:8000) – feel free to change the port in `package.json`.
 
 ---
 
@@ -92,9 +93,9 @@ This project is meant to be deployed locally on the client's machine. It is a ne
 
 ## API
 
-It deploys several different backend apps in the /api directory, for example inference. The idea is to separate all OS level logic and processing from the client facing app. This can make deployment to the cloud and swapping out functionality easier.
+This project deploys several different backend apps exposed via the /api directory, for example inference. The idea is to separate all OS level logic and processing from the client facing app. This can make deployment to the cloud and swapping out functionality easier.
 
-- /api/text endpoints can be found [here](http://localhost:8000/docs) after building the api server. Edit port if launched on non default port 8000.
+- **/api/text** endpoints can be found [here](http://localhost:8000/docs) after building the api server. Edit port if launched on non default port 8000.
 
 To start the universal api server via HTTP:
 
@@ -114,3 +115,11 @@ POST http://localhost:3000/api/stop
     "pid": number
 }
 ```
+
+These commands are also used by the GUI to configure the universal api server.
+
+---
+
+## Learn More
+
+- [FastAPI Documentation](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
