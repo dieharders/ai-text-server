@@ -12,7 +12,7 @@ app = FastAPI()
 
 # Configure CORS settings
 origins = [
-    "http://localhost:3000",
+    "http://localhost:3001",
     "https://hoppscotch.io",
 ]  # Add your frontend URL here
 app.add_middleware(

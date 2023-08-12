@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "fastapi-dev:start": "npm run fastapi-dev -- --host $npm_config_host --port $npm_config_port",
-    "fastapi-dev": "pip3 install -r requirements.txt && python -m uvicorn api.index:app --reload",
-    "next-dev": "next dev",
+    "fastapi-dev": "pip3 install -r requirements.txt && python -m uvicorn api.index:app --host 127.0.0.1 --port 8008 --reload",
+    "next-dev": "next dev -p 3001",
     "dev": "concurrently \"npm run next-dev\" \"npm run fastapi-dev\"",
     "build": "next build",
     "start": "next start",
