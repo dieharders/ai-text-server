@@ -14,7 +14,7 @@ Project forked here [the Next.js GitHub repository](https://github.com/vercel/ne
 
 ---
 
-## Features (goal)
+## Features (goals)
 
 - Inference: Run open-source AI text models.
 - Embeddings: Create vector embeddings from a string or document.
@@ -31,9 +31,9 @@ Project forked here [the Next.js GitHub repository](https://github.com/vercel/ne
 
 ## How It Works
 
-- Startup and shutdown of the backend services are done via `/api/start` and `/api/stop` on `localhost:3000`.
+- Startup and shutdown of the backend services are done via `/api/start` and `/api/stop` on `localhost:3001`.
 
-- The Python/FastAPI server (universal api) is mapped to the Next.js app under `/api/text` on `localhost:8000` (default port:8000).
+- The Python/FastAPI server (universal api) is mapped to the Next.js app under `/api/text` on `localhost:8008` (default port:8008).
 
 - 3rd party client apps will call the universal api to perform all functions needed.
 
@@ -79,15 +79,30 @@ npm run next-dev
 pnpm run next-dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
 
-The FastApi server will be running on [http://localhost:8000](http://localhost:8000) – feel free to change the port in `package.json`.
+The FastApi server will be running on [http://localhost:8008](http://localhost:8008) – feel free to change the port in `package.json`.
 
 ---
 
 ## Building
 
 This project is meant to be deployed locally on the client's machine. It is a next.js app using serverless runtimes all wrapped by Electron to create a native app. We do this to package up dependencies to make installation easier on the user and to provide the app access to the local OS disk space.
+
+Bundling Python exe (the -F flag bundles everything into one .exe )
+
+- pip install -U pyinstaller
+- pyinstaller -c -F your_program.py
+- pnpm tauri dev
+
+Building api server for production:
+
+- pnpm build:fastapi
+- pnpm tauri build
+
+The installer is located here:
+
+- C:\Project Files\brain-dump-ai\backend-ai-text-server\src-tauri\target\release\bundle\nsis
 
 ---
 

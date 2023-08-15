@@ -4,14 +4,17 @@
   "private": true,
   "scripts": {
     "fastapi-dev:start": "npm run fastapi-dev -- --host $npm_config_host --port $npm_config_port",
-    "fastapi-dev": "pip3 install -r requirements.txt && python -m uvicorn api.index:app --host 127.0.0.1 --port 8008 --reload",
-    "next-dev": "next dev -p 3001",
-    "dev": "concurrently \"npm run next-dev\" \"npm run fastapi-dev\"",
-    "build": "next build",
+    "fastapi-dev": "pip3 install -r requirements.txt",
+    "dev": "next dev",
+    "build": "npm run build:fastapi && next build",
+    "tauri": "tauri",
+    "export": "next export",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:fastapi": "pyinstaller -c -F --clean --name main-x86_64-pc-windows-msvc --distpath src-tauri/bin/api src/backends/main.py"
   },
   "dependencies": {
+    "@tauri-apps/api": "^1.4.0",
     "@types/node": "20.2.4",
     "@types/react": "18.2.7",
     "@types/react-dom": "18.2.4",
@@ -28,6 +31,7 @@
     "typescript": "5.0.4"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^1.4.0",
     "@types/cors": "^2.8.13"
   }
 }

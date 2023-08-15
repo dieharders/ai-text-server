@@ -1,14 +1,10 @@
-import sys
-import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-path = os.path.abspath("src/backends/inference/openllm")
-sys.path.append(path)
-from index import completions
+from inference import infer_text_api
+import uvicorn
 
 app = FastAPI()
-
+port = 8008
 
 # Configure CORS settings
 origins = [
@@ -22,6 +18,14 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     # allow_headers=["*"],
 )
+
+
+# Tell client we are ready to accept requests
+@app.get("/api/connect")
+def connect():
+    return {
+        "message": f"Connected to api server on port {port}. Refer to 'http://localhost:{port}/docs' for api docs.",
+    }
 
 
 # Load in the ai model to be used for inference.
@@ -40,7 +44,8 @@ async def load_inference(data: dict):
 # Main text inference endpoint for prompting.
 @app.post("/api/text/v1/inference/completions")
 def run_completion(data: dict):
-    return completions(data)
+    print("endpoint: /completions")
+    return infer_text_api.completions(data)
 
 
 # Pre-process docs into a text format specified by user.
@@ -67,20 +72,16 @@ def get_threads():
     return {"message": "get_threads"}
 
 
-# @app.post("/api/text/v1/inference/start")
-# async def run_inference(data: dict):
-#     try:
-#         port: int = data["port"]
-#         # Logic to start the inference server on the specified port here...
-#         # Start the FastAPI server
-#         subprocess.Popen(
-#             ["uvicorn", "api.index:app", "--host", "127.0.0.1", "--port", {port}]
-#         )
-#         # OR
-#         uvicorn.run(app, host='127.0.0.1', port=8000)
-#         # Return affirmative response
-#         return {"message": f"Inference server started on port {port}."}
-#     except KeyError:
-#         raise HTTPException(
-#             status_code=400, detail="Invalid JSON format: 'port' key not found"
-#         )
+def start_server():
+    try:
+        print("Starting FastAPI server...")
+        # Start the ASGI server
+        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+        return True
+    except:
+        print("Failed to start FastAPI server")
+        return False
+
+
+if __name__ == "__main__":
+    start_server()
