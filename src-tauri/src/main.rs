@@ -1,34 +1,42 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::api::process::Command;
-use tauri::api::process::CommandEvent;
+use std::process::Command;
+use std::sync::mpsc::{sync_channel, Receiver};
+use std::thread;
+use command_group::CommandGroup;
+use tauri::api::process::Command as TCommand;
+use tauri::WindowEvent;
 
-fn start_backend() {
+fn start_backend(receiver: Receiver<i32>) {
   // `new_sidecar()` expects just the filename, NOT the whole path
-  let (mut rx, mut child) = Command::new_sidecar("main")
-  .expect("failed to create `main.exe` binary command")
-  .spawn()
-  .expect("Failed to spawn sidecar");
-
-  tauri::async_runtime::spawn(async move {
-    // read events such as stdout
-    while let Some(event) = rx.recv().await {
-      if let CommandEvent::Stdout(line) = event {
-        // write to stdin
-        child.write("message from Rust\n".as_bytes()).unwrap();
-        // @TODO How to shutdown process when tauri app is closed?
+  let t = TCommand::new_sidecar("main")
+    .expect("[Error] Failed to create `main.exe` binary command");
+  let mut group = Command::from(t).group_spawn().expect("[Error] spawning api server process.");
+  thread::spawn(move || {
+    loop{
+      let s = receiver.recv();
+      if s.unwrap()==-1 {
+        group.kill().expect("[Error] killing api server process.");
       }
     }
   });
 }
 
 fn main() {
+  // Startup the python binary (api service)
+  let (tx,rx) = sync_channel(1);
+  start_backend(rx);
+
   tauri::Builder::default()
-      .setup(|app| {
-        start_backend();
-        Ok(())
+    // Tell the child process to shutdown when app exits
+    .on_window_event(move |event| match event.event() {
+      WindowEvent::Destroyed => {
+        tx.send(-1).expect("[Error] sending msg.");
+        println!("[Event] App closed, shutting down API...");
+      }
+      _ => {}
     })
     .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .expect("[Error] while running tauri application");
 }
