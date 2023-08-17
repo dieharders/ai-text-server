@@ -1,10 +1,19 @@
+# import os
+import subprocess
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from inference import infer_text_api
+
+# from llama_cpp.server.app import create_app
+# from pydantic_settings import BaseSettings
 import uvicorn
 
-app = FastAPI()
-port = 8008
+app = FastAPI(
+    title="🍺 HomeBrew API server",
+    version="0.0.1",
+)
+PORT_API = 8008
+PORT_TEXT_INFERENCE = "8000"
 
 # Configure CORS settings
 origins = [
@@ -24,7 +33,7 @@ app.add_middleware(
 @app.get("/api/connect")
 def connect():
     return {
-        "message": f"Connected to api server on port {port}. Refer to 'http://localhost:{port}/docs' for api docs.",
+        "message": f"Connected to api server on port {PORT_API}. Refer to 'http://localhost:{PORT_API}/docs' for api docs.",
     }
 
 
@@ -72,16 +81,81 @@ def get_threads():
     return {"message": "get_threads"}
 
 
-def start_server():
+def start_api_server():
     try:
-        print("Starting FastAPI server...")
+        print("Starting API server...")
         # Start the ASGI server
-        uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+        uvicorn.run(app, host="0.0.0.0", port=PORT_API, log_level="info")
         return True
     except:
-        print("Failed to start FastAPI server")
+        print("Failed to start API server")
+        return False
+
+
+def start_text_inference_server():
+    try:
+        print("Starting Inference server")
+        # curr_dir = os.getcwd()
+        model_filename = "llama-13b.ggmlv3.q3_K_S.bin"
+        # models_dir = os.path.join(curr_dir, "models")
+        # model_dir = os.path.join(models_dir, model_filename)
+        model_path = f"./src/backends/models/{model_filename}"
+
+        # class Settings(BaseSettings):
+        #     model: str
+        #     alias_name: str
+        #     n_ctx: int
+        #     n_gpu_layers: int
+        #     seed: int
+        #     cache: bool
+        #     cache_type: str
+        #     verbose: bool
+
+        # settings = Settings(
+        #     model="models/llama-13b.ggmlv3.q3_K_S.bin",
+        #     alias_name="Llama13b",
+        #     n_ctx=512,
+        #     n_gpu_layers=2,
+        #     seed=-1,
+        #     cache=True,
+        #     cache_type="disk",
+        #     verbose=True,
+        # )
+
+        # appInference = create_app(settings)
+        # uvicorn.run(
+        #     appInference,
+        #     # host=os.getenv("HOST", "localhost"),
+        #     host="0.0.0.0",
+        #     # port=int(os.getenv("PORT", PORT_TEXT_INFERENCE)),
+        #     port=PORT_TEXT_INFERENCE,
+        #     log_level="info",
+        # )
+
+        # @TODO Pass all inference params to command
+        # Command to execute
+        serve_llama_cpp = [
+            "python",
+            "-m",
+            "llama_cpp.server",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            PORT_TEXT_INFERENCE,
+            "--model",
+            model_path,
+        ]
+        # Execute the command
+        # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.
+        subprocess.Popen(serve_llama_cpp)
+        return True
+    except:
+        print("Failed to start Inference server")
         return False
 
 
 if __name__ == "__main__":
-    start_server()
+    # Starts the text inference server
+    start_text_inference_server()
+    # Starts the universal API server
+    start_api_server()

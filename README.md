@@ -135,6 +135,10 @@ These commands are also used by the GUI to configure the universal api server.
 
 ---
 
+## Inference
+
+- [Project used for ai inference](https://github.com/abetlen/llama-cpp-python)
+
 ## Learn More
 
 - [FastAPI Documentation](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
