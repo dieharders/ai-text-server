@@ -40,4 +40,3 @@ next-env.d.ts
 /src-tauri/bin
 
 # local test model files
-/src/backends/models
