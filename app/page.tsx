@@ -1,26 +1,26 @@
 'use client'
 
-import { useState } from "react";
+import { useState } from 'react'
 
 // import Image from "next/image";
 // import Link from "next/link";
 // import DownloaderMenu from "../src/frontend/components/DownloaderMenu"
 
 export default function Home() {
-  const appLink = "https://brain-dump-dieharders.vercel.app/";
-  const ip = "http://localhost:8008"
+  const appLink = 'https://brain-dump-dieharders.vercel.app/'
+  const ip = 'http://localhost:8008'
   const [isLoaded, setIsLoaded] = useState(false)
   const [isStarted, setIsStarted] = useState(false)
 
   const onLoadModel = async () => {
-    console.log('@@ Loading model...');
+    console.log('@@ Loading model...')
 
     const options = {
-      modelId: "llama7b"
+      modelId: 'llama7b',
     }
 
     try {
-      const response = await fetch(ip + "/api/text/v1/inference/load", {
+      const response = await fetch(ip + '/api/text/v1/inference/load', {
         method: 'POST',
         cache: 'no-cache',
         headers: {
@@ -31,23 +31,23 @@ export default function Home() {
 
       const result = await response.json()
       setIsLoaded(result?.success)
-      console.log('@@ [onLoadModel] Success:', result);
+      console.log('@@ [onLoadModel] Success:', result)
     } catch (error) {
       console.log('@@ [Error] Failed to load the model:', error)
     }
   }
   const onStart = async () => {
-    console.log('@@ Starting inference...');
+    console.log('@@ Starting inference...')
 
     try {
-      const response = await fetch(ip + "/api/text/v1/inference/start", {
+      const response = await fetch(ip + '/api/text/v1/inference/start', {
         method: 'GET',
         cache: 'no-cache',
       })
 
       const result = await response.json()
       setIsStarted(result?.success)
-      console.log('@@ [onStart] Success:', result);
+      console.log('@@ [onStart] Success:', result)
     } catch (error) {
       console.log('@@ [Error] Failed to load the model:', error)
     }
@@ -58,16 +58,26 @@ export default function Home() {
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
         {/* Load Model */}
         <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          {isLoaded ? "[llama7b]" : "[empty]"}&nbsp;
+          {isLoaded ? '[llama7b]' : '[empty]'}&nbsp;
           <button onClick={onLoadModel}>
-            <code className={"font-mono font-bold"} style={{ color: `${isLoaded ? 'lime' : 'yellow'}` }}>Load Model</code>
-          </button >
+            <code
+              className="font-mono font-bold"
+              style={{ color: `${isLoaded ? 'lime' : 'yellow'}` }}
+            >
+              Load Model
+            </code>
+          </button>
         </p>
         {/* Start Inference */}
         <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          {isStarted ? "[ON]" : "[OFF]"}&nbsp;
+          {isStarted ? '[ON]' : '[OFF]'}&nbsp;
           <button onClick={onStart}>
-            <code className="font-mono font-bold" style={{ color: `${isStarted ? 'lime' : 'yellow'}` }}>Start Engine</code>
+            <code
+              className="font-mono font-bold"
+              style={{ color: `${isStarted ? 'lime' : 'yellow'}` }}
+            >
+              Start Engine
+            </code>
           </button>
         </p>
 
@@ -78,7 +88,7 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            By{" "}
+            By{' '}
             {/* <Image
               src="/vercel.svg"
               alt="Vercel Logo"
@@ -101,7 +111,7 @@ export default function Home() {
           height={37}
           priority
         /> */}
-        <h1 className="text-4xl">🍺HomeBrewAi</h1>
+        <h1 className="text-4xl">🍺HomebrewAi</h1>
       </div>
 
       {/* Browse Apps */}
@@ -112,14 +122,14 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <h2 className={`mb-3 text-xl font-semibold`}>
-            Learn{" "}
+          <h2 className="mb-3 text-xl font-semibold">
+            Learn{' '}
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
           </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information & share it. Search and analyze private data with agents.
+          <p className="m-0 max-w-[30ch] text-sm opacity-50">
+            Find in-depth information and share it. Search and analyze private data with agents.
           </p>
         </a>
 
@@ -129,14 +139,15 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <h2 className={`mb-3 text-xl font-semibold`}>
-            Create{" "}
+          <h2 className="mb-3 text-xl font-semibold">
+            Create{' '}
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
           </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find inspiration, kick-off a project or just toss ideas around with a creative avatar.
+          <p className="m-0 max-w-[30ch] text-sm opacity-50">
+            Find inspiration, kick-off a project or just toss ideas around with a creative
+            avatar.
           </p>
         </a>
 
@@ -146,13 +157,13 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <h2 className={`mb-3 text-xl font-semibold`}>
-            Heal{" "}
+          <h2 className="mb-3 text-xl font-semibold">
+            Heal{' '}
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
           </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
+          <p className="m-0 max-w-[30ch] text-sm opacity-50">
             Explore your mind then reflect on your journey with an ai buddy by your side.
           </p>
         </a>
@@ -163,17 +174,18 @@ export default function Home() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <h2 className={`mb-3 text-xl font-semibold`}>
-            Grow{" "}
+          <h2 className="mb-3 text-xl font-semibold">
+            Grow{' '}
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
           </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Plan, adapt, enact. Take advantage of critical thinking processes to reach your goals.
+          <p className="m-0 max-w-[30ch] text-sm opacity-50">
+            Plan, adapt, enact. Take advantage of critical thinking processes to reach
+            your goals.
           </p>
         </a>
       </div>
     </main>
-  );
+  )
 }
