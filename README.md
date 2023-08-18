@@ -1,14 +1,12 @@
-# Text to Text Server
+# 🍺 HomebrewAi - Ai Inference Engine
 
-This project handles all requests from client chat apps using a singular api. The goal is to provide a modular architecture that allows rapid development of text-based front-end apps. Client apps need only make HTTP requests to perform any function related to text-based ai workloads.
+This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
 
 ---
 
 ## Introduction
 
 This is a hybrid Next.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
-
-- Links to supported apps...
 
 Project forked here [the Next.js GitHub repository](https://github.com/vercel/next.js/)
 
@@ -31,57 +29,64 @@ Project forked here [the Next.js GitHub repository](https://github.com/vercel/ne
 
 ## How It Works
 
-- Startup and shutdown of the backend services are done via `/api/start` and `/api/stop` on `localhost:3001`.
+- Startup and shutdown of the backend services are done via the front-end.
 
-- The Python/FastAPI server (universal api) is mapped to the Next.js app under `/api/text` on `localhost:8008` (default port:8008).
+- The Python/FastAPI server (universal api) operates under `localhost:8008`.
 
 - 3rd party client apps will call the universal api to perform all functions needed.
-
-In production, the FastAPI server will be hosted as [Python serverless functions](https://vercel.com/docs/concepts/functions/serverless-functions/runtimes/python) on Vercel. However since this project will be deployed locally as an Electron app these will evaluate locally.
 
 ---
 
 ## Getting Started
 
-### Deps
+### Dependencies
 
 First, install the dependencies for javascript:
 
 ```bash
-npm install
-# or
 pnpm install
 ```
 
 Install dependencies for python listed in your requirements.txt file:
 
-Be sure to run this command with admin privileges. This command is optional and is also run on each `pnpm dev`.
-
-```
-pip install -r requirements.txt
-```
-
-### Run
-
-Then, run both development webserver and api server in parallel:
+Be sure to run this command with admin privileges. This command is optional and is also run on each `pnpm build`.
 
 ```bash
-npm run dev
-# or
+pip install -r requirements.txt
+#or
+pnpm python-deps
+```
+
+---
+
+## Testing locally
+
+### Run Front-End
+
+Run development front-end webserver:
+
+```bash
 pnpm dev
 ```
 
-Or run the webserver (front-end) first to setup the api backend manually or programmatically on a specific port:
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### Run Backend API
+
+To run the api backend, right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
 
 ```bash
-npm run next-dev
-# or
-pnpm run next-dev
+# from working dir
+python src/backends/main.py
 ```
 
-Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
+The universal api server will be running on [http://localhost:8008](http://localhost:8008)
 
-The FastApi server will be running on [http://localhost:8008](http://localhost:8008) – feel free to change the port in `package.json`.
+### Run the Tauri app in development mode
+
+```bash
+pnpm tauri dev
+```
 
 ---
 
@@ -89,55 +94,43 @@ The FastApi server will be running on [http://localhost:8008](http://localhost:8
 
 This project is meant to be deployed locally on the client's machine. It is a next.js app using serverless runtimes all wrapped by Electron to create a native app. We do this to package up dependencies to make installation easier on the user and to provide the app access to the local OS disk space.
 
-Bundling Python exe (the -F flag bundles everything into one .exe )
+Bundling Python exe (the -F flag bundles everything into one .exe ). This is handled automatically by npm scripts.
 
 - pip install -U pyinstaller
 - pyinstaller -c -F your_program.py
-- pnpm tauri dev
 
-Building api server for production:
+Building app for production:
 
-- pnpm build:fastapi
-- pnpm tauri build
+```bash
+pnpm tauri build
+```
 
 The installer is located here:
 
-- C:\Project Files\brain-dump-ai\backend-ai-text-server\src-tauri\target\release\bundle\nsis
+`<project-dir>\src-tauri\target\release\bundle\nsis`
 
 ---
 
 ## API
 
-This project deploys several different backend apps exposed via the /api directory, for example inference. The idea is to separate all OS level logic and processing from the client facing app. This can make deployment to the cloud and swapping out functionality easier.
+This project deploys several different backend apps exposed via the /api endpoint. The idea is to separate all OS level logic and processing from the client facing app. This can make deployment to the cloud and swapping out functionality easier.
 
-- **/api/text** endpoints can be found [here](http://localhost:8000/docs) after building the api server. Edit port if launched on non default port 8000.
+Endpoints can be found [here](http://localhost:8008/docs) for the universal api server.
 
-To start the universal api server via HTTP:
+### /api/connect
 
-```
-POST http://localhost:3000/api/start
-// with a body of
-{
-    "port": number
-}
-```
+Used by client apps to detect when services are ready to be used.
 
-To stop the universal api server via HTTP:
+### /api/v1/text
 
-```
-POST http://localhost:3000/api/stop
-{
-    "pid": number
-}
-```
-
-These commands are also used by the GUI to configure the universal api server.
+This is entry for all text inference functions. Endpoints can be found [here](http://localhost:8000/docs) after server is started.
 
 ---
 
 ## Inference
 
 - [Project used for ai inference](https://github.com/abetlen/llama-cpp-python)
+- [TODO-Use vLLM](https://github.com/vllm-project/vllm)
 
 ## Learn More
 
