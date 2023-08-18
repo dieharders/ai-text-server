@@ -38,5 +38,3 @@ next-env.d.ts
 **/__pycache__
 *.spec
 /src-tauri/bin
-
-# local test model files
