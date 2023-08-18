@@ -14,18 +14,21 @@ app = FastAPI(
 )
 PORT_API = 8008
 PORT_TEXT_INFERENCE = "8000"
+inference_process = None
 
 # Configure CORS settings
 origins = [
+    "http://localhost:3000",
     "http://localhost:3001",
     "https://hoppscotch.io",
+    "https://brain-dump-dieharders.vercel.app/",
 ]  # Add your frontend URL here
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     # allow_credentials=True,
     allow_methods=["GET", "POST"],
-    # allow_headers=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -43,11 +46,21 @@ async def load_inference(data: dict):
     try:
         model_id: str = data["modelId"]
         # Logic to load the specified ai model here...
-        return {"message": f"AI model [{model_id}] loaded."}
+        return {"message": f"AI model [{model_id}] loaded.", "success": True}
     except KeyError:
         raise HTTPException(
             status_code=400, detail="Invalid JSON format: 'modelId' key not found"
         )
+
+
+# Starts the text inference server
+@app.get("/api/text/v1/inference/start")
+def start_inference():
+    try:
+        isStarted = start_text_inference_server()
+        return {"message": "AI inference started", "success": isStarted}
+    except:
+        raise Exception(status_code=400, detail="Something went wrong...")
 
 
 # Main text inference endpoint for prompting.
@@ -147,7 +160,8 @@ def start_text_inference_server():
         ]
         # Execute the command
         # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.
-        subprocess.Popen(serve_llama_cpp)
+        inference_process = subprocess.Popen(serve_llama_cpp)
+        # Can use `inference_process.terminate()` later to shutdown manually
         return True
     except:
         print("Failed to start Inference server")
@@ -156,6 +170,6 @@ def start_text_inference_server():
 
 if __name__ == "__main__":
     # Starts the text inference server
-    start_text_inference_server()
+    # start_text_inference_server()
     # Starts the universal API server
     start_api_server()
