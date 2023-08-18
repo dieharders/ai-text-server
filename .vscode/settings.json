@@ -1,7 +1,23 @@
 {
-    "[python]": {
-        "editor.formatOnSave": true
-    },
-    "python.formatting.provider": "black"
+  "[python]": {
+    "editor.formatOnSave": true
+  },
+  "python.formatting.provider": "black",
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.trimTrailingWhitespace": true,
+  "editor.formatOnSave": true,
+  "prettier.singleQuote": true,
+  "prettier.semi": false,
+  "eslint.format.enable": true,
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "eslint.codeAction.disableRuleComment": {
+    "enable": true,
+    "location": "separateLine",
+    "commentStyle": "line"
+  },
+  "eslint.enable": true,
+  "css.lint.unknownAtRules": "ignore",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  }
 }
-
