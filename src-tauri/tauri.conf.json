@@ -67,10 +67,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
+        "height": 800,
         "resizable": true,
         "title": "HomebrewAi",
-        "width": 800
+        "width": 1100
       }
     ]
   }
