@@ -7,6 +7,7 @@ use std::thread;
 use command_group::CommandGroup;
 use tauri::api::process::Command as TCommand;
 use tauri::WindowEvent;
+use tauri::Manager;
 
 fn start_backend(receiver: Receiver<i32>) {
   // `new_sidecar()` expects just the filename, NOT the whole path
@@ -29,6 +30,15 @@ fn main() {
   start_backend(rx);
 
   tauri::Builder::default()
+    .setup(|app| {
+      #[cfg(debug_assertions)] // only include this code on debug builds
+      {
+        let window = app.get_window("main").unwrap();
+        window.open_devtools();
+        window.close_devtools();
+      }
+      Ok(())
+    })
     // Tell the child process to shutdown when app exits
     .on_window_event(move |event| match event.event() {
       WindowEvent::Destroyed => {

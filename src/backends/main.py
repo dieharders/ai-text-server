@@ -1,4 +1,4 @@
-# import os
+import os
 import subprocess
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,6 +37,7 @@ app.add_middleware(
 def connect():
     return {
         "message": f"Connected to api server on port {PORT_API}. Refer to 'http://localhost:{PORT_API}/docs' for api docs.",
+        "success": True,
     }
 
 
@@ -108,12 +109,11 @@ def start_api_server():
 def start_text_inference_server():
     try:
         print("Starting Inference server")
-        # curr_dir = os.getcwd()
+        curr_dir = os.getcwd()
         model_filename = "llama-13b.ggmlv3.q3_K_S.bin"
-        # models_dir = os.path.join(curr_dir, "models")
-        # model_dir = os.path.join(models_dir, model_filename)
-        model_path = f"./src/backends/models/{model_filename}"
-
+        file_path = os.path.join(curr_dir, f"models/{model_filename}").replace(
+            "\\", "/"
+        )
         # class Settings(BaseSettings):
         #     model: str
         #     alias_name: str
@@ -156,7 +156,7 @@ def start_text_inference_server():
             "--port",
             PORT_TEXT_INFERENCE,
             "--model",
-            model_path,
+            file_path,
         ]
         # Execute the command
         # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.
