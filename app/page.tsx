@@ -12,6 +12,30 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [isStarted, setIsStarted] = useState(false)
 
+  const onTestInference = async () => {
+    console.log('@@ Testing inference...')
+
+    const options = {
+      prompt: "Whats your name"
+    }
+
+    try {
+      const response = await fetch(ip + '/v1/completions', {
+        method: 'POST',
+        mode: "cors", // must be enabled otherwise wont redirect
+        redirect: "follow", // we want to follow the re-direct automatically
+        cache: 'no-cache',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(options),
+      })
+      const result = await response.json()
+      console.log('@@ [onLoadModel] Result:', result)
+    } catch (error) {
+      console.log('@@ [Error] Failed to connect to backend:', error)
+    }
+  }
   const onLoadModel = async () => {
     console.log('@@ Loading model...')
 
@@ -83,12 +107,7 @@ export default function Home() {
         </p>
 
         <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href={appLink}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <button onClick={onTestInference} className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0">
             By{' '}
             {/* <Image
               src="/vercel.svg"
@@ -99,7 +118,7 @@ export default function Home() {
               priority
             /> */}
             <h2 className="text-md">Spread Shot Studios</h2>
-          </a>
+          </button>
         </div>
       </div>
 
