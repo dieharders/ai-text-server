@@ -7,7 +7,7 @@
     "distDir": "../out"
   },
   "package": {
-    "productName": "ai-knowledgebase-backend",
+    "productName": "HomebrewAi",
     "version": "0.1.0"
   },
   "tauri": {
@@ -39,15 +39,9 @@
         "depends": []
       },
       "externalBin": ["bin/api/main"],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "com.ai-base.spreadshotstudios",
-      "longDescription": "",
+      "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+      "identifier": "com.homebrew-ai.spreadshotstudios",
+      "longDescription": "Local and private Ai inference engine",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
@@ -56,7 +50,7 @@
         "signingIdentity": null
       },
       "resources": [],
-      "shortDescription": "",
+      "shortDescription": "Private Ai inference engine",
       "targets": "all",
       "windows": {
         "certificateThumbprint": null,
@@ -75,7 +69,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "ai-knowledgebase-backend",
+        "title": "HomebrewAi",
         "width": 800
       }
     ]
