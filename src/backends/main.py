@@ -18,6 +18,9 @@ inference_process = None
 
 # Configure CORS settings
 origins = [
+    "https://tauri.localhost",
+    "https://localhost:3000",
+    "https://localhost:3001",
     "http://localhost:3000",
     "http://localhost:3001",
     "https://hoppscotch.io",
