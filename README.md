@@ -105,9 +105,13 @@ Building app for production:
 pnpm tauri build
 ```
 
-The installer is located here:
+The production installer is located here:
 
-`<project-dir>\src-tauri\target\release\bundle\nsis`
+`<project-dir>/src-tauri/target/release/bundle/nsis`
+
+The development (--debug) installer is located here:
+
+`<project-dir>/src-tauri/target/debug/bundle/nsis`
 
 ---
 
