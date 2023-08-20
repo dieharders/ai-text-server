@@ -1,5 +1,11 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(
+  all(not(debug_assertions), target_os = "windows"),
+  windows_subsystem = "windows"
+)]
+// @TODO This is not preventing terminal window from opening on release builds.
+// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// #![windows_subsystem = "windows"]
 
 use std::process::Command;
 use std::sync::mpsc::{sync_channel, Receiver};
@@ -8,6 +14,15 @@ use command_group::CommandGroup;
 use tauri::api::process::Command as TCommand;
 use tauri::WindowEvent;
 use tauri::Manager;
+// use std::path::PathBuf;
+
+// #[tauri::command]
+// fn open_file_dialog(window: Window) {
+//     let file_dialog_result: Option<PathBuf> = window.dialog().open_directory();
+//     if let Some(path) = file_dialog_result {
+//         window.emit("selected-directory", Some(path.display().to_string()));
+//     }
+// }
 
 fn start_backend(receiver: Receiver<i32>) {
   // `new_sidecar()` expects just the filename, NOT the whole path
