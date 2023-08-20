@@ -2,15 +2,18 @@
 // @TODO Remove above and put all child components below in their own files so this can be a server component...
 
 import { useState } from 'react'
-
+import { open } from '@tauri-apps/api/dialog'
+import { desktopDir } from '@tauri-apps/api/path' // https://tauri.app/v1/api/js/path/
 // import Image from "next/image";
 // import Link from "next/link";
 
 export default function Home() {
   const appLink = 'https://brain-dump-dieharders.vercel.app/'
   const ip = 'http://localhost:8008'
+  const ITEM_MODEL_PATH = "model-path"
   const [isLoaded, setIsLoaded] = useState(false)
   const [isStarted, setIsStarted] = useState(false)
+  const [modelPath, setModelPath] = useState<string>(localStorage.getItem(ITEM_MODEL_PATH) || '')
 
   const onTestInference = async () => {
     console.log('@@ Testing inference...')
@@ -77,10 +80,41 @@ export default function Home() {
       console.log('@@ [Error] Failed to load the model:', error)
     }
   }
+  const fileSelect = async (isDirMode: boolean) => {
+    const cwd = await desktopDir()
+    const properties = {
+      defaultPath: cwd, // default 'C:\\',
+      directory: isDirMode,
+      filters: [{
+        extensions: ['txt', 'gif'], name: "*"
+      }]
+    }
+    const selected = await open(properties)
+    if (Array.isArray(selected)) {
+      console.log('@@ Error: user selected multiple files')
+      return null
+    } else if (selected === null) {
+      console.log('@@ user cancelled the selection')
+    } else {
+      console.log('@@ user selected a single file')
+    }
+    return selected
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
+        {/* Choose file path */}
+        <div className="fixed left-0 top-0 w-full flex-col justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
+          <form id="fileForm">
+            <button type="button" id="openFileDialog" onClick={async () => {
+              const path = await fileSelect(true)
+              path && setModelPath(path)
+              path && localStorage.setItem(ITEM_MODEL_PATH, path)
+            }} style={{ color: 'yellow' }}>Model File Path -{'>'}</button>
+          </form>
+          <p>{modelPath}</p>
+        </div>
         {/* Load Model */}
         <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
           {isLoaded ? '[llama7b]' : '[empty]'}&nbsp;
