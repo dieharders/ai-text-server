@@ -26,6 +26,7 @@
     // Prettier
     // "prettier/prettier": ["error", { "semi": false }],
     // ESLint
+    "@typescript-eslint/no-explicit-any": "warn",
     "object-curly-spacing": ["warn", "always"],
     "semi": ["error", "never"],
     "no-multi-spaces": ["error"],
