@@ -9,7 +9,9 @@ import { useState } from 'react'
 // import Link from "next/link";
 
 declare global {
-  interface Window { __TAURI__: any }
+  interface Window {
+    __TAURI__: any
+  }
 }
 
 const aiModelFileNames = {
@@ -25,13 +27,15 @@ export default function Home() {
   const ITEM_CURRENT_MODEL = 'current-text-model'
   const [isStarted, setIsStarted] = useState(false)
   const [modelPath, setModelPath] = useState<string>(localStorage.getItem(ITEM_MODEL_PATH) || '')
-  const [currentTextModel, setCurrentTextModel] = useState<string>(localStorage.getItem(ITEM_CURRENT_MODEL) || '')
+  const [currentTextModel, setCurrentTextModel] = useState<string>(
+    localStorage.getItem(ITEM_CURRENT_MODEL) || '',
+  )
 
   const onTestInference = async () => {
     console.log('@@ Testing inference...')
 
     const options = {
-      prompt: 'Whats your name'
+      prompt: 'Whats your name',
     }
 
     try {
@@ -55,7 +59,7 @@ export default function Home() {
     console.log('@@ Starting inference...')
 
     const options = {
-      filePath: `${modelPath}/${currentTextModel}`
+      filePath: `${modelPath}/${currentTextModel}`,
     }
 
     try {
@@ -81,9 +85,12 @@ export default function Home() {
     const properties = {
       defaultPath: cwd,
       directory: isDirMode,
-      filters: [{
-        extensions: ['txt', 'gif'], name: '*'
-      }]
+      filters: [
+        {
+          extensions: ['txt', 'gif'],
+          name: '*',
+        },
+      ],
     }
 
     const { open } = window.__TAURI__.dialog
@@ -100,7 +107,8 @@ export default function Home() {
   }
 
   const sizingStyles = 'lg:static lg:w-auto lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30'
-  const colorStyles = 'border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
+  const colorStyles =
+    'border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
   /**\
    * Choose file path for ai model
    */
@@ -108,14 +116,27 @@ export default function Home() {
     return (
       <>
         {/* Path string */}
-        <span className={`w-72 overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} rounded-none lg:static lg:border lg:p-4`} style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}>{modelPath}</span>
+        <span
+          className={`w-72 overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} rounded-none lg:static lg:border lg:p-4`}
+          style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
+        >
+          {modelPath}
+        </span>
         {/* Button */}
         <form className={`pb-6 pt-8 ${colorStyles} ${sizingStyles} rounded-l-none rounded-r-xl`}>
-          <button type="button" id="openFileDialog" disabled={isStarted} onClick={async () => {
-            const path = await fileSelect(true)
-            path && setModelPath(path)
-            path && localStorage.setItem(ITEM_MODEL_PATH, path)
-          }} style={{ color: `${isStarted ? 'grey' : 'yellow'}` }}>...</button>
+          <button
+            type="button"
+            id="openFileDialog"
+            disabled={isStarted}
+            onClick={async () => {
+              const path = await fileSelect(true)
+              path && setModelPath(path)
+              path && localStorage.setItem(ITEM_MODEL_PATH, path)
+            }}
+            style={{ color: `${isStarted ? 'grey' : 'yellow'}` }}
+          >
+            ...
+          </button>
         </form>
       </>
     )
@@ -133,11 +154,7 @@ export default function Home() {
           >
             {isStarted ? '[ON]' : '[OFF]'}&nbsp;
           </code>
-          <code
-            className="font-mono font-bold"
-          >
-            Start Engine
-          </code>
+          <code className="font-mono font-bold">Start Engine</code>
         </button>
       </p>
     )
@@ -147,14 +164,25 @@ export default function Home() {
    */
   const renderModelChooser = () => {
     return (
-      <p className={`rounded-r-none ${colorStyles} ${sizingStyles}`} style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}>
-        <label className="font-mono font-bold" >Current model </label>
-        <select name="modelSelect" id="models" className="bg-gray-800" required disabled={isStarted} value={currentTextModel} onChange={(e) => {
-          const val = e?.target?.value
-          console.log('@@ set curr model:', val)
-          val && setCurrentTextModel(val)
-          val && localStorage.setItem(ITEM_CURRENT_MODEL, val)
-        }}>
+      <p
+        className={`rounded-r-none ${colorStyles} ${sizingStyles}`}
+        style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
+      >
+        <label className="font-mono font-bold">Current model </label>
+        <select
+          name="modelSelect"
+          id="models"
+          className="bg-gray-800"
+          required
+          disabled={isStarted}
+          value={currentTextModel}
+          onChange={e => {
+            const val = e?.target?.value
+            console.log('@@ set curr model:', val)
+            val && setCurrentTextModel(val)
+            val && localStorage.setItem(ITEM_CURRENT_MODEL, val)
+          }}
+        >
           <option value={aiModelFileNames['Llama13b'].fileName}>Llama 13b</option>
           <option value={aiModelFileNames['Llama2_7b'].fileName}>Llama 2 7b</option>
           <option value={aiModelFileNames['Vicuna'].fileName}>Vicuna</option>
@@ -168,7 +196,13 @@ export default function Home() {
   const renderDownloadModel = () => {
     return (
       <p className={`rounded-l-xl rounded-r-none ${colorStyles} ${sizingStyles}`}>
-        <button disabled={isStarted} onClick={() => { }}>
+        <button
+          disabled={isStarted}
+          onClick={() => {
+            // Download model from huggingface
+            // ...
+          }}
+        >
           <code
             className="font-mono font-bold"
             style={{ color: `${isStarted ? 'grey' : 'yellow'}` }}
@@ -181,12 +215,14 @@ export default function Home() {
   }
   const renderConfigMenu = () => {
     return (
-      <div className={`fixed left-0 top-0 flex w-full justify-center backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit lg:rounded-xl ${sizingStyles}`}>
+      <div
+        className={`fixed left-0 top-0 flex w-full justify-center backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit lg:rounded-xl ${sizingStyles}`}
+      >
         {renderStartEngine()}
         {renderDownloadModel()}
         {renderModelChooser()}
         {renderFilePathChooser()}
-      </div >
+      </div>
     )
   }
 
@@ -195,7 +231,10 @@ export default function Home() {
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
         {renderConfigMenu()}
         <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <button onClick={onTestInference} className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0">
+          <button
+            onClick={onTestInference}
+            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
+          >
             By{' '}
             {/* <Image
               src="/vercel.svg"
@@ -243,7 +282,7 @@ export default function Home() {
 
         <a
           href={appLink}
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -254,8 +293,7 @@ export default function Home() {
             </span>
           </h2>
           <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find inspiration, kick-off a project or just toss ideas around with a creative
-            avatar.
+            Find inspiration, kick-off a project or just toss ideas around with a creative avatar.
           </p>
         </a>
 
@@ -289,8 +327,7 @@ export default function Home() {
             </span>
           </h2>
           <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Plan, adapt, enact. Take advantage of critical thinking processes to reach
-            your goals.
+            Plan, adapt, enact. Take advantage of critical thinking processes to reach your goals.
           </p>
         </a>
       </div>

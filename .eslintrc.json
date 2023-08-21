@@ -19,13 +19,21 @@
       "jsx": true
     }
   },
-  "plugins": ["tailwindcss", "react", "react-hooks", "eslint-plugin-react", "@typescript-eslint", "prettier"],
+  "plugins": [
+    "tailwindcss",
+    "react",
+    "react-hooks",
+    "eslint-plugin-react",
+    "@typescript-eslint",
+    "prettier"
+  ],
   "rules": {
     // Tailwind
     "tailwindcss/no-custom-classname": "off",
     // Prettier
-    // "prettier/prettier": ["error", { "semi": false }],
+    "prettier/prettier": ["error", { "semi": false }], // including this also respects printWidth?
     // ESLint
+    "quotes": [2, "single", { "avoidEscape": true }],
     "@typescript-eslint/no-explicit-any": "warn",
     "object-curly-spacing": ["warn", "always"],
     "semi": ["error", "never"],
