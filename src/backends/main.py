@@ -29,8 +29,8 @@ origins = [
 text_inference_routes = [
     "/v1/completions",
     "/v1/embeddings",
-    "v1/chat/completions",
-    "v1/models",
+    "/v1/chat/completions",
+    "/v1/models",
 ]
 
 
@@ -87,7 +87,7 @@ def connect():
 
 # Load in the ai model to be used for inference.
 @app.post("/api/text/v1/inference/load")
-async def load_inference(data: dict):
+def load_inference(data: dict):
     try:
         model_id: str = data["modelId"]
         # Logic to load the specified ai model here...
@@ -99,13 +99,16 @@ async def load_inference(data: dict):
 
 
 # Starts the text inference server
-@app.get("/api/text/v1/inference/start")
-def start_inference():
+@app.post("/api/text/v1/inference/start")
+def start_inference(data: dict):
     try:
-        isStarted = start_text_inference_server()
+        model_file_path: str = data["filePath"]
+        isStarted = start_text_inference_server(model_file_path)
         return {"message": "AI inference started", "success": isStarted}
-    except:
-        raise Exception(status_code=400, detail="Something went wrong...")
+    except KeyError:
+        raise HTTPException(
+            status_code=400, detail="Invalid JSON format: 'filePath' key not found"
+        )
 
 
 # Main text inference endpoint for prompting.
@@ -150,14 +153,17 @@ def start_api_server():
         return False
 
 
-def start_text_inference_server():
+def start_text_inference_server(file_path: str):
     try:
-        print("Starting Inference server")
-        curr_dir = os.getcwd()
-        model_filename = "llama-13b.ggmlv3.q3_K_S.bin"
-        file_path = os.path.join(curr_dir, f"models/{model_filename}").replace(
-            "\\", "/"
-        )
+        print(f"Starting Inference server from: {file_path}")
+
+        # curr_dir = os.getcwd()
+        # model_filename = "llama-13b.ggmlv3.q3_K_S.bin"
+        # path = os.path.join(curr_dir, f"models/{model_filename}").replace(
+        #     "\\", "/"
+        # )
+        path = file_path.replace("\\", "/")
+
         # class Settings(BaseSettings):
         #     model: str
         #     alias_name: str
@@ -200,7 +206,7 @@ def start_text_inference_server():
             "--port",
             PORT_TEXT_INFERENCE,
             "--model",
-            file_path,
+            path,
         ]
         # Execute the command
         # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.

@@ -1,32 +1,44 @@
 'use client'
-// @TODO Remove above and put all child components below in their own files so this can be a server component...
 
 import { useState } from 'react'
-import { open } from '@tauri-apps/api/dialog'
-import { desktopDir } from '@tauri-apps/api/path' // https://tauri.app/v1/api/js/path/
+// Importing {invoke, api} causes "ReferenceError: navigator is not defined" which blocks during `tauri build`
+// import { open } from '@tauri-apps/api/dialog'
+// import { desktopDir } from '@tauri-apps/api/path'
+
 // import Image from "next/image";
 // import Link from "next/link";
+
+declare global {
+  interface Window { __TAURI__: any }
+}
+
+const aiModelFileNames = {
+  Llama13b: { fileName: 'llama-13b.ggmlv3.q3_K_S.bin', link: '' },
+  Llama2_7b: { fileName: 'Llama2_7b.bin', link: '' },
+  Vicuna: { fileName: 'Vicuna.bin', link: '' },
+}
 
 export default function Home() {
   const appLink = 'https://brain-dump-dieharders.vercel.app/'
   const ip = 'http://localhost:8008'
-  const ITEM_MODEL_PATH = "model-path"
-  const [isLoaded, setIsLoaded] = useState(false)
+  const ITEM_MODEL_PATH = 'model-path'
+  const ITEM_CURRENT_MODEL = 'current-text-model'
   const [isStarted, setIsStarted] = useState(false)
   const [modelPath, setModelPath] = useState<string>(localStorage.getItem(ITEM_MODEL_PATH) || '')
+  const [currentTextModel, setCurrentTextModel] = useState<string>(localStorage.getItem(ITEM_CURRENT_MODEL) || '')
 
   const onTestInference = async () => {
     console.log('@@ Testing inference...')
 
     const options = {
-      prompt: "Whats your name"
+      prompt: 'Whats your name'
     }
 
     try {
       const response = await fetch(ip + '/v1/completions', {
         method: 'POST',
-        mode: "cors", // must be enabled otherwise wont redirect
-        redirect: "follow", // we want to follow the re-direct automatically
+        mode: 'cors', // must be enabled otherwise wont redirect
+        redirect: 'follow', // we want to follow the re-direct automatically
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
@@ -39,38 +51,21 @@ export default function Home() {
       console.log('@@ [Error] Failed to connect to backend:', error)
     }
   }
-  const onLoadModel = async () => {
-    console.log('@@ Loading model...')
+  const onStart = async () => {
+    console.log('@@ Starting inference...')
 
     const options = {
-      modelId: 'llama7b',
+      filePath: `${modelPath}/${currentTextModel}`
     }
 
     try {
-      const response = await fetch(ip + '/api/text/v1/inference/load', {
+      const response = await fetch(ip + '/api/text/v1/inference/start', {
         method: 'POST',
-        // mode: "no-cors", // no-cors, *cors, same-origin
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(options),
-      })
-
-      const result = await response.json()
-      setIsLoaded(result?.success)
-      console.log('@@ [onLoadModel] Success:', result)
-    } catch (error) {
-      console.log('@@ [Error] Failed to load the model:', error)
-    }
-  }
-  const onStart = async () => {
-    console.log('@@ Starting inference...')
-
-    try {
-      const response = await fetch(ip + '/api/text/v1/inference/start', {
-        method: 'GET',
-        cache: 'no-cache',
       })
 
       const result = await response.json()
@@ -81,65 +76,124 @@ export default function Home() {
     }
   }
   const fileSelect = async (isDirMode: boolean) => {
+    const { desktopDir } = window.__TAURI__.path
     const cwd = await desktopDir()
     const properties = {
-      defaultPath: cwd, // default 'C:\\',
+      defaultPath: cwd,
       directory: isDirMode,
       filters: [{
-        extensions: ['txt', 'gif'], name: "*"
+        extensions: ['txt', 'gif'], name: '*'
       }]
     }
+
+    const { open } = window.__TAURI__.dialog
     const selected = await open(properties)
     if (Array.isArray(selected)) {
-      console.log('@@ Error: user selected multiple files')
+      console.log('@@ Error: user selected multiple files.')
       return null
     } else if (selected === null) {
-      console.log('@@ user cancelled the selection')
+      console.log('@@ User cancelled the selection.')
     } else {
-      console.log('@@ user selected a single file')
+      console.log('@@ User selected a single file:', selected)
     }
     return selected
+  }
+
+  const sizingStyles = 'lg:static lg:w-auto lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30'
+  const colorStyles = 'border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
+  /**\
+   * Choose file path for ai model
+   */
+  const renderFilePathChooser = () => {
+    return (
+      <>
+        {/* Path string */}
+        <span className={`w-72 overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} rounded-none lg:static lg:border lg:p-4`} style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}>{modelPath}</span>
+        {/* Button */}
+        <form className={`pb-6 pt-8 ${colorStyles} ${sizingStyles} rounded-l-none rounded-r-xl`}>
+          <button type="button" id="openFileDialog" disabled={isStarted} onClick={async () => {
+            const path = await fileSelect(true)
+            path && setModelPath(path)
+            path && localStorage.setItem(ITEM_MODEL_PATH, path)
+          }} style={{ color: `${isStarted ? 'grey' : 'yellow'}` }}>...</button>
+        </form>
+      </>
+    )
+  }
+  /**
+   * Start Inference Engine
+   */
+  const renderStartEngine = () => {
+    return (
+      <p className={`mr-4 rounded-xl ${colorStyles} ${sizingStyles}`}>
+        <button onClick={onStart}>
+          <code
+            className="font-mono font-bold"
+            style={{ color: `${isStarted ? 'lime' : 'yellow'}` }}
+          >
+            {isStarted ? '[ON]' : '[OFF]'}&nbsp;
+          </code>
+          <code
+            className="font-mono font-bold"
+          >
+            Start Engine
+          </code>
+        </button>
+      </p>
+    )
+  }
+  /**
+   * Choose an ai model id
+   */
+  const renderModelChooser = () => {
+    return (
+      <p className={`rounded-r-none ${colorStyles} ${sizingStyles}`} style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}>
+        <label className="font-mono font-bold" >Current model </label>
+        <select name="modelSelect" id="models" className="bg-gray-800" required disabled={isStarted} value={currentTextModel} onChange={(e) => {
+          const val = e?.target?.value
+          console.log('@@ set curr model:', val)
+          val && setCurrentTextModel(val)
+          val && localStorage.setItem(ITEM_CURRENT_MODEL, val)
+        }}>
+          <option value={aiModelFileNames['Llama13b'].fileName}>Llama 13b</option>
+          <option value={aiModelFileNames['Llama2_7b'].fileName}>Llama 2 7b</option>
+          <option value={aiModelFileNames['Vicuna'].fileName}>Vicuna</option>
+        </select>
+      </p>
+    )
+  }
+  /**
+   * Download the currently selected ai model
+   */
+  const renderDownloadModel = () => {
+    return (
+      <p className={`rounded-l-xl rounded-r-none ${colorStyles} ${sizingStyles}`}>
+        <button disabled={isStarted} onClick={() => { }}>
+          <code
+            className="font-mono font-bold"
+            style={{ color: `${isStarted ? 'grey' : 'yellow'}` }}
+          >
+            Download
+          </code>
+        </button>
+      </p>
+    )
+  }
+  const renderConfigMenu = () => {
+    return (
+      <div className={`fixed left-0 top-0 flex w-full justify-center backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit lg:rounded-xl ${sizingStyles}`}>
+        {renderStartEngine()}
+        {renderDownloadModel()}
+        {renderModelChooser()}
+        {renderFilePathChooser()}
+      </div >
+    )
   }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        {/* Choose file path */}
-        <div className="fixed left-0 top-0 w-full flex-col justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          <form id="fileForm">
-            <button type="button" id="openFileDialog" onClick={async () => {
-              const path = await fileSelect(true)
-              path && setModelPath(path)
-              path && localStorage.setItem(ITEM_MODEL_PATH, path)
-            }} style={{ color: 'yellow' }}>Model File Path -{'>'}</button>
-          </form>
-          <p>{modelPath}</p>
-        </div>
-        {/* Load Model */}
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          {isLoaded ? '[llama7b]' : '[empty]'}&nbsp;
-          <button onClick={onLoadModel}>
-            <code
-              className="font-mono font-bold"
-              style={{ color: `${isLoaded ? 'lime' : 'yellow'}` }}
-            >
-              Load Model
-            </code>
-          </button>
-        </p>
-        {/* Start Inference */}
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          {isStarted ? '[ON]' : '[OFF]'}&nbsp;
-          <button onClick={onStart}>
-            <code
-              className="font-mono font-bold"
-              style={{ color: `${isStarted ? 'lime' : 'yellow'}` }}
-            >
-              Start Engine
-            </code>
-          </button>
-        </p>
-
+        {renderConfigMenu()}
         <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
           <button onClick={onTestInference} className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0">
             By{' '}
