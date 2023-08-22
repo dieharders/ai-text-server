@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+// import axios from 'axios'
 // Importing {invoke, api} causes "ReferenceError: navigator is not defined" which blocks during `tauri build`
 // import { open } from '@tauri-apps/api/dialog'
 // import { desktopDir } from '@tauri-apps/api/path'
@@ -14,10 +15,13 @@ declare global {
   }
 }
 
-const aiModelFileNames = {
-  Llama13b: { fileName: 'llama-13b.ggmlv3.q3_K_S.bin', link: '' },
-  Llama2_7b: { fileName: 'Llama2_7b.bin', link: '' },
-  Vicuna: { fileName: 'Vicuna.bin', link: '' },
+const aiModelFileNames: { [index: string]: { fileName: string; link: string } } = {
+  Llama13b: {
+    fileName: 'llama-13b.ggmlv3.q3_K_S.bin',
+    link: 'https://huggingface.co/TheBloke/LLaMa-13B-GGML/blob/main/llama-13b.ggmlv3.q3_K_S.bin',
+  },
+  Llama2_7b: { fileName: 'Llama2_7b.bin', link: 'foo' },
+  Vicuna: { fileName: 'Vicuna.bin', link: 'bar' },
 }
 
 export default function Home() {
@@ -31,6 +35,22 @@ export default function Home() {
     localStorage.getItem(ITEM_CURRENT_MODEL) || '',
   )
 
+  const onModelDownload = async (target: string, destination: string) => {
+    if (!destination) return
+
+    // const response = await axios({
+    //   url: target,
+    //   method: 'GET',
+    //   responseType: 'blob',
+    //   onDownloadProgress: progressEvent => {
+    //     const total = progressEvent.total || 1000000000
+    //     const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
+    //     console.log('@@ file progress:', percentCompleted)
+    //   },
+    // })
+    // console.log('@@ res', response)
+    // return response
+  }
   const onTestInference = async () => {
     console.log('@@ Testing inference...')
 
@@ -59,7 +79,7 @@ export default function Home() {
     console.log('@@ Starting inference...')
 
     const options = {
-      filePath: `${modelPath}/${currentTextModel}`,
+      filePath: `${modelPath}/${aiModelFileNames[currentTextModel].fileName}`,
     }
 
     try {
@@ -117,7 +137,7 @@ export default function Home() {
       <>
         {/* Path string */}
         <span
-          className={`w-72 overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} rounded-none lg:static lg:border lg:p-4`}
+          className={`grow overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} rounded-none lg:static lg:border lg:p-4`}
           style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
         >
           {modelPath}
@@ -154,7 +174,7 @@ export default function Home() {
           >
             {isStarted ? '[ON]' : '[OFF]'}&nbsp;
           </code>
-          <code className="font-mono font-bold">Start Engine</code>
+          <code className="font-mono font-bold">Start</code>
         </button>
       </p>
     )
@@ -168,7 +188,7 @@ export default function Home() {
         className={`rounded-r-none ${colorStyles} ${sizingStyles}`}
         style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
       >
-        <label className="font-mono font-bold">Current model </label>
+        <label className="font-mono font-bold">Ai model </label>
         <select
           name="modelSelect"
           id="models"
@@ -183,9 +203,9 @@ export default function Home() {
             val && localStorage.setItem(ITEM_CURRENT_MODEL, val)
           }}
         >
-          <option value={aiModelFileNames['Llama13b'].fileName}>Llama 13b</option>
-          <option value={aiModelFileNames['Llama2_7b'].fileName}>Llama 2 7b</option>
-          <option value={aiModelFileNames['Vicuna'].fileName}>Vicuna</option>
+          <option value="Llama13b">Llama 13b</option>
+          <option value="Llama2_7b">Llama 2 7b</option>
+          <option value="Vicuna">Vicuna</option>
         </select>
       </p>
     )
@@ -195,12 +215,16 @@ export default function Home() {
    */
   const renderDownloadModel = () => {
     return (
-      <p className={`rounded-l-xl rounded-r-none ${colorStyles} ${sizingStyles}`}>
+      <div className={`rounded-l-xl rounded-r-none ${colorStyles} ${sizingStyles}`}>
         <button
           disabled={isStarted}
           onClick={() => {
             // Download model from huggingface
-            // ...
+            // onModelDownload(aiModelFileNames[currentTextModel]?.link, modelPath)
+            onModelDownload(
+              'https://unsplash.com/photos/tUqMoFE_eAE/download?ixid=M3wxMjA3fDF8MXxhbGx8MXx8fHx8fDJ8fDE2OTI2NDk4MDl8&force=true',
+              modelPath,
+            )
           }}
         >
           <code
@@ -210,14 +234,33 @@ export default function Home() {
             Download
           </code>
         </button>
-      </p>
+      </div>
+    )
+  }
+  const renderCredits = () => {
+    return (
+      <div className="fixed bottom-0 left-0 z-30 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white font-mono text-sm dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
+        <button
+          onClick={onTestInference}
+          className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
+        >
+          By{' '}
+          {/* <Image
+              src="/vercel.svg"
+              alt="Vercel Logo"
+              className="dark:invert"
+              width={100}
+              height={24}
+              priority
+            /> */}
+          <h2 className="text-md">Spread Shot Studios</h2>
+        </button>
+      </div>
     )
   }
   const renderConfigMenu = () => {
     return (
-      <div
-        className={`fixed left-0 top-0 flex w-full justify-center backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit lg:rounded-xl ${sizingStyles}`}
-      >
+      <div className="fixed left-0 top-0 flex w-full justify-center p-4 backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit lg:rounded-xl">
         {renderStartEngine()}
         {renderDownloadModel()}
         {renderModelChooser()}
@@ -228,28 +271,11 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
+      <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
         {renderConfigMenu()}
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <button
-            onClick={onTestInference}
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-          >
-            By{' '}
-            {/* <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            /> */}
-            <h2 className="text-md">Spread Shot Studios</h2>
-          </button>
-        </div>
       </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]">
+      <div className="relative flex-col place-items-center before:absolute before:-z-20 before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]">
         {/* <Image
           className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
           src="/next.svg"
@@ -259,10 +285,11 @@ export default function Home() {
           priority
         /> */}
         <h1 className="text-4xl">🍺HomebrewAi</h1>
+        {renderCredits()}
       </div>
 
       {/* Browse Apps */}
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
+      <div className="z-5 mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
         <a
           href={appLink}
           className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
