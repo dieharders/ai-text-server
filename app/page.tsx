@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-// import axios from 'axios'
+import axios from 'axios'
 // Importing {invoke, api} causes "ReferenceError: navigator is not defined" which blocks during `tauri build`
+// This can be solved by dynamically importing the needed moduleslike:
+// const { open } = await import dialog from '@tauri-apps/api/dialog'
 // import { open } from '@tauri-apps/api/dialog'
 // import { desktopDir } from '@tauri-apps/api/path'
+// import { BaseDirectory, createDir } from "@tauri-apps/api/fs";
 
 // import Image from "next/image";
 // import Link from "next/link";
@@ -15,10 +18,11 @@ declare global {
   }
 }
 
+// @TODO Add links for rest of models
 const aiModelFileNames: { [index: string]: { fileName: string; link: string } } = {
   Llama13b: {
     fileName: 'llama-13b.ggmlv3.q3_K_S.bin',
-    link: 'https://huggingface.co/TheBloke/LLaMa-13B-GGML/blob/main/llama-13b.ggmlv3.q3_K_S.bin',
+    link: 'https://huggingface.co/TheBloke/LLaMa-13B-GGML/resolve/main/llama-13b.ggmlv3.q3_K_S.bin',
   },
   Llama2_7b: { fileName: 'Llama2_7b.bin', link: 'foo' },
   Vicuna: { fileName: 'Vicuna.bin', link: 'bar' },
@@ -35,21 +39,51 @@ export default function Home() {
     localStorage.getItem(ITEM_CURRENT_MODEL) || '',
   )
 
-  const onModelDownload = async (target: string, destination: string) => {
-    if (!destination) return
+  /**
+   * This will do for now...
+   * But we could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
+   */
+  const onModelDownload = async (url: string, filePath: string, fileName: string) => {
+    if (!filePath || !url || !fileName) throw Error('No arguments provided!')
 
-    // const response = await axios({
-    //   url: target,
-    //   method: 'GET',
-    //   responseType: 'blob',
-    //   onDownloadProgress: progressEvent => {
-    //     const total = progressEvent.total || 1000000000
-    //     const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
-    //     console.log('@@ file progress:', percentCompleted)
-    //   },
-    // })
-    // console.log('@@ res', response)
-    // return response
+    try {
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'arraybuffer', // 'blob' | 'stream' | 'arraybuffer' | 'json'
+        withCredentials: false,
+        onDownloadProgress: progressEvent => {
+          const total = progressEvent.total || 1000000000
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
+          // @TODO Handle file progress
+          console.log('@@ file progress:', percentCompleted)
+        },
+      })
+
+      // Write response.data to file
+      const { writeBinaryFile } = await import('@tauri-apps/api/fs')
+
+      // @TODO Check that file and target path exists.
+      // const fileExists = await fs.exists(fileName, { dir: filePath })
+      // console.log('@@ fileExists', fileExists)
+      // if (fileExists) throw Error('File already exists')
+
+      // if (!pathExists) {
+      //   await fs.createDir(folderName, { dir: basePath })
+      // }
+
+      // @TODO In order to write to chosen path (w/o user action) on subsequent restarts, we need to use plugin-persisted-scope
+      // When a user chooses a path, it is added automatically to `fs: scope: []` but only for that session.
+      await writeBinaryFile({
+        path: `${filePath}\\${fileName}`,
+        contents: response.data,
+      })
+
+      return true
+    } catch (err) {
+      console.log('@@ [Error] Failed to download file:', err)
+      return
+    }
   }
   const onTestInference = async () => {
     console.log('@@ Testing inference...')
@@ -99,7 +133,7 @@ export default function Home() {
       console.log('@@ [Error] Failed to load the model:', error)
     }
   }
-  const fileSelect = async (isDirMode: boolean) => {
+  const fileSelect = async (isDirMode: boolean): Promise<string | null> => {
     const { desktopDir } = window.__TAURI__.path
     const cwd = await desktopDir()
     const properties = {
@@ -126,10 +160,10 @@ export default function Home() {
     return selected
   }
 
-  const sizingStyles = 'lg:static lg:w-auto lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30'
+  const sizingStyles = 'lg:static lg:w-auto sm:border lg:bg-gray-200 sm:p-4 lg:dark:bg-zinc-800/30'
   const colorStyles =
     'border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
-  /**\
+  /**
    * Choose file path for ai model
    */
   const renderFilePathChooser = () => {
@@ -137,7 +171,7 @@ export default function Home() {
       <>
         {/* Path string */}
         <span
-          className={`grow overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} rounded-none lg:static lg:border lg:p-4`}
+          className={`overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} rounded-none sm:p-4 lg:static`}
           style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
         >
           {modelPath}
@@ -185,10 +219,10 @@ export default function Home() {
   const renderModelChooser = () => {
     return (
       <p
-        className={`rounded-r-none ${colorStyles} ${sizingStyles}`}
+        className={`rounded-r-none ${colorStyles} ${sizingStyles} whitespace-nowrap`}
         style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
       >
-        <label className="font-mono font-bold">Ai model </label>
+        <label className="mr-4 font-mono font-bold">Ai model</label>
         <select
           name="modelSelect"
           id="models"
@@ -218,13 +252,16 @@ export default function Home() {
       <div className={`rounded-l-xl rounded-r-none ${colorStyles} ${sizingStyles}`}>
         <button
           disabled={isStarted}
-          onClick={() => {
+          onClick={async () => {
             // Download model from huggingface
-            // onModelDownload(aiModelFileNames[currentTextModel]?.link, modelPath)
-            onModelDownload(
-              'https://unsplash.com/photos/tUqMoFE_eAE/download?ixid=M3wxMjA3fDF8MXxhbGx8MXx8fHx8fDJ8fDE2OTI2NDk4MDl8&force=true',
+            const success = await onModelDownload(
+              aiModelFileNames[currentTextModel]?.link,
+              // 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif',
               modelPath,
+              aiModelFileNames[currentTextModel]?.fileName,
+              // 'python-logo.gif',
             )
+            if (success) console.log('@@ File saved successfully!')
           }}
         >
           <code
@@ -260,7 +297,7 @@ export default function Home() {
   }
   const renderConfigMenu = () => {
     return (
-      <div className="fixed left-0 top-0 flex w-full justify-center p-4 backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit lg:rounded-xl">
+      <div className="fixed left-0 top-0 flex w-full justify-center p-4 backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit">
         {renderStartEngine()}
         {renderDownloadModel()}
         {renderModelChooser()}
