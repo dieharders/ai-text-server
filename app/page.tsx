@@ -56,19 +56,16 @@ export default function Home() {
       })
 
       // Write response.data to file
-      const { writeBinaryFile } = await import('@tauri-apps/api/fs')
+      const { writeBinaryFile, exists, createDir } = await import('@tauri-apps/api/fs')
 
-      // @TODO Check that file and target path exists.
-      // const fileExists = await fs.exists(fileName, { dir: filePath })
-      // console.log('@@ fileExists', fileExists)
-      // if (fileExists) throw Error('File already exists')
+      // Check that file and target path exists
+      const fileExists = await exists(`${filePath}\\${fileName}`)
+      if (fileExists) throw Error('File already exists')
+      const pathExists = await exists(filePath)
+      if (!pathExists) await createDir(filePath)
 
-      // if (!pathExists) {
-      //   await fs.createDir(folderName, { dir: basePath })
-      // }
-
-      // @TODO In order to write to chosen path (w/o user action) on subsequent restarts, we need to use plugin-persisted-scope
-      // When a user chooses a path, it is added automatically to `fs: scope: []` but only for that session.
+      // In order to write to chosen path (w/o user action) on subsequent restarts, we need to use plugin-persisted-scope
+      // When a user chooses a path, it is added dynamically to `fs: scope: []` but only for that session.
       await writeBinaryFile({
         path: `${filePath}\\${fileName}`,
         contents: response.data,
