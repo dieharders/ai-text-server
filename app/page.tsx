@@ -1,24 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
-// Importing {invoke, api} causes "ReferenceError: navigator is not defined" which blocks during `tauri build`
-// This can be solved by dynamically importing the needed moduleslike:
-// const { open } = await import dialog from '@tauri-apps/api/dialog'
-// import { open } from '@tauri-apps/api/dialog'
-// import { desktopDir } from '@tauri-apps/api/path'
-// import { BaseDirectory, createDir } from "@tauri-apps/api/fs";
 
 // import Image from "next/image";
 // import Link from "next/link";
 
-declare global {
-  interface Window {
-    __TAURI__: any
-  }
-}
+// If you cant or wont import @tauri-apps/api/* then you can use window.__TAURI__.*
+// declare global {
+//   interface Window {
+//     __TAURI__: any
+//   }
+// }
 
-// @TODO Add links for rest of models
+// @TODO Add links for rest of models and put in external file.
 const aiModelFileNames: { [index: string]: { fileName: string; link: string } } = {
   Llama13b: {
     fileName: 'llama-13b.ggmlv3.q3_K_S.bin',
@@ -134,7 +129,7 @@ export default function Home() {
     }
   }
   const fileSelect = async (isDirMode: boolean): Promise<string | null> => {
-    const { desktopDir } = window.__TAURI__.path
+    const { desktopDir } = await import('@tauri-apps/api/path')
     const cwd = await desktopDir()
     const properties = {
       defaultPath: cwd,
@@ -147,7 +142,7 @@ export default function Home() {
       ],
     }
 
-    const { open } = window.__TAURI__.dialog
+    const { open } = await import('@tauri-apps/api/dialog')
     const selected = await open(properties)
     if (Array.isArray(selected)) {
       console.log('@@ Error: user selected multiple files.')
@@ -305,6 +300,19 @@ export default function Home() {
       </div>
     )
   }
+
+  // Intialize default model path
+  useEffect(() => {
+    const saveDefault = async () => {
+      const { desktopDir } = await import('@tauri-apps/api/path')
+      const path = await desktopDir()
+      if (path) {
+        setModelPath(path)
+        localStorage.setItem(ITEM_MODEL_PATH, path)
+      }
+    }
+    if (modelPath === '') saveDefault()
+  }, [modelPath])
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
