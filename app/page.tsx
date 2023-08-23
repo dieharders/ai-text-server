@@ -15,19 +15,21 @@ import axios from 'axios'
 
 // @TODO Add links for rest of models and put in external file.
 const aiModelFileNames: { [index: string]: { fileName: string; link: string } } = {
-  Llama13b: {
+  Llama1_13b: {
     fileName: 'llama-13b.ggmlv3.q3_K_S.bin',
     link: 'https://huggingface.co/TheBloke/LLaMa-13B-GGML/resolve/main/llama-13b.ggmlv3.q3_K_S.bin',
   },
-  Llama2_7b: { fileName: 'Llama2_7b.bin', link: 'foo' },
-  Vicuna: { fileName: 'Vicuna.bin', link: 'bar' },
+  Llama2_13b: { fileName: 'gptq_model-4bit-32g.safetensors', link: 'foo' },
+  WizardVicuna: { fileName: 'Wizard Vicuna 7B Uncensored.bin', link: 'bar' },
 }
 
 export default function Home() {
   const appLink = 'https://brain-dump-dieharders.vercel.app/'
   const ip = 'http://localhost:8008'
-  const ITEM_MODEL_PATH = 'model-path'
-  const ITEM_CURRENT_MODEL = 'current-text-model'
+  // Local Storage keys
+  const ITEM_MODEL_PATH = 'model-path' // string
+  const ITEM_CURRENT_MODEL = 'current-text-model' // string
+  const ITEM_TEXT_MODELS = 'text-models-list' // array<string>
   const [isStarted, setIsStarted] = useState(false)
   const [modelPath, setModelPath] = useState<string>(localStorage.getItem(ITEM_MODEL_PATH) || '')
   const [currentTextModel, setCurrentTextModel] = useState<string>(
@@ -38,7 +40,7 @@ export default function Home() {
    * This will do for now...
    * But we could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
    */
-  const onModelDownload = async (url: string, filePath: string, fileName: string) => {
+  const onModelDownload = async (url: string, filePath: string, fileName: string, id: string) => {
     if (!filePath || !url || !fileName) throw Error('No arguments provided!')
 
     try {
@@ -52,6 +54,7 @@ export default function Home() {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
           // @TODO Handle file progress
           console.log('@@ file progress:', percentCompleted)
+          // setDownloadProgress()
         },
       })
 
@@ -70,6 +73,12 @@ export default function Home() {
         path: `${filePath}\\${fileName}`,
         contents: response.data,
       })
+
+      // Mark download completed
+      const data = localStorage.getItem(ITEM_TEXT_MODELS)
+      const list = JSON.parse(data || '')
+      list.push(id)
+      localStorage.setItem(ITEM_TEXT_MODELS, list)
 
       return true
     } catch (err) {
@@ -229,9 +238,9 @@ export default function Home() {
             val && localStorage.setItem(ITEM_CURRENT_MODEL, val)
           }}
         >
-          <option value="Llama13b">Llama 13b</option>
-          <option value="Llama2_7b">Llama 2 7b</option>
-          <option value="Vicuna">Vicuna</option>
+          <option value="Llama1_13b">Llama 1</option>
+          <option value="Llama2_13b">Llama 2</option>
+          <option value="WizardVicuna">WizardVicuna</option>
         </select>
       </p>
     )
@@ -252,6 +261,7 @@ export default function Home() {
               modelPath,
               aiModelFileNames[currentTextModel]?.fileName,
               // 'python-logo.gif',
+              currentTextModel,
             )
             if (success) console.log('@@ File saved successfully!')
           }}
