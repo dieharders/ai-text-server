@@ -1,19 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import ModelCard from '../src/frontend/components/text-model-browser/ModelCard'
 
-// import Image from "next/image";
-// import Link from "next/link";
-
-// If you cant or wont import @tauri-apps/api/* then you can use window.__TAURI__.*
-// declare global {
-//   interface Window {
-//     __TAURI__: any
-//   }
-// }
-
-// @TODO Add links for rest of models and put in external file.
+// @TODO Add links for rest of models and put in external file. Make this an array of model objects.
 const aiModelFileNames: { [index: string]: { fileName: string; link: string } } = {
   Llama1_13b: {
     fileName: 'llama-13b.ggmlv3.q3_K_S.bin',
@@ -24,67 +14,35 @@ const aiModelFileNames: { [index: string]: { fileName: string; link: string } } 
 }
 
 export default function Home() {
-  const appLink = 'https://brain-dump-dieharders.vercel.app/'
-  const ip = 'http://localhost:8008'
   // Local Storage keys
   const ITEM_MODEL_PATH = 'model-path' // string
   const ITEM_CURRENT_MODEL = 'current-text-model' // string
   const ITEM_TEXT_MODELS = 'text-models-list' // array<string>
+  // App vars
+  const appLink = 'https://brain-dump-dieharders.vercel.app/'
+  const ip = 'http://localhost:8008'
   const [isStarted, setIsStarted] = useState(false)
   const [modelPath, setModelPath] = useState<string>(localStorage.getItem(ITEM_MODEL_PATH) || '')
   const [currentTextModel, setCurrentTextModel] = useState<string>(
     localStorage.getItem(ITEM_CURRENT_MODEL) || '',
   )
-
-  /**
-   * This will do for now...
-   * But we could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
-   */
-  const onModelDownload = async (url: string, filePath: string, fileName: string, id: string) => {
-    if (!filePath || !url || !fileName) throw Error('No arguments provided!')
-
-    try {
-      const response = await axios({
-        url,
-        method: 'GET',
-        responseType: 'arraybuffer', // 'blob' | 'stream' | 'arraybuffer' | 'json'
-        withCredentials: false,
-        onDownloadProgress: progressEvent => {
-          const total = progressEvent.total || 1000000000
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
-          // @TODO Handle file progress
-          console.log('@@ file progress:', percentCompleted)
-          // setDownloadProgress()
-        },
-      })
-
-      // Write response.data to file
-      const { writeBinaryFile, exists, createDir } = await import('@tauri-apps/api/fs')
-
-      // Check that file and target path exists
-      const fileExists = await exists(`${filePath}\\${fileName}`)
-      if (fileExists) throw Error('File already exists')
-      const pathExists = await exists(filePath)
-      if (!pathExists) await createDir(filePath)
-
-      // In order to write to chosen path (w/o user action) on subsequent restarts, we need to use plugin-persisted-scope
-      // When a user chooses a path, it is added dynamically to `fs: scope: []` but only for that session.
-      await writeBinaryFile({
-        path: `${filePath}\\${fileName}`,
-        contents: response.data,
-      })
-
-      // Mark download completed
-      const data = localStorage.getItem(ITEM_TEXT_MODELS)
-      const list = JSON.parse(data || '')
-      list.push(id)
-      localStorage.setItem(ITEM_TEXT_MODELS, list)
-
-      return true
-    } catch (err) {
-      console.log('@@ [Error] Failed to download file:', err)
-      return
-    }
+  // Handlers
+  const onSelectTextModel = (val: string) => {
+    console.log('@@ Set current text model:', val)
+    setCurrentTextModel(val)
+    localStorage.setItem(ITEM_CURRENT_MODEL, val)
+  }
+  const onDownloadComplete = (modelId: string) => {
+    const data = localStorage.getItem(ITEM_TEXT_MODELS)
+    const list = JSON.parse(data || '')
+    list.push(modelId)
+    localStorage.setItem(ITEM_TEXT_MODELS, list)
+  }
+  const checkHasDownload = (modelId: string): boolean => {
+    const data = localStorage.getItem(ITEM_TEXT_MODELS)
+    const list = JSON.parse(data || '')
+    const matched = list.find((item: string) => item === modelId)
+    return matched
   }
   const onTestInference = async () => {
     console.log('@@ Testing inference...')
@@ -135,6 +93,7 @@ export default function Home() {
     }
   }
   const fileSelect = async (isDirMode: boolean): Promise<string | null> => {
+    // If you cant or wont import @tauri-apps/api/* then you can use window.__TAURI__.*
     const { desktopDir } = await import('@tauri-apps/api/path')
     const cwd = await desktopDir()
     const properties = {
@@ -160,7 +119,7 @@ export default function Home() {
     }
     return selected
   }
-
+  // Render components
   const sizingStyles = 'lg:static lg:w-auto sm:border lg:bg-gray-200 sm:p-4 lg:dark:bg-zinc-800/30'
   const colorStyles =
     'border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
@@ -172,13 +131,13 @@ export default function Home() {
       <>
         {/* Path string */}
         <span
-          className={`overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} rounded-none sm:p-4 lg:static`}
+          className={`overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} sm:border sm:p-4 lg:static`}
           style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
         >
           {modelPath}
         </span>
         {/* Button */}
-        <form className={`pb-6 pt-8 ${colorStyles} ${sizingStyles} rounded-l-none rounded-r-xl`}>
+        <form className={`pb-6 pt-8 ${colorStyles} ${sizingStyles} rounded-l-none rounded-r-lg`}>
           <button
             type="button"
             id="openFileDialog"
@@ -201,7 +160,7 @@ export default function Home() {
    */
   const renderStartEngine = () => {
     return (
-      <p className={`mr-4 rounded-xl ${colorStyles} ${sizingStyles}`}>
+      <p className={`mr-4 rounded-lg ${colorStyles} ${sizingStyles}`}>
         <button onClick={onStart}>
           <code
             className="font-mono font-bold"
@@ -209,7 +168,7 @@ export default function Home() {
           >
             {isStarted ? '[ON]' : '[OFF]'}&nbsp;
           </code>
-          <code className="font-mono font-bold">Start</code>
+          <code className="font-mono font-bold">{isStarted ? 'Shutdown' : 'Start'}</code>
         </button>
       </p>
     )
@@ -220,62 +179,17 @@ export default function Home() {
   const renderModelChooser = () => {
     return (
       <p
-        className={`rounded-r-none ${colorStyles} ${sizingStyles} whitespace-nowrap`}
+        className={`rounded-l-lg rounded-r-none ${colorStyles} ${sizingStyles} whitespace-nowrap`}
         style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
       >
-        <label className="mr-4 font-mono font-bold">Ai model</label>
-        <select
-          name="modelSelect"
-          id="models"
-          className="bg-gray-800"
-          required
-          disabled={isStarted}
-          value={currentTextModel}
-          onChange={e => {
-            const val = e?.target?.value
-            console.log('@@ set curr model:', val)
-            val && setCurrentTextModel(val)
-            val && localStorage.setItem(ITEM_CURRENT_MODEL, val)
-          }}
-        >
-          <option value="Llama1_13b">Llama 1</option>
-          <option value="Llama2_13b">Llama 2</option>
-          <option value="WizardVicuna">WizardVicuna</option>
-        </select>
+        <div className="inline-flex font-mono">
+          Ai model:
+          <div className="ml-2 font-bold">{currentTextModel || 'none'}</div>
+        </div>
       </p>
     )
   }
-  /**
-   * Download the currently selected ai model
-   */
-  const renderDownloadModel = () => {
-    return (
-      <div className={`rounded-l-xl rounded-r-none ${colorStyles} ${sizingStyles}`}>
-        <button
-          disabled={isStarted}
-          onClick={async () => {
-            // Download model from huggingface
-            const success = await onModelDownload(
-              aiModelFileNames[currentTextModel]?.link,
-              // 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif',
-              modelPath,
-              aiModelFileNames[currentTextModel]?.fileName,
-              // 'python-logo.gif',
-              currentTextModel,
-            )
-            if (success) console.log('@@ File saved successfully!')
-          }}
-        >
-          <code
-            className="font-mono font-bold"
-            style={{ color: `${isStarted ? 'grey' : 'yellow'}` }}
-          >
-            Download
-          </code>
-        </button>
-      </div>
-    )
-  }
+  // Company credits (built by)
   const renderCredits = () => {
     return (
       <div className="fixed bottom-0 left-0 z-30 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white font-mono text-sm dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
@@ -297,50 +211,51 @@ export default function Home() {
       </div>
     )
   }
+  // Show the text inference startup menu
   const renderConfigMenu = () => {
     return (
       <div className="fixed left-0 top-0 flex w-full justify-center p-4 backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit">
         {renderStartEngine()}
-        {renderDownloadModel()}
         {renderModelChooser()}
         {renderFilePathChooser()}
       </div>
     )
   }
+  // List of curated text inference models
+  const renderTextModelBrowserMenu = () => {
+    // @TODO Add data
+    const data: Array<any> = []
 
-  // Intialize default model path
-  useEffect(() => {
-    const saveDefault = async () => {
-      const { desktopDir } = await import('@tauri-apps/api/path')
-      const path = await desktopDir()
-      if (path) {
-        setModelPath(path)
-        localStorage.setItem(ITEM_MODEL_PATH, path)
-      }
-    }
-    if (modelPath === '') saveDefault()
-  }, [modelPath])
+    const cards = data?.map(item => {
+      return (
+        <ModelCard
+          key={item.id}
+          id={item.id}
+          name={item.name}
+          description={item.description}
+          fileSize={item.fileSize}
+          downloadUrl={item.downloadUrl} // 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif'
+          saveToPath={modelPath}
+          fileName={item.fileName} // 'python-logo.gif'
+          isLoaded={currentTextModel === item.id}
+          initialHasDownload={checkHasDownload(item.id)}
+          onSelectModel={onSelectTextModel}
+          onDownloadComplete={onDownloadComplete}
+        ></ModelCard>
+      )
+    })
 
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
-        {renderConfigMenu()}
+    return (
+      <div
+        className={`z-5 mb-32 mr-4  h-64 flex-row overflow-hidden rounded-xl lg:mb-0 ${colorStyles} ${sizingStyles}`}
+      >
+        {cards}
       </div>
-
-      <div className="relative flex-col place-items-center before:absolute before:-z-20 before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]">
-        {/* <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        /> */}
-        <h1 className="text-4xl">🍺HomebrewAi</h1>
-        {renderCredits()}
-      </div>
-
-      {/* Browse Apps */}
+    )
+  }
+  // Browse Apps menu
+  const renderAppsMenu = () => {
+    return (
       <div className="z-5 mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
         <a
           href={appLink}
@@ -410,6 +325,45 @@ export default function Home() {
           </p>
         </a>
       </div>
+    )
+  }
+
+  // Intialize default model path if non selected/stored
+  useEffect(() => {
+    const saveDefault = async () => {
+      const { desktopDir } = await import('@tauri-apps/api/path')
+      const path = await desktopDir()
+      if (path) {
+        setModelPath(path)
+        localStorage.setItem(ITEM_MODEL_PATH, path)
+      }
+    }
+    if (modelPath === '') saveDefault()
+  }, [modelPath])
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+      {/* Ai Inference config menu */}
+      <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
+        {renderConfigMenu()}
+      </div>
+
+      {/* Title and Credits */}
+      <div className="relative flex-col place-items-center before:absolute before:-z-20 before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]">
+        {/* <Image
+          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
+          src="/next.svg"
+          alt="Next.js Logo"
+          width={180}
+          height={37}
+          priority
+        /> */}
+        <h1 className="text-4xl">🍺HomebrewAi</h1>
+        {renderCredits()}
+      </div>
+
+      {/* Footer menus */}
+      {isStarted ? renderAppsMenu() : renderTextModelBrowserMenu()}
     </main>
   )
 }
