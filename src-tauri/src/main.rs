@@ -14,15 +14,6 @@ use command_group::CommandGroup;
 use tauri::api::process::Command as TCommand;
 use tauri::WindowEvent;
 use tauri::Manager;
-// use std::path::PathBuf;
-
-// #[tauri::command]
-// fn open_file_dialog(window: Window) {
-//     let file_dialog_result: Option<PathBuf> = window.dialog().open_directory();
-//     if let Some(path) = file_dialog_result {
-//         window.emit("selected-directory", Some(path.display().to_string()));
-//     }
-// }
 
 fn start_backend(receiver: Receiver<i32>) {
   // `new_sidecar()` expects just the filename, NOT the whole path
@@ -45,6 +36,8 @@ fn main() {
   start_backend(rx);
 
   tauri::Builder::default()
+    // https://github.com/tauri-apps/plugins-workspace/tree/v1/plugins/persisted-scope
+    .plugin(tauri_plugin_persisted_scope::init())
     .setup(|app| {
       #[cfg(debug_assertions)] // only include this code on debug builds
       {
