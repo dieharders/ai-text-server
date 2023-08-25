@@ -119,39 +119,38 @@ export default function Home() {
     return selected
   }
   // Render components
-  const sizingStyles = 'lg:static lg:w-auto sm:border lg:bg-gray-200 sm:p-4 lg:dark:bg-zinc-800/30'
+  const cStyles = 'border-gray-300 dark:border-zinc-700 dark:bg-zinc-800/80 dark:from-inherit'
   const colorStyles =
-    'border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
+    'border-b border-gray-300 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30'
   /**
    * Choose file path for ai model
    */
   const renderFilePathChooser = () => {
     const textColor = isStarted ? 'text-gray-400' : 'text-inherit'
+    const buttonTextColor = isStarted ? 'text-gray-400' : 'text-white-300'
 
     return (
       <>
         {/* Path string */}
         <span
-          className={`overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${textColor} ${colorStyles} sm:border sm:p-4 lg:static`}
+          className={`text-md lg:text-lg overflow-hidden text-ellipsis whitespace-nowrap p-2 lg:p-4 ${textColor} ${cStyles} border`}
         >
           {modelPath}
         </span>
         {/* Button */}
-        <form className={`pb-6 pt-8 ${colorStyles} ${sizingStyles} rounded-l-none rounded-r-lg`}>
-          <button
-            type="button"
-            id="openFileDialog"
-            disabled={isStarted}
-            onClick={async () => {
-              const path = await fileSelect(true)
-              path && setModelPath(path)
-              path && localStorage.setItem(ITEM_MODEL_PATH, path)
-            }}
-            className={`${isStarted ? 'text-gray-400' : 'text-white-300'}`}
-          >
-            ...
-          </button>
-        </form>
+        <button
+          type="button"
+          id="openFileDialog"
+          disabled={isStarted}
+          onClick={async () => {
+            const path = await fileSelect(true)
+            path && setModelPath(path)
+            path && localStorage.setItem(ITEM_MODEL_PATH, path)
+          }}
+          className={`text-md lg:text-lg border ${buttonTextColor} ${cStyles} rounded-l-none rounded-r-lg p-2 lg:p-4`}
+        >
+          ...
+        </button>
       </>
     )
   }
@@ -159,9 +158,10 @@ export default function Home() {
    * Start Inference Engine
    */
   const renderStartEngine = () => {
+    // @TODO Support shutdown of inference server and remove "disabled"
     return (
-      <p className={`mr-4 rounded-lg ${colorStyles} ${sizingStyles}`}>
-        <button onClick={onStart}>
+      <p className={`mr-4 rounded-lg border ${cStyles} text-md lg:text-lg`}>
+        <button onClick={onStart} disabled={isStarted} className="p-2 lg:p-4">
           <code
             className={` font-mono font-bold ${isStarted ? 'text-red-600' : 'text-yellow-300'}`}
           >
@@ -180,7 +180,7 @@ export default function Home() {
 
     return (
       <div
-        className={`rounded-l-lg rounded-r-none ${textColor} ${colorStyles} ${sizingStyles} whitespace-nowrap`}
+        className={`text-md lg:text-lg rounded-l-lg rounded-r-none lg:p-4 ${textColor} ${cStyles} whitespace-nowrap border p-2`}
       >
         <div className="inline-flex font-mono">
           Ai model:
@@ -194,7 +194,7 @@ export default function Home() {
     return (
       <div className="fixed bottom-0 left-0 z-30 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white font-mono text-sm dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
         <button
-          onClick={onTestInference}
+          // onClick={onTestInference}
           className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
         >
           By{' '}
@@ -246,7 +246,7 @@ export default function Home() {
 
     return (
       <div
-        className={`z-5 mt-16 flex h-full w-full flex-col justify-center gap-8 rounded-xl p-6 md:w-5/6 lg:mb-0 lg:mt-64 lg:w-4/6 ${colorStyles} bg-gray-200 dark:bg-zinc-800/30`}
+        className={`z-5 mt-16 flex h-full w-full flex-col justify-center gap-8 rounded-xl p-6 lg:mb-0 lg:mt-52 lg:w-5/6 xl:w-3/6 ${colorStyles} bg-gray-200 dark:bg-zinc-800/30`}
       >
         {cards}
       </div>
@@ -341,7 +341,7 @@ export default function Home() {
   }, [modelPath])
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+    <main className="flex min-h-screen flex-col items-center justify-between overflow-x-hidden p-24">
       {/* Ai Inference config menu */}
       <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
         {renderConfigMenu()}
@@ -349,7 +349,7 @@ export default function Home() {
 
       {/* Background flare */}
       <div className={`-z-100 relative ${!isStarted && 'm-16'}`}>
-        <div className="before:absolute before:-z-20 before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]"></div>
+        <div className="before:absolute before:-z-20 before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/4 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]"></div>
       </div>
       {/* Title and Credits */}
       <div className="relative flex-col place-items-center">
