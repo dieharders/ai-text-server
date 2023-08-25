@@ -11,6 +11,8 @@ interface IProps {
   downloadUrl: string
   saveToPath: string
   fileName: string
+  license: string
+  provider: string
   isLoaded: boolean
   initialHasDownload: boolean
   onSelectModel: (modelId: string) => void
@@ -25,6 +27,8 @@ const ModelCard = ({
   downloadUrl,
   saveToPath,
   fileName,
+  license,
+  provider,
   isLoaded,
   initialHasDownload,
   onSelectModel,
@@ -32,9 +36,10 @@ const ModelCard = ({
 }: IProps) => {
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
   const [hasDownload, setHasDownload] = useState<boolean>(initialHasDownload)
-  const sizingStyles = 'lg:static lg:w-auto sm:border lg:bg-gray-200 sm:p-4 lg:dark:bg-zinc-800/30'
+  // Styling
+  const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
   const colorStyles =
-    'border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
+    'border-b border-gray-300 bg-gradient-to-b from-zinc-200 dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
 
   /**
    * This will do for now...
@@ -46,9 +51,12 @@ const ModelCard = ({
     fileName: string,
     modelId: string,
   ) => {
-    if (!filePath || !url || !fileName) throw Error('No arguments provided!')
-
     try {
+      if (!filePath || !url || !fileName)
+        throw Error(
+          `No arguments provided! filePath: ${filePath} | url: ${url} | fileName: ${fileName}`,
+        )
+
       const response = await axios({
         url,
         method: 'GET',
@@ -94,40 +102,50 @@ const ModelCard = ({
    * This button selects this model for inference
    */
   const renderLoadButton = () => {
+    const textColor = hasDownload && !isLoaded ? 'text-yellow-300' : 'text-gray-400'
     return (
-      <div className={`rounded-l-xl rounded-r-none ${colorStyles} ${sizingStyles}`}>
-        <button disabled={isLoaded || !hasDownload} onClick={() => onSelectModel(id)}>
-          <code
-            className="font-mono font-bold"
-            style={{ color: `${hasDownload ? 'yellow' : 'grey'}` }}
-          >
-            Download
-          </code>
-        </button>
-      </div>
+      <button
+        className="h-12 rounded-lg border border-gray-300 text-center dark:border-neutral-800 dark:bg-zinc-800/30"
+        disabled={isLoaded || !hasDownload}
+        onClick={() => onSelectModel(id)}
+      >
+        <code className={`text-md font-mono font-bold ${textColor}`}>Load</code>
+      </button>
     )
   }
   /**
    * Download this ai model from a repository
    */
   const renderDownloadButton = () => {
+    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-300'
     return (
-      <div className={`rounded-l-xl rounded-r-none ${colorStyles} ${sizingStyles}`}>
-        <button
-          disabled={hasDownload || downloadProgress !== null}
-          onClick={async () => {
-            // Download model from huggingface
-            const success = await onModelDownload(downloadUrl, saveToPath, fileName, id)
-            if (success) console.log('@@ File saved successfully!')
-          }}
-        >
-          <code
-            className="font-mono font-bold"
-            style={{ color: `${hasDownload || downloadProgress !== null ? 'grey' : 'yellow'}` }}
-          >
-            Download
-          </code>
-        </button>
+      <button
+        className={`h-12 rounded-lg ${colorStyles} ${sizingStyles} text-sm`}
+        disabled={hasDownload || downloadProgress !== null}
+        onClick={async () => {
+          // Download model from huggingface
+          const success = await onModelDownload(downloadUrl, saveToPath, fileName, id)
+          if (success) console.log('@@ File saved successfully!')
+        }}
+      >
+        <p className={`font-bold ${textColor}`}>Download</p>
+      </button>
+    )
+  }
+  /**
+   * Render indicator of the total progress of download
+   */
+  const DownloadProgressBar = ({ progress }: { progress: number }) => {
+    return (
+      <div>
+        <div className="mb-1 flex justify-between">
+          <span className="font-mono text-sm font-medium text-blue-700 dark:text-white">
+            {progress}% complete
+          </span>
+        </div>
+        <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+          <div className="h-2 rounded-full bg-blue-600" style={{ width: `${progress}%` }}></div>
+        </div>
       </div>
     )
   }
@@ -140,16 +158,39 @@ const ModelCard = ({
   }, [downloadProgress])
 
   return (
-    <div className="w-full flex-row">
-      <h1>
-        {name}--size:{fileSize} bytes
-      </h1>
-      <p>{description}</p>
-      <div className="inline-flex">
-        {renderLoadButton()}
-        {renderDownloadButton()}
+    <div className="flex flex-col items-stretch justify-start gap-2 border border-gray-300 p-2 dark:border-neutral-800 dark:bg-zinc-900 lg:flex-row">
+      {/* Info/Stats */}
+      <div className="inline-flex w-full shrink-0 flex-col items-stretch justify-start gap-2 break-words p-3 lg:w-72">
+        <h1 className="mb-2 text-left text-xl">{name}</h1>
+        <p className="text-md overflow-hidden text-ellipsis whitespace-nowrap text-left">
+          {fileSize} Gb
+        </p>
+        <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
+          Provider: {provider}
+        </p>
+        <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
+          License: {license}
+        </p>
+        {hasDownload ? (
+          'Downloaded'
+        ) : downloadProgress !== null && downloadProgress >= 0 ? (
+          <DownloadProgressBar progress={downloadProgress} />
+        ) : (
+          renderDownloadButton()
+        )}
       </div>
-      {downloadProgress !== null && downloadProgress >= 0 && <span>{downloadProgress}%</span>}
+      {/* Description */}
+      <div className="grow-1 inline-flex w-full flex-col items-stretch justify-end gap-4 p-3">
+        <div className="h-32">
+          {/* Text */}
+          <p className="h-full overflow-hidden">{description}</p>
+          {/* Text Gradient Overlay */}
+          <div className="relative h-full">
+            <div className="absolute bottom-32 left-0 h-full w-full bg-gradient-to-t from-zinc-900 from-10% to-transparent to-35%"></div>
+          </div>
+        </div>
+        {renderLoadButton()}
+      </div>
     </div>
   )
 }
