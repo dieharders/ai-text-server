@@ -120,8 +120,7 @@ export default function Home() {
   }
   // Render components
   const cStyles = 'border-gray-300 dark:border-zinc-700 dark:bg-zinc-800/80 dark:from-inherit'
-  const colorStyles =
-    'border-b border-gray-300 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30'
+
   /**
    * Choose file path for ai model
    */
@@ -211,10 +210,10 @@ export default function Home() {
       </div>
     )
   }
-  // Show the text inference startup menu
+  // Show the text inference config menu
   const renderConfigMenu = () => {
     return (
-      <div className="fixed left-0 top-0 flex w-full justify-center p-4 backdrop-blur-2xl dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit">
+      <div className="fixed left-0 top-0 flex w-full justify-center p-4 backdrop-blur dark:border-neutral-900 dark:bg-zinc-800/30 dark:from-inherit">
         {renderStartEngine()}
         {renderModelChooser()}
         {renderFilePathChooser()}
@@ -233,9 +232,9 @@ export default function Home() {
           fileSize={item.fileSize}
           provider={item.provider}
           license={item.license}
-          downloadUrl={item.downloadUrl} // 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif'
+          downloadUrl={item.downloadUrl}
           saveToPath={modelPath}
-          fileName={item.fileName} // 'python-logo.gif'
+          fileName={item.fileName}
           isLoaded={currentTextModel === item.id}
           initialHasDownload={checkHasDownload(item.id)}
           onSelectModel={onSelectTextModel}
@@ -245,9 +244,7 @@ export default function Home() {
     })
 
     return (
-      <div
-        className={`z-5 mt-16 flex h-full w-full flex-col justify-center gap-8 rounded-xl p-6 lg:mb-0 lg:mt-52 lg:w-5/6 xl:w-3/6 ${colorStyles} bg-gray-200 dark:bg-zinc-800/30`}
-      >
+      <div className="z-5 mt-16 flex h-full w-full flex-col justify-center gap-8 rounded-xl border-b border-gray-300 bg-gray-200 p-6 backdrop-blur-sm dark:border-neutral-800 dark:bg-zinc-800/30 lg:mb-0 lg:mt-52 lg:w-5/6 xl:w-3/6">
         {cards}
       </div>
     )
@@ -341,7 +338,7 @@ export default function Home() {
   }, [modelPath])
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between overflow-x-hidden p-24">
+    <main className="xs:p-0 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:p-24">
       {/* Ai Inference config menu */}
       <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
         {renderConfigMenu()}
