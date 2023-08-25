@@ -137,7 +137,7 @@ const ModelCard = ({
    */
   const DownloadProgressBar = ({ progress }: { progress: number }) => {
     return (
-      <div>
+      <div className="mb-0 mt-auto">
         <div className="mb-1 flex justify-between">
           <span className="font-mono text-sm font-medium text-blue-700 dark:text-white">
             {progress}% complete
@@ -173,7 +173,7 @@ const ModelCard = ({
           License: {license}
         </p>
         {hasDownload ? (
-          'Downloaded'
+          <div className="mb-0 mt-auto">Downloaded</div>
         ) : downloadProgress !== null && downloadProgress >= 0 ? (
           <DownloadProgressBar progress={downloadProgress} />
         ) : (
