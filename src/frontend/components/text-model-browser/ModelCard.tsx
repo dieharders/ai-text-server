@@ -103,9 +103,13 @@ const ModelCard = ({
    */
   const renderLoadButton = () => {
     const textColor = hasDownload && !isLoaded ? 'text-yellow-300' : 'text-gray-400'
+    const hoverStyle =
+      hasDownload && !isLoaded
+        ? 'hover:bg-zinc-700/30 hover:text-white'
+        : 'hover:cursor-not-allowed'
     return (
       <button
-        className={`h-12 rounded-lg border border-gray-300 text-center hover:bg-zinc-700/30 hover:text-white dark:border-neutral-800 dark:bg-zinc-800/30 ${textColor}`}
+        className={`h-12 rounded-lg border border-gray-300 text-center dark:border-neutral-800 dark:bg-zinc-800/30 ${hoverStyle} ${textColor}`}
         disabled={isLoaded || !hasDownload}
         onClick={() => onSelectModel(id)}
       >
@@ -182,7 +186,7 @@ const ModelCard = ({
       </div>
       {/* Description & Load */}
       <div className="grow-1 inline-flex w-full flex-col items-stretch justify-between gap-4 p-0">
-        <div className="h-48">
+        <div className="h-48 overflow-hidden">
           {/* Text */}
           <p className="h-full overflow-hidden leading-normal">{description}</p>
           {/* Text Gradient Overlay, "bottom-[n]" must match "h-[n]" of parent container */}

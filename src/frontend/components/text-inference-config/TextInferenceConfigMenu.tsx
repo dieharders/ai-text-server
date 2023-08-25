@@ -130,6 +130,10 @@ const FilePathChooser = ({
     return selected
   }
 
+  const hoverStyle = isStarted
+    ? 'hover:cursor-not-allowed'
+    : 'hover:text-yellow-300 hover:bg-zinc-500/30'
+
   return (
     <>
       {/* Path string */}
@@ -148,7 +152,7 @@ const FilePathChooser = ({
           path && setModelPath(path)
           path && localStorage.setItem(ITEM_MODEL_PATH, path)
         }}
-        className={`text-md lg:text-lg border ${buttonTextColor} ${cStyles} rounded-l-none rounded-r-lg p-2 hover:bg-zinc-500/30 hover:text-yellow-300 lg:p-4`}
+        className={`text-md lg:text-lg border ${buttonTextColor} ${cStyles} ${hoverStyle} rounded-l-none rounded-r-lg p-2 lg:p-4`}
       >
         ...
       </button>
