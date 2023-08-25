@@ -2,16 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import ModelCard from '../src/frontend/components/text-model-browser/ModelCard'
-
-// @TODO Add links for rest of models and put in external file. Make this an array of model objects.
-const aiModelFileNames: { [index: string]: { fileName: string; link: string } } = {
-  Llama1_13b: {
-    fileName: 'llama-13b.ggmlv3.q3_K_S.bin',
-    link: 'https://huggingface.co/TheBloke/LLaMa-13B-GGML/resolve/main/llama-13b.ggmlv3.q3_K_S.bin',
-  },
-  Llama2_13b: { fileName: 'gptq_model-4bit-32g.safetensors', link: 'foo' },
-  WizardVicuna: { fileName: 'Wizard Vicuna 7B Uncensored.bin', link: 'bar' },
-}
+import textModels, { IModelCard } from '../models/models'
 
 export default function Home() {
   // Local Storage keys
@@ -34,13 +25,17 @@ export default function Home() {
   }
   const onDownloadComplete = (modelId: string) => {
     const data = localStorage.getItem(ITEM_TEXT_MODELS)
-    const list = JSON.parse(data || '')
+    if (!data) return ''
+
+    const list = JSON.parse(data)
     list.push(modelId)
     localStorage.setItem(ITEM_TEXT_MODELS, list)
   }
   const checkHasDownload = (modelId: string): boolean => {
     const data = localStorage.getItem(ITEM_TEXT_MODELS)
-    const list = JSON.parse(data || '')
+    if (!data) return false
+
+    const list = JSON.parse(data)
     const matched = list.find((item: string) => item === modelId)
     return matched
   }
@@ -71,11 +66,15 @@ export default function Home() {
   const onStart = async () => {
     console.log('@@ Starting inference...')
 
-    const options = {
-      filePath: `${modelPath}/${aiModelFileNames[currentTextModel].fileName}`,
-    }
-
     try {
+      const modelCard = textModels.find(item => item.id === currentTextModel)
+
+      if (!modelCard) throw Error('Cannot find text model card data')
+
+      const options = {
+        filePath: `${modelPath}/${modelCard.fileName}`,
+      }
+
       const response = await fetch(ip + '/api/text/v1/inference/start', {
         method: 'POST',
         cache: 'no-cache',
@@ -127,12 +126,13 @@ export default function Home() {
    * Choose file path for ai model
    */
   const renderFilePathChooser = () => {
+    const textColor = isStarted ? 'text-gray-400' : 'text-inherit'
+
     return (
       <>
         {/* Path string */}
         <span
-          className={`overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${colorStyles} sm:border sm:p-4 lg:static`}
-          style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
+          className={`overflow-hidden text-ellipsis whitespace-nowrap pb-6 pt-8 ${textColor} ${colorStyles} sm:border sm:p-4 lg:static`}
         >
           {modelPath}
         </span>
@@ -147,7 +147,7 @@ export default function Home() {
               path && setModelPath(path)
               path && localStorage.setItem(ITEM_MODEL_PATH, path)
             }}
-            style={{ color: `${isStarted ? 'grey' : 'yellow'}` }}
+            className={`${isStarted ? 'text-gray-400' : 'text-white-300'}`}
           >
             ...
           </button>
@@ -163,8 +163,7 @@ export default function Home() {
       <p className={`mr-4 rounded-lg ${colorStyles} ${sizingStyles}`}>
         <button onClick={onStart}>
           <code
-            className="font-mono font-bold"
-            style={{ color: `${isStarted ? 'lime' : 'yellow'}` }}
+            className={` font-mono font-bold ${isStarted ? 'text-red-600' : 'text-yellow-300'}`}
           >
             {isStarted ? '[ON]' : '[OFF]'}&nbsp;
           </code>
@@ -174,19 +173,20 @@ export default function Home() {
     )
   }
   /**
-   * Choose an ai model id
+   * Display what ai model is currently loaded
    */
   const renderModelChooser = () => {
+    const textColor = isStarted ? 'text-gray-400' : 'text-inherit'
+
     return (
-      <p
-        className={`rounded-l-lg rounded-r-none ${colorStyles} ${sizingStyles} whitespace-nowrap`}
-        style={{ color: `${isStarted ? 'grey' : 'inherit'}` }}
+      <div
+        className={`rounded-l-lg rounded-r-none ${textColor} ${colorStyles} ${sizingStyles} whitespace-nowrap`}
       >
         <div className="inline-flex font-mono">
           Ai model:
           <div className="ml-2 font-bold">{currentTextModel || 'none'}</div>
         </div>
-      </p>
+      </div>
     )
   }
   // Company credits (built by)
@@ -222,10 +222,7 @@ export default function Home() {
     )
   }
   // List of curated text inference models
-  const renderTextModelBrowserMenu = () => {
-    // @TODO Add data
-    const data: Array<any> = []
-
+  const TextModelBrowserMenu = ({ data }: { data: Array<IModelCard> }) => {
     const cards = data?.map(item => {
       return (
         <ModelCard
@@ -234,6 +231,8 @@ export default function Home() {
           name={item.name}
           description={item.description}
           fileSize={item.fileSize}
+          provider={item.provider}
+          license={item.license}
           downloadUrl={item.downloadUrl} // 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif'
           saveToPath={modelPath}
           fileName={item.fileName} // 'python-logo.gif'
@@ -247,7 +246,7 @@ export default function Home() {
 
     return (
       <div
-        className={`z-5 mb-32 mr-4  h-64 flex-row overflow-hidden rounded-xl lg:mb-0 ${colorStyles} ${sizingStyles}`}
+        className={`z-5 mt-16 flex h-full w-full flex-col justify-center gap-8 rounded-xl p-6 md:w-5/6 lg:mb-0 lg:mt-64 lg:w-4/6 ${colorStyles} bg-gray-200 dark:bg-zinc-800/30`}
       >
         {cards}
       </div>
@@ -348,8 +347,12 @@ export default function Home() {
         {renderConfigMenu()}
       </div>
 
+      {/* Background flare */}
+      <div className={`-z-100 relative ${!isStarted && 'm-16'}`}>
+        <div className="before:absolute before:-z-20 before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]"></div>
+      </div>
       {/* Title and Credits */}
-      <div className="relative flex-col place-items-center before:absolute before:-z-20 before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]">
+      <div className="relative flex-col place-items-center">
         {/* <Image
           className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
           src="/next.svg"
@@ -358,12 +361,12 @@ export default function Home() {
           height={37}
           priority
         /> */}
-        <h1 className="text-4xl">🍺HomebrewAi</h1>
+        <h1 className="text-center text-4xl">🍺HomebrewAi</h1>
         {renderCredits()}
       </div>
 
       {/* Footer menus */}
-      {isStarted ? renderAppsMenu() : renderTextModelBrowserMenu()}
+      {isStarted ? renderAppsMenu() : <TextModelBrowserMenu data={textModels} />}
     </main>
   )
 }
