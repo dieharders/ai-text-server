@@ -76,7 +76,7 @@ const models: Array<IModelCard> = [
     provider: 'giphy',
     license: 'other',
     description: 'This is a test file (gif) for testing download behavior.',
-    fileSize: 0.01,
+    fileSize: 0.03,
     fileName: 'cute-cat-anim.gif',
     downloadUrl: 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif',
   },

@@ -27,24 +27,24 @@ const ModelBrowser = ({
   // Handlers
   const onSelectTextModel = (val: string) => {
     console.log('@@ Set current text model:', val)
-    setCurrentTextModel(val)
-    localStorage.setItem(ITEM_CURRENT_MODEL, val)
+    if (val) {
+      setCurrentTextModel(val)
+      localStorage.setItem(ITEM_CURRENT_MODEL, val)
+    }
   }
   const checkHasDownload = (modelId: string): boolean => {
+    // @TODO We should find a way to check the last saved path for file existence
     const data = localStorage.getItem(ITEM_TEXT_MODELS)
-    if (!data) return false
-
-    const list = JSON.parse(data)
+    const list = data ? JSON.parse(data) : []
     const matched = list.find((item: string) => item === modelId)
     return matched
   }
   const onDownloadComplete = (modelId: string) => {
     const data = localStorage.getItem(ITEM_TEXT_MODELS)
-    if (!data) return ''
-
-    const list = JSON.parse(data)
+    const list = data ? JSON.parse(data) : []
     list.push(modelId)
-    localStorage.setItem(ITEM_TEXT_MODELS, list)
+    const arrayStr = JSON.stringify(list)
+    localStorage.setItem(ITEM_TEXT_MODELS, arrayStr)
   }
 
   const cards = data?.map(item => {
