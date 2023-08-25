@@ -105,11 +105,11 @@ const ModelCard = ({
     const textColor = hasDownload && !isLoaded ? 'text-yellow-300' : 'text-gray-400'
     return (
       <button
-        className="h-12 rounded-lg border border-gray-300 text-center dark:border-neutral-800 dark:bg-zinc-800/30"
+        className={`h-12 rounded-lg border border-gray-300 text-center hover:bg-zinc-700/30 hover:text-white dark:border-neutral-800 dark:bg-zinc-800/30 ${textColor}`}
         disabled={isLoaded || !hasDownload}
         onClick={() => onSelectModel(id)}
       >
-        <code className={`text-md font-mono font-bold ${textColor}`}>Load</code>
+        <code className="text-md font-mono font-bold">Load</code>
       </button>
     )
   }
@@ -120,7 +120,7 @@ const ModelCard = ({
     const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-300'
     return (
       <button
-        className={`mb-0 mt-auto h-12 rounded-lg ${colorStyles} ${sizingStyles} text-sm`}
+        className={`mb-0 mt-auto h-12 rounded-lg ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-zinc-700/30 hover:text-white`}
         disabled={hasDownload || downloadProgress !== null}
         onClick={async () => {
           // Download model from huggingface
@@ -128,7 +128,7 @@ const ModelCard = ({
           if (success) console.log('@@ File saved successfully!')
         }}
       >
-        <p className={`font-bold ${textColor}`}>Download</p>
+        <p className="font-bold">Download</p>
       </button>
     )
   }

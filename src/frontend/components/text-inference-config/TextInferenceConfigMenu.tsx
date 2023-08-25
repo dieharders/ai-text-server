@@ -48,8 +48,12 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModel, modelPath, ip 
   // @TODO Support shutdown of inference server and remove "disabled"
   return (
     <p className={`mr-4 rounded-lg border ${cStyles} text-md lg:text-lg`}>
-      <button onClick={onStart} disabled={isStarted} className="p-2 lg:p-4">
-        <code className={` font-mono font-bold ${isStarted ? 'text-red-600' : 'text-yellow-300'}`}>
+      <button
+        onClick={onStart}
+        disabled={isStarted}
+        className="p-2 hover:bg-zinc-700/30 hover:text-yellow-300 lg:p-4"
+      >
+        <code className={`font-mono font-bold ${isStarted ? 'text-red-600' : 'text-yellow-300'}`}>
           {isStarted ? '[ON]' : '[OFF]'}&nbsp;
         </code>
         <code className="font-mono font-bold">{isStarted ? 'Shutdown' : 'Start'}</code>
@@ -144,7 +148,7 @@ const FilePathChooser = ({
           path && setModelPath(path)
           path && localStorage.setItem(ITEM_MODEL_PATH, path)
         }}
-        className={`text-md lg:text-lg border ${buttonTextColor} ${cStyles} rounded-l-none rounded-r-lg p-2 lg:p-4`}
+        className={`text-md lg:text-lg border ${buttonTextColor} ${cStyles} rounded-l-none rounded-r-lg p-2 hover:bg-zinc-500/30 hover:text-yellow-300 lg:p-4`}
       >
         ...
       </button>
