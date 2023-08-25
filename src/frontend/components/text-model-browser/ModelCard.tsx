@@ -120,7 +120,7 @@ const ModelCard = ({
     const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-300'
     return (
       <button
-        className={`h-12 rounded-lg ${colorStyles} ${sizingStyles} text-sm`}
+        className={`mb-0 mt-auto h-12 rounded-lg ${colorStyles} ${sizingStyles} text-sm`}
         disabled={hasDownload || downloadProgress !== null}
         onClick={async () => {
           // Download model from huggingface
@@ -157,11 +157,12 @@ const ModelCard = ({
     }
   }, [downloadProgress])
 
+  // @TODO Add a remove button to replace "Downloaded" to delete the file.
   return (
-    <div className="flex flex-col items-stretch justify-start gap-2 border border-gray-300 p-2 dark:border-neutral-800 dark:bg-zinc-900 lg:flex-row">
-      {/* Info/Stats */}
-      <div className="inline-flex w-full shrink-0 flex-col items-stretch justify-start gap-2 break-words p-3 lg:w-72">
-        <h1 className="mb-2 text-left text-xl">{name}</h1>
+    <div className="flex flex-col items-stretch justify-start gap-6 rounded-md border border-gray-300 p-6 dark:border-neutral-800 dark:bg-zinc-900 lg:flex-row">
+      {/* Info/Stats & Download */}
+      <div className="inline-flex w-full shrink-0 flex-col items-stretch justify-start gap-2 break-words p-0 lg:w-72">
+        <h1 className="mb-2 text-left text-xl leading-tight">{name}</h1>
         <p className="text-md overflow-hidden text-ellipsis whitespace-nowrap text-left">
           {fileSize} Gb
         </p>
@@ -179,14 +180,14 @@ const ModelCard = ({
           renderDownloadButton()
         )}
       </div>
-      {/* Description */}
-      <div className="grow-1 inline-flex w-full flex-col items-stretch justify-end gap-4 p-3">
-        <div className="h-32">
+      {/* Description & Load */}
+      <div className="grow-1 inline-flex w-full flex-col items-stretch justify-between gap-4 p-0">
+        <div className="h-48">
           {/* Text */}
-          <p className="h-full overflow-hidden">{description}</p>
-          {/* Text Gradient Overlay */}
+          <p className="h-full overflow-hidden leading-normal">{description}</p>
+          {/* Text Gradient Overlay, "bottom-[n]" must match "h-[n]" of parent container */}
           <div className="relative h-full">
-            <div className="absolute bottom-32 left-0 h-full w-full bg-gradient-to-t from-zinc-900 from-10% to-transparent to-35%"></div>
+            <div className="absolute bottom-48 left-0 h-full w-full bg-gradient-to-t from-zinc-900 from-10% to-transparent to-35%"></div>
           </div>
         </div>
         {renderLoadButton()}
