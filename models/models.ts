@@ -70,6 +70,16 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/orca_mini_7B-GGML/resolve/main/orca-mini-7b.ggmlv3.q4_1.bin',
   },
+  {
+    id: 'example_cat_anim',
+    name: 'Example Cute Cat Animation',
+    provider: 'giphy',
+    license: 'other',
+    description: 'This is a test file (gif) for testing download behavior.',
+    fileSize: 0.01,
+    fileName: 'cute-cat-anim.gif',
+    downloadUrl: 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif',
+  },
 ]
 
 export default models
