@@ -90,7 +90,7 @@ export default function Home() {
           setIsStarted={setIsStarted}
           modelPath={modelPath}
           setModelPath={setModelPath}
-          currentTextModel={currentTextModel}
+          currentTextModelId={currentTextModel}
           ITEM_MODEL_PATH={ITEM_MODEL_PATH}
         />
       </div>

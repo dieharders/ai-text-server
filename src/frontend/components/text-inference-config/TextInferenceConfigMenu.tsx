@@ -8,19 +8,25 @@ const cStyles = 'border-gray-300 dark:border-zinc-700 dark:bg-zinc-800/80 dark:f
 interface IPropsStart {
   isStarted: boolean
   setIsStarted: Dispatch<SetStateAction<boolean>>
-  currentTextModel: string
+  currentTextModelId: string
   modelPath: string
   ip: string
 }
 /**
  * Start Inference Engine
  */
-const StartEngine = ({ isStarted, setIsStarted, currentTextModel, modelPath, ip }: IPropsStart) => {
+const StartEngine = ({
+  isStarted,
+  setIsStarted,
+  currentTextModelId,
+  modelPath,
+  ip,
+}: IPropsStart) => {
   const onStart = async () => {
     console.log('@@ Starting inference...')
 
     try {
-      const modelCard = textModels.find(item => item.id === currentTextModel)
+      const modelCard = textModels.find(item => item.id === currentTextModelId)
 
       if (!modelCard) throw Error('Cannot find text model card data')
 
@@ -64,13 +70,14 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModel, modelPath, ip 
 
 interface IPropsDisplay {
   isStarted: boolean
-  currentTextModel: string
+  currentTextModelId: string
 }
 /**
  * Display what ai model is currently loaded
  */
-const CurrentModelDisplay = ({ isStarted, currentTextModel }: IPropsDisplay) => {
+const CurrentModelDisplay = ({ isStarted, currentTextModelId }: IPropsDisplay) => {
   const textColor = isStarted ? 'text-gray-400' : 'text-inherit'
+  const model = textModels.find(model => model.id === currentTextModelId)
 
   return (
     <div
@@ -78,7 +85,7 @@ const CurrentModelDisplay = ({ isStarted, currentTextModel }: IPropsDisplay) => 
     >
       <div className="inline-flex font-mono">
         Ai model:
-        <div className="ml-2 font-bold">{currentTextModel || 'none'}</div>
+        <div className="ml-2 font-bold">{model?.name || 'none'}</div>
       </div>
     </div>
   )
@@ -164,7 +171,7 @@ interface IProps {
   ITEM_MODEL_PATH: string
   isStarted: boolean
   setIsStarted: Dispatch<SetStateAction<boolean>>
-  currentTextModel: string
+  currentTextModelId: string
   modelPath: string
   setModelPath: Dispatch<SetStateAction<string>>
   ip: string
@@ -176,7 +183,7 @@ const TextInferenceConfigMenu = ({
   ITEM_MODEL_PATH,
   isStarted,
   setIsStarted,
-  currentTextModel,
+  currentTextModelId,
   modelPath,
   setModelPath,
   ip,
@@ -186,11 +193,11 @@ const TextInferenceConfigMenu = ({
       <StartEngine
         isStarted={isStarted}
         setIsStarted={setIsStarted}
-        currentTextModel={currentTextModel}
+        currentTextModelId={currentTextModelId}
         modelPath={modelPath}
         ip={ip}
       />
-      <CurrentModelDisplay isStarted={isStarted} currentTextModel={currentTextModel} />
+      <CurrentModelDisplay isStarted={isStarted} currentTextModelId={currentTextModelId} />
       <FilePathChooser
         isStarted={isStarted}
         modelPath={modelPath}

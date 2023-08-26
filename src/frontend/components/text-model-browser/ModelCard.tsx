@@ -63,6 +63,7 @@ const ModelCard = ({
         headers: {
           // Authorization: authHeader().Authorization,
           Accept: 'application/octet-stream, application/json, text/plain, */*',
+          // 'Content-Type': 'application/octet-stream',
           // Range: 'bytes=0-1023', // used to get partial file from specific range in data
         },
         responseType: 'arraybuffer', // 'blob' | 'stream' | 'arraybuffer' | 'json'
