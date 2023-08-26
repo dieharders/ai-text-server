@@ -55,6 +55,7 @@ const ModelBrowser = ({
         name={item.name}
         description={item.description}
         fileSize={item.fileSize}
+        ramSize={item?.ramSize}
         provider={item.provider}
         license={item.license}
         downloadUrl={item.downloadUrl}

@@ -5,6 +5,7 @@ export interface IModelCard {
   license: string
   description: string
   fileSize: number
+  ramSize?: number
   fileName: string
   downloadUrl: string
   modelType?: string
@@ -29,7 +30,7 @@ const models: Array<IModelCard> = [
     provider: 'The Bloke',
     license: 'other',
     description:
-      "These files are GGML format model files for Meta's Llama 2 13B-chat. GGML files are for CPU + GPU inference using llama.cpp and libraries and UIs which support this format. Llama 2 is a collection of pretrained and fine-tuned generative text models ranging in scale from 7 billion to 70 billion parameters. Our fine-tuned LLMs, called Llama-2-Chat, are optimized for dialogue use cases. Llama-2-Chat models outperform open-source chat models on most benchmarks we tested, and in our human evaluations for helpfulness and safety, are on par with some popular closed-source models like ChatGPT and PaLM.",
+      'Llama 2 is a collection of pretrained and fine-tuned generative text models ranging in scale from 7 billion to 70 billion parameters. Our fine-tuned LLMs, called Llama-2-Chat, are optimized for dialogue use cases. Llama-2-Chat models outperform open-source chat models on most benchmarks we tested, and in our human evaluations for helpfulness and safety, are on par with some popular closed-source models like ChatGPT and PaLM',
     fileSize: 5.51,
     fileName: 'llama-2-13b-chat.ggmlv3.q2_K.bin',
     downloadUrl:
@@ -53,8 +54,9 @@ const models: Array<IModelCard> = [
     provider: 'Together',
     license: 'apache-2.0',
     description:
-      'RedPajama is fine-tuned for Chat conversation. It was developed by Together and leaders from the open-source AI community. The training was done as part of the INCITE 2023 project on Scalable Foundation Models. Req: >=16GB of CPU.',
+      'RedPajama is fine-tuned for Chat conversation. It was developed by Together and leaders from the open-source AI community. The training was done as part of the INCITE 2023 project on Scalable Foundation Models.',
     fileSize: 1.57,
+    ramSize: 16,
     fileName: 'RedPajama INCITE Chat 3B.bin',
     downloadUrl:
       'https://huggingface.co/rustformers/redpajama-3b-ggml/resolve/main/RedPajama-INCITE-Base-3B-v1-q4_0.bin',
@@ -65,8 +67,9 @@ const models: Array<IModelCard> = [
     provider: 'The Bloke',
     license: 'MIT',
     description:
-      'An Uncensored LLaMA-7b model trained on explain tuned datasets, created using Instructions and Input from WizardLM, Alpaca & Dolly-V2 datasets and applying Orca Research Paper dataset construction approaches. Req: >=16GB of CPU.',
+      'An Uncensored LLaMA-7b model trained on explain tuned datasets, created using Instructions and Input from WizardLM, Alpaca & Dolly-V2 datasets and applying Orca Research Paper dataset construction approaches.',
     fileSize: 4.21,
+    ramSize: 16,
     fileName: 'orca-mini-v2_7b.ggmlv3.q5_K_M.bin',
     downloadUrl:
       'https://huggingface.co/TheBloke/orca_mini_7B-GGML/resolve/main/orca-mini-v2_7b.ggmlv3.q5_K_M.bin',

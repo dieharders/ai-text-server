@@ -8,6 +8,7 @@ interface IProps {
   name: string
   description: string
   fileSize: number
+  ramSize?: number
   downloadUrl: string
   saveToPath: string
   fileName: string
@@ -24,6 +25,7 @@ const ModelCard = ({
   name,
   description,
   fileSize,
+  ramSize,
   downloadUrl,
   saveToPath,
   fileName,
@@ -110,7 +112,7 @@ const ModelCard = ({
   /**
    * This button selects this model for inference
    */
-  const renderLoadButton = () => {
+  const LoadButton = () => {
     const textColor = hasDownload && !isLoaded ? 'text-yellow-300' : 'text-gray-400'
     const hoverStyle =
       hasDownload && !isLoaded
@@ -129,12 +131,11 @@ const ModelCard = ({
   /**
    * Download this ai model from a repository
    */
-  const renderDownloadButton = () => {
+  const DownloadButton = () => {
     const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-400'
     return (
       <button
-        className={`mb-0 mt-auto h-12 rounded-lg ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
-        disabled={hasDownload || downloadProgress !== null}
+        className={`h-12 w-full rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
         onClick={async () => {
           // Download model from huggingface
           const success = await onModelDownload(downloadUrl, saveToPath, fileName, id)
@@ -146,11 +147,27 @@ const ModelCard = ({
     )
   }
   /**
+   * Remove the model file
+   */
+  const DeleteButton = ({ id }: { id: string }) => {
+    return (
+      <button
+        className={`h-12 w-full rounded-lg ${colorStyles} ${sizingStyles} text-sm text-red-500 hover:bg-red-500 hover:text-red-900`}
+        onClick={async () => {
+          // @TODO Add logic to delete file
+          console.log('@@ File removed successfully!', id)
+        }}
+      >
+        <p className="font-bold">Remove</p>
+      </button>
+    )
+  }
+  /**
    * Render indicator of the total progress of download
    */
   const DownloadProgressBar = ({ progress }: { progress: number }) => {
     return (
-      <div className="mb-0 mt-auto">
+      <div className="w-full">
         <div className="mb-1 flex justify-between">
           <span className="font-mono text-sm font-medium text-yellow-600">
             {progress}% complete
@@ -163,28 +180,34 @@ const ModelCard = ({
     )
   }
 
-  // @TODO Add a remove button to replace "Downloaded" to delete the file.
   return (
     <div className="flex flex-col items-stretch justify-start gap-6 rounded-md border border-gray-300 p-6 dark:border-neutral-800 dark:bg-zinc-900 lg:flex-row">
       {/* Info/Stats & Download */}
       <div className="inline-flex w-full shrink-0 flex-col items-stretch justify-start gap-2 break-words p-0 lg:w-72">
         <h1 className="mb-2 text-left text-xl leading-tight">{name}</h1>
         <p className="text-md overflow-hidden text-ellipsis whitespace-nowrap text-left">
-          {fileSize} Gb
+          Disk: {fileSize} Gb
         </p>
+        {ramSize && (
+          <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
+            RAM: {ramSize} Gb
+          </p>
+        )}
         <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
           Provider: {provider}
         </p>
         <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
           License: {license}
         </p>
-        {hasDownload ? (
-          <div className="mb-0 mt-auto">Downloaded</div>
-        ) : downloadProgress !== null && downloadProgress >= 0 ? (
-          <DownloadProgressBar progress={downloadProgress} />
-        ) : (
-          renderDownloadButton()
-        )}
+        <div className="mb-0 mt-auto">
+          {hasDownload ? (
+            <DeleteButton id={id} />
+          ) : downloadProgress !== null && downloadProgress >= 0 ? (
+            <DownloadProgressBar progress={downloadProgress} />
+          ) : (
+            <DownloadButton />
+          )}
+        </div>
       </div>
       {/* Description & Load */}
       <div className="grow-1 inline-flex w-full flex-col items-stretch justify-between gap-4 p-0">
@@ -196,7 +219,7 @@ const ModelCard = ({
             <div className="absolute bottom-48 left-0 h-full w-full bg-gradient-to-t from-zinc-900 from-10% to-transparent to-35%"></div>
           </div>
         </div>
-        {renderLoadButton()}
+        <LoadButton />
       </div>
     </div>
   )
