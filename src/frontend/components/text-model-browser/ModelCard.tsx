@@ -1,7 +1,7 @@
 'use client'
 
 import axios from 'axios'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 interface IProps {
   id: string
@@ -60,8 +60,15 @@ const ModelCard = ({
       const response = await axios({
         url,
         method: 'GET',
+        headers: {
+          // Authorization: authHeader().Authorization,
+          Accept: 'application/octet-stream, application/json, text/plain, */*',
+          // Range: 'bytes=0-1023', // used to get partial file from specific range in data
+        },
         responseType: 'arraybuffer', // 'blob' | 'stream' | 'arraybuffer' | 'json'
         withCredentials: false,
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
         onDownloadProgress: progressEvent => {
           const total = progressEvent.total || 1000000000
           const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
@@ -82,6 +89,7 @@ const ModelCard = ({
 
       // In order to write to chosen path (w/o user action) on subsequent restarts, we need to use plugin-persisted-scope
       // When a user chooses a path, it is added dynamically to `fs: scope: []` but only for that session.
+      console.log('@@ Writing response to file...')
       await writeBinaryFile({
         path: `${filePath}\\${fileName}`,
         contents: response.data,
@@ -153,13 +161,6 @@ const ModelCard = ({
       </div>
     )
   }
-
-  useEffect(() => {
-    return () => {
-      // @TODO If we unmount, we should delete any in progress file
-      if (downloadProgress !== null) console.log('@@ cleanup model card')
-    }
-  }, [downloadProgress])
 
   // @TODO Add a remove button to replace "Downloaded" to delete the file.
   return (

@@ -7,6 +7,7 @@ export interface IModelCard {
   fileSize: number
   fileName: string
   downloadUrl: string
+  modelType?: string
 }
 
 const models: Array<IModelCard> = [
@@ -44,7 +45,7 @@ const models: Array<IModelCard> = [
     fileSize: 5.43,
     fileName: 'Wizard-Vicuna-13B-Uncensored.ggmlv3.q2_K.bin',
     downloadUrl:
-      'https://huggingface.co/TheBloke/Wizard-Vicuna-13B-Uncensored-GGML/blob/main/Wizard-Vicuna-13B-Uncensored.ggmlv3.q2_K.bin',
+      'https://huggingface.co/TheBloke/Wizard-Vicuna-13B-Uncensored-GGML/resolve/main/Wizard-Vicuna-13B-Uncensored.ggmlv3.q2_K.bin',
   },
   {
     id: 'redpajama-3b-ggml',
@@ -52,7 +53,7 @@ const models: Array<IModelCard> = [
     provider: 'Together',
     license: 'apache-2.0',
     description:
-      'RedPajama-INCITE-Base-3B-v1 was developed by Together and leaders from the open-source AI community including Ontocord.ai, ETH DS3Lab, AAI CERC, Université de Montréal, MILA - Québec AI Institute, Stanford Center for Research on Foundation Models (CRFM), Stanford Hazy Research research group and LAION. The training was done on 3,072 V100 GPUs provided as part of the INCITE 2023 project on Scalable Foundation Models for Transferrable Generalist AI, awarded to MILA, LAION, and EleutherAI in fall 2022, with support from the Oak Ridge Leadership Computing Facility (OLCF) and INCITE program.',
+      'RedPajama is fine-tuned for Chat conversation. It was developed by Together and leaders from the open-source AI community. The training was done as part of the INCITE 2023 project on Scalable Foundation Models. Req: >=16GB of CPU.',
     fileSize: 1.57,
     fileName: 'RedPajama INCITE Chat 3B.bin',
     downloadUrl:
@@ -64,11 +65,11 @@ const models: Array<IModelCard> = [
     provider: 'The Bloke',
     license: 'MIT',
     description:
-      "These files are GGML format model files for Pankaj Mathur's Orca Mini 7B. GGML files are for CPU + GPU inference using llama.cpp and libraries and UIs which support this format.",
+      'An Uncensored LLaMA-7b model trained on explain tuned datasets, created using Instructions and Input from WizardLM, Alpaca & Dolly-V2 datasets and applying Orca Research Paper dataset construction approaches. Req: >=16GB of CPU.',
     fileSize: 4.21,
-    fileName: 'orca-mini-7b.ggmlv3.q4_1.bin',
+    fileName: 'orca-mini-v2_7b.ggmlv3.q5_K_M.bin',
     downloadUrl:
-      'https://huggingface.co/TheBloke/orca_mini_7B-GGML/resolve/main/orca-mini-7b.ggmlv3.q4_1.bin',
+      'https://huggingface.co/TheBloke/orca_mini_7B-GGML/resolve/main/orca-mini-v2_7b.ggmlv3.q5_K_M.bin',
   },
   {
     id: 'example_cat_anim',
