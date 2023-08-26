@@ -130,10 +130,10 @@ const ModelCard = ({
    * Download this ai model from a repository
    */
   const renderDownloadButton = () => {
-    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-300'
+    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-400'
     return (
       <button
-        className={`mb-0 mt-auto h-12 rounded-lg ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-zinc-700/30 hover:text-white`}
+        className={`mb-0 mt-auto h-12 rounded-lg ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
         disabled={hasDownload || downloadProgress !== null}
         onClick={async () => {
           // Download model from huggingface
@@ -152,12 +152,12 @@ const ModelCard = ({
     return (
       <div className="mb-0 mt-auto">
         <div className="mb-1 flex justify-between">
-          <span className="font-mono text-sm font-medium text-blue-700 dark:text-white">
+          <span className="font-mono text-sm font-medium text-yellow-600">
             {progress}% complete
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-          <div className="h-2 rounded-full bg-blue-600" style={{ width: `${progress}%` }}></div>
+          <div className="h-2 rounded-full bg-yellow-400" style={{ width: `${progress}%` }}></div>
         </div>
       </div>
     )
