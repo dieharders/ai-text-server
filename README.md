@@ -57,6 +57,8 @@ pip install -r requirements.txt
 pnpm python-deps
 ```
 
+For Rust "crates" and other deps, build the project in dev or release mode to trigger the package manager to download all dependencies.
+
 ---
 
 ## Testing locally
