@@ -15,10 +15,8 @@ export default function Home() {
   // App vars
   const ip = 'http://localhost:8008'
   const [isStarted, setIsStarted] = useState(false)
-  const [modelPath, setModelPath] = useState<string>(localStorage.getItem(ITEM_MODEL_PATH) || '')
-  const [currentTextModel, setCurrentTextModel] = useState<string>(
-    localStorage.getItem(ITEM_CURRENT_MODEL) || '',
-  )
+  const [modelPath, setModelPath] = useState<string>('')
+  const [currentTextModel, setCurrentTextModel] = useState<string>('')
   // Handlers
   const onTestInference = async () => {
     console.log('@@ Testing inference...')
@@ -67,9 +65,9 @@ export default function Home() {
     )
   }
 
-  // Intialize default model path if non selected/stored
+  // Initialize default model path if non selected/stored
   useEffect(() => {
-    const saveDefault = async () => {
+    const saveDefaultPath = async () => {
       const { desktopDir } = await import('@tauri-apps/api/path')
       const path = await desktopDir()
       if (path) {
@@ -77,8 +75,14 @@ export default function Home() {
         localStorage.setItem(ITEM_MODEL_PATH, path)
       }
     }
-    if (modelPath === '') saveDefault()
-  }, [modelPath])
+    // Load path from persistent storage
+    const storedPath = localStorage.getItem(ITEM_MODEL_PATH)
+    storedPath && setModelPath(storedPath)
+    const currModel = localStorage.getItem(ITEM_CURRENT_MODEL)
+    currModel && setCurrentTextModel(currModel)
+
+    if (!storedPath) saveDefaultPath()
+  }, [])
 
   return (
     <main className="xs:p-0 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:p-24">
