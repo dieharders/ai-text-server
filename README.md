@@ -53,11 +53,13 @@ Be sure to run this command with admin privileges. This command is optional and 
 
 ```bash
 pip install -r requirements.txt
-#or
+# or
 pnpm python-deps
 ```
 
-For Rust "crates" and other deps, build the project in dev or release mode to trigger the package manager to download all dependencies.
+### Rust Dependencies
+
+For Rust "crates" and other deps, build the project in dev or release mode to trigger the package manager to download all dependencies. Make sure your deps have been defined in `Cargo.toml`
 
 ---
 
@@ -132,6 +134,10 @@ Used by client apps to detect when services are ready to be used.
 This is entry for all text inference functions. Endpoints can be found [here](http://localhost:8000/docs) after server is started.
 
 ---
+
+## Models
+
+To get the sha256 of each file, click on the model you want from the "Files" page and copy from the page or raw pointer.
 
 ## Inference
 
