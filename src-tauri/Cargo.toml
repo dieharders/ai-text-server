@@ -2,9 +2,9 @@
 name = "app"
 version = "0.1.0"
 description = "Private Ai inference engine"
-authors = ["you"]
+authors = ["dieharders"]
 license = ""
-repository = ""
+repository = "https://github.com/dieharders/ai-text-server"
 default-run = "app"
 edition = "2021"
 rust-version = "1.71"
@@ -17,12 +17,36 @@ tauri-build = { version = "1.4.0", features = [] }
 [dependencies]
 tauri-plugin-persisted-scope = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 command-group = "2.1.0"
-serde_json = "1.0"
+tauri = { version = "1.4.0", features = [ "dialog-message", "window-set-title", "window-maximize", "dialog-save", "dialog-open", "window-center", "dialog-confirm", "window-show", "fs-all", "path-all", "shell-all", "http-all", "process-command-api"] }
+
+actix-web = "4.4.0"
+futures = "0.3.28"
+reqwest = { version = "0.11.17", features = ["json", "stream"] }
+flume = "0.10.14"
+parking_lot = "0.12"
+tokio-util = { version = "0.7", features = ["codec"] }
+tokio = { version = "1.28.1", features = ["full"] }
+tokio-stream = "0.1.14"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.4.0", features = [ "fs-all", "path-all", "dialog-all", "shell-all", "http-all", "process-command-api"] }
+serde_json = "1.0"
+kv = { version = "0.24.0", features = ["json-value"] }
+strum = { version = "0.25", features = ["derive"] }
+
+digest = "0.10.6"
+sha2 = "0.10.6"
+blake3 = "1.3.3"
+
+# For testing local tauri builder
+# [patch.crates-io]
+# tauri-build = { path = "/Users/lab/Projects/tauri/core/tauri-build" }
+# tauri = { path = "/Users/lab/Projects/tauri/core/tauri" }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
 # If you use cargo directly instead of tauri's cli you can use this feature flag to switch between tauri's `dev` and `build` modes.
 # DO NOT REMOVE!!
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+# debug = true # Allow for degub mode in a release build?

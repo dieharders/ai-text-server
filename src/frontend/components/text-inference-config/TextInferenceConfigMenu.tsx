@@ -132,7 +132,7 @@ const FilePathChooser = ({
     } else if (selected === null) {
       console.log('@@ User cancelled the selection.')
     } else {
-      console.log('@@ User selected a single file:', selected)
+      console.log('@@ User selected a single folder:', selected)
     }
     return selected
   }

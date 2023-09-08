@@ -32,39 +32,42 @@ const ModelBrowser = ({
       localStorage.setItem(ITEM_CURRENT_MODEL, val)
     }
   }
-  const checkHasDownload = (modelId: string): boolean => {
-    // @TODO We should find a way to check the last saved path for file existence
+  /**
+   * Look up the installed model.
+   */
+  const getModelConfig = (modelId: string): boolean => {
+    // @TODO Check the last saved path for file existence before continuing
     const data = localStorage.getItem(ITEM_TEXT_MODELS)
     const list = data ? JSON.parse(data) : []
     const matched = list.find((item: string) => item === modelId)
     return matched
   }
-  const onDownloadComplete = (modelId: string) => {
+  /**
+   * Create new entry for model and record the install path.
+   */
+  const setModelConfig = (modelId: string, modelPath: string) => {
     const data = localStorage.getItem(ITEM_TEXT_MODELS)
     const list = data ? JSON.parse(data) : []
     list.push(modelId)
     const arrayStr = JSON.stringify(list)
     localStorage.setItem(ITEM_TEXT_MODELS, arrayStr)
+    // @TODO Record installed modelPath as object [id]: {path: '/installed/path'}
+    console.log('@@ downloaded to:', modelPath)
   }
 
+  // @TODO Put in useMemo()
   const cards = data?.map(item => {
     return (
       <ModelCard
         key={item.id}
-        id={item.id}
-        name={item.name}
-        description={item.description}
-        fileSize={item.fileSize}
-        ramSize={item?.ramSize}
-        provider={item.provider}
-        license={item.license}
-        downloadUrl={item.downloadUrl}
+        modelCard={item}
         saveToPath={modelPath}
-        fileName={item.fileName}
         isLoaded={currentTextModel === item.id}
-        initialHasDownload={checkHasDownload(item.id)}
+        getModelConfig={() => {
+          return getModelConfig(item.id)
+        }}
+        setModelConfig={() => setModelConfig(item.id, modelPath)}
         onSelectModel={onSelectTextModel}
-        onDownloadComplete={onDownloadComplete}
       ></ModelCard>
     )
   })

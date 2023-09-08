@@ -1,51 +1,67 @@
 'use client'
 
-import axios from 'axios'
-import { useState } from 'react'
+import { useEffect, useRef } from 'react'
+import { IModelCard } from '../../../../models/models'
+import { useModelDownload } from './useModelDownload'
+import { EDownloadState } from './useModelDownload'
 
 interface IProps {
-  id: string
-  name: string
-  description: string
-  fileSize: number
-  ramSize?: number
-  downloadUrl: string
-  saveToPath: string
-  fileName: string
-  license: string
-  provider: string
+  modelCard: IModelCard
   isLoaded: boolean
-  initialHasDownload: boolean
+  saveToPath: string
   onSelectModel: (modelId: string) => void
-  onDownloadComplete: (modelId: string) => void
+  getModelConfig: () => boolean // all attributes, install path, etc
+  setModelConfig: () => void
 }
 
+// command names...delete later
+// GetDownloadProgress = "get_download_progress",
+// StartDownload = "start_download",
+// PauseDownload = "pause_download",
+// ResumeDownload = "resume_download",
+// whats these ??
+// GetCachedIntegrity = "get_cached_integrity",
+// ComputeModelIntegrity = "compute_model_integrity",
+
+// @TODO Collapse the props into a `model` prop
 const ModelCard = ({
-  id,
-  name,
-  description,
-  fileSize,
-  ramSize,
-  downloadUrl,
+  modelCard,
   saveToPath,
-  fileName,
-  license,
-  provider,
   isLoaded,
-  initialHasDownload,
   onSelectModel,
-  onDownloadComplete,
+  getModelConfig,
+  setModelConfig,
 }: IProps) => {
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
-  const [hasDownload, setHasDownload] = useState<boolean>(initialHasDownload)
+  const {
+    id,
+    name,
+    description,
+    fileSize,
+    ramSize,
+    downloadUrl,
+    blake3,
+    fileName,
+    license,
+    provider,
+  } = modelCard
+  const modelPath = useRef<string | null>(null) // track installed path for later retrieval
+  const {
+    progress,
+    downloadState,
+    eventId,
+    hasDownload,
+    setDownloadState,
+    setHasDownload,
+    pauseDownload,
+    resumeDownload,
+  } = useModelDownload(modelCard, modelPath.current, setModelConfig)
   // Styling
   const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
   const colorStyles =
     'border-b border-gray-300 bg-gradient-to-b from-zinc-200 dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
 
   /**
-   * This will do for now...
-   * But we could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
+   * Could also use this: https://github.com/bodaay/HuggingFaceModelDownloader
    */
   const onModelDownload = async (
     url: string,
@@ -53,62 +69,40 @@ const ModelCard = ({
     fileName: string,
     modelId: string,
   ) => {
+    let outputPath: string
+
     try {
       if (!filePath || !url || !fileName)
         throw Error(
           `No arguments provided! filePath: ${filePath} | url: ${url} | fileName: ${fileName}`,
         )
 
-      const response = await axios({
-        url,
-        method: 'GET',
-        headers: {
-          // Authorization: authHeader().Authorization,
-          Accept: 'application/octet-stream, application/json, text/plain, */*',
-          // 'Content-Type': 'application/octet-stream',
-          // Range: 'bytes=0-1023', // used to get partial file from specific range in data
-        },
-        responseType: 'arraybuffer', // 'blob' | 'stream' | 'arraybuffer' | 'json'
-        withCredentials: false,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-        onDownloadProgress: progressEvent => {
-          const total = progressEvent.total || 1000000000
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
-          // Handle file progress
-          console.log('@@ file progress:', percentCompleted)
-          setDownloadProgress(percentCompleted)
-        },
-      })
-
-      // Write response.data to file
-      const { writeBinaryFile, exists, createDir } = await import('@tauri-apps/api/fs')
-
-      // Check that file and target path exists
-      const fileExists = await exists(`${filePath}\\${fileName}`)
-      if (fileExists) throw Error('File already exists')
+      // Check that file and target path exists, otherwise create one
+      const { exists, createDir } = await import('@tauri-apps/api/fs')
+      // const fileExists = await exists(`${filePath}\\${fileName}`)
+      // if (fileExists) throw Error('File already exists')
       const pathExists = await exists(filePath)
       if (!pathExists) await createDir(filePath)
 
-      // In order to write to chosen path (w/o user action) on subsequent restarts, we need to use plugin-persisted-scope
-      // When a user chooses a path, it is added dynamically to `fs: scope: []` but only for that session.
-      console.log('@@ Writing response to file...')
-      await writeBinaryFile({
-        path: `${filePath}\\${fileName}`,
-        contents: response.data,
+      // Download model
+      setDownloadState(EDownloadState.Downloading)
+      const { invoke } = await import('@tauri-apps/api/tauri')
+      // @TODO What difference between filePath and saveToPath ??
+      console.log('@@ download:', id, 'file', filePath, 'save', saveToPath)
+
+      outputPath = await invoke('start_download', {
+        fileName: id,
+        downloadUrl: downloadUrl,
+        digest: blake3,
+        filePath: saveToPath,
       })
 
-      // Mark download completed
-      onDownloadComplete(modelId)
-      setHasDownload(true)
-
-      return true
-    } catch (err) {
-      console.log('@@ [Error] Failed to download file:', err)
-      return
+      return outputPath
+    } catch (e) {
+      console.log(`[Error] Failed to download file: ${e}`)
+      return null
     }
   }
-
   /**
    * This button selects this model for inference
    */
@@ -132,17 +126,45 @@ const ModelCard = ({
    * Download this ai model from a repository
    */
   const DownloadButton = () => {
-    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-400'
+    const textColor = hasDownload || progress !== null ? 'text-gray-400' : 'text-yellow-400'
     return (
       <button
         className={`h-12 w-full rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
         onClick={async () => {
           // Download model from huggingface
-          const success = await onModelDownload(downloadUrl, saveToPath, fileName, id)
-          if (success) console.log('@@ File saved successfully!')
+          const ouputPath = await onModelDownload(downloadUrl, saveToPath, fileName, id)
+          modelPath.current = ouputPath
         }}
       >
         <p className="font-bold">Download</p>
+      </button>
+    )
+  }
+  /**
+   * Pause the download
+   */
+  const PauseButton = () => {
+    const textColor = hasDownload || progress !== null ? 'text-gray-400' : 'text-yellow-400'
+    return (
+      <button
+        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
+        onClick={pauseDownload}
+      >
+        <p className="font-bold">Pause</p>
+      </button>
+    )
+  }
+  /**
+   * Resume the download
+   */
+  const ResumeButton = () => {
+    const textColor = hasDownload || progress !== null ? 'text-gray-400' : 'text-yellow-400'
+    return (
+      <button
+        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
+        onClick={resumeDownload}
+      >
+        <p className="font-bold">Resume</p>
       </button>
     )
   }
@@ -154,7 +176,16 @@ const ModelCard = ({
       <button
         className={`h-12 w-full rounded-lg ${colorStyles} ${sizingStyles} text-sm text-red-500 hover:bg-red-500 hover:text-red-900`}
         onClick={async () => {
+          // Ask user before deleting
+          const { confirm } = await import('@tauri-apps/api/dialog')
+          if (!(await confirm(`Deleting ${name}?`))) {
+            return
+          }
           // @TODO Add logic to delete file
+          const { invoke } = await import('@tauri-apps/api/tauri')
+          await invoke('delete_model_file', {
+            path: saveToPath,
+          })
           console.log('@@ File removed successfully!', id)
         }}
       >
@@ -165,25 +196,33 @@ const ModelCard = ({
   /**
    * Render indicator of the total progress of download
    */
-  const DownloadProgressBar = ({ progress }: { progress: number }) => {
+  const DownloadProgressBar = ({ downloadProgress }: { downloadProgress: number }) => {
     return (
-      <div className="w-full">
+      <div className="w-full self-end">
         <div className="mb-1 flex justify-between">
           <span className="font-mono text-sm font-medium text-yellow-600">
-            {progress}% complete
+            <span className="capitalize">{downloadState}</span> {downloadProgress}%
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-          <div className="h-2 rounded-full bg-yellow-400" style={{ width: `${progress}%` }}></div>
+          <div
+            className="h-2 rounded-full bg-yellow-400"
+            style={{ width: `${downloadProgress}%` }}
+          ></div>
         </div>
       </div>
     )
   }
 
+  // Determine if we have installed this model already
+  useEffect(() => {
+    setHasDownload(getModelConfig())
+  }, [getModelConfig, setHasDownload])
+
   return (
     <div className="flex flex-col items-stretch justify-start gap-6 rounded-md border border-gray-300 p-6 dark:border-neutral-800 dark:bg-zinc-900 lg:flex-row">
-      {/* Info/Stats & Download */}
       <div className="inline-flex w-full shrink-0 flex-col items-stretch justify-start gap-2 break-words p-0 lg:w-72">
+        {/* Info/Stats */}
         <h1 className="mb-2 text-left text-xl leading-tight">{name}</h1>
         <p className="text-md overflow-hidden text-ellipsis whitespace-nowrap text-left">
           Disk: {fileSize} Gb
@@ -199,11 +238,18 @@ const ModelCard = ({
         <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
           License: {license}
         </p>
+        {/* Download | Pause/Resume | Progress */}
         <div className="mb-0 mt-auto">
           {hasDownload ? (
             <DeleteButton id={id} />
-          ) : downloadProgress !== null && downloadProgress >= 0 ? (
-            <DownloadProgressBar progress={downloadProgress} />
+          ) : eventId === EDownloadState.Downloading ||
+            eventId === EDownloadState.Validating ||
+            eventId === EDownloadState.Idle ? (
+            <div className="flex flex-row gap-4">
+              {eventId === EDownloadState.Downloading && <PauseButton />}
+              {eventId === EDownloadState.Idle && <ResumeButton />}
+              <DownloadProgressBar downloadProgress={progress} />
+            </div>
           ) : (
             <DownloadButton />
           )}
