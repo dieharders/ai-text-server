@@ -37,4 +37,4 @@ next-env.d.ts
 # python
 **/__pycache__
 *.spec
-/src-tauri/bin
+# /src-tauri/bin

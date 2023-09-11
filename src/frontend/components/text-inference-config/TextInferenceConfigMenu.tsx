@@ -110,8 +110,12 @@ const FilePathChooser = ({
   const buttonTextColor = isStarted ? 'text-gray-400' : 'text-white-300'
 
   const fileSelect = async (isDirMode: boolean): Promise<string | null> => {
-    // If you cant or wont import @tauri-apps/api/* then you can use window.__TAURI__.*
-    const { desktopDir } = await import('@tauri-apps/api/path')
+    const desktopDir = async (): Promise<string> => {
+      // @TODO Get cwd
+      // ...
+      console.log('@@ desktopDir')
+      return ''
+    }
     const cwd = await desktopDir()
     const properties = {
       defaultPath: cwd,
@@ -124,8 +128,13 @@ const FilePathChooser = ({
       ],
     }
 
-    const { open } = await import('@tauri-apps/api/dialog')
-    const selected = await open(properties)
+    const dialogOpen = async (properties: any): Promise<Array<any> | null> => {
+      // @TODO Open a native OS file explorer
+      // ...
+      console.log('@@ opened dialogue box', properties)
+      return null
+    }
+    const selected = await dialogOpen(properties)
     if (Array.isArray(selected)) {
       console.log('@@ Error: user selected multiple files.')
       return null

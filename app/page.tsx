@@ -68,7 +68,11 @@ export default function Home() {
   // Initialize default model path if non selected/stored
   useEffect(() => {
     const saveDefaultPath = async () => {
-      const { desktopDir } = await import('@tauri-apps/api/path')
+      const desktopDir = async (): Promise<string> => {
+        // @TODO Get cwd
+        // ...
+        return ''
+      }
       const path = await desktopDir()
       if (path) {
         setModelPath(path)
