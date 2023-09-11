@@ -57,10 +57,6 @@ pip install -r requirements.txt
 pnpm python-deps
 ```
 
-### Rust Dependencies
-
-For Rust "crates" and other deps, build the project in dev or release mode to trigger the package manager to download all dependencies. Make sure your deps have been defined in `Cargo.toml`
-
 ---
 
 ## Testing locally
@@ -108,6 +104,10 @@ Building app for production:
 ```bash
 pnpm build
 ```
+
+### Building with Electron
+
+Using this vercel project as starting point: https://github.com/vercel/next.js/tree/canary/examples/with-electron
 
 ---
 
