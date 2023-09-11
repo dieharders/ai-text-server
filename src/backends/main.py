@@ -20,7 +20,6 @@ global inference_process
 
 # Configure CORS settings
 origins = [
-    "https://tauri.localhost",  # release version of origin
     "http://localhost:3000",  # for testing
     "https://hoppscotch.io",  # for testing
     "https://brain-dump-dieharders.vercel.app/",  # client app origin
@@ -39,15 +38,12 @@ text_inference_routes = [
 async def redirect_middleware(request: Request, call_next):
     # Match route
     if request.url.path in text_inference_routes and request.url.port == PORT_API:
-        # @TODO May need to adjust redirect url since in release origin == "tauri.localhost" since inference is on "localhost"
         print(f"Redirect match found: {request.url}")
         # Make new route with a different port
         pattern = r":([^/]+)"
         replacement = f":{PORT_TEXT_INFERENCE}"
         new_url_str = re.sub(pattern, replacement, str(request.url))
-        # Remove "tauri."
-        result_url_str = new_url_str.replace("tauri.", "")
-        request.scope["path"] = result_url_str
+        request.scope["path"] = new_url_str
         headers = dict(request.scope["headers"])
         # Set status code to determine Method when redirected
         # HTTP_303_SEE_OTHER for POST

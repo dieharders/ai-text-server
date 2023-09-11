@@ -82,8 +82,24 @@ const ModelCard = ({
       })
 
       // Write response.data to file
-      const { writeBinaryFile, exists, createDir } = await import('@tauri-apps/api/fs')
-
+      const writeBinaryFile = async (props: any) => {
+        // @TODO Implement from electron
+        // ...
+        console.log('@@ writeBinaryFile', props)
+        return
+      }
+      const exists = async (path: string) => {
+        // @TODO Implement from electron
+        // ...
+        console.log('@@ exists?', path)
+        return false
+      }
+      const createDir = async (path: string) => {
+        // @TODO Implement from electron
+        // ...
+        console.log('@@ createDir', path)
+        return
+      }
       // Check that file and target path exists
       const fileExists = await exists(`${filePath}\\${fileName}`)
       if (fileExists) throw Error('File already exists')
