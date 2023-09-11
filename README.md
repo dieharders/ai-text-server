@@ -86,10 +86,10 @@ python src/backends/main.py
 
 The universal api server will be running on [http://localhost:8008](http://localhost:8008)
 
-### Run the Tauri app in development mode
+### Run the app in development mode
 
 ```bash
-pnpm tauri dev
+pnpm dev
 ```
 
 ---
@@ -106,16 +106,8 @@ Bundling Python exe (the -F flag bundles everything into one .exe ). This is han
 Building app for production:
 
 ```bash
-pnpm tauri build
+pnpm build
 ```
-
-The production installer is located here:
-
-`<project-dir>/src-tauri/target/release/bundle/nsis`
-
-The development (--debug) installer is located here:
-
-`<project-dir>/src-tauri/target/debug/bundle/nsis`
 
 ---
 

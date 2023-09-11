@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run python-deps && npm run build:api && next build",
-    "tauri": "tauri",
     "export": "next export",
     "start": "next start",
     "lint": "next lint",
@@ -13,7 +12,6 @@
     "build:api": "pyinstaller -c -F --clean --name main-x86_64-pc-windows-msvc --distpath src-tauri/bin/api src/backends/main.py"
   },
   "dependencies": {
-    "@tauri-apps/api": "^1.4.0",
     "@types/node": "20.2.4",
     "@types/react": "18.2.7",
     "@types/react-dom": "18.2.4",
@@ -31,7 +29,6 @@
     "typescript": "5.0.4"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.4.0",
     "@types/cors": "^2.8.13",
     "@typescript-eslint/eslint-plugin": "^6.4.0",
     "@typescript-eslint/parser": "^6.4.0",
