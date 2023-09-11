@@ -1,11 +1,13 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+
 // Native
-import { join } from 'path'
-import { format } from 'url'
+const { join } = require('path')
+const { format } = require('url')
 
 // Packages
-import { BrowserWindow, app, ipcMain } from 'electron'
-import isDev from 'electron-is-dev'
-import prepareNext from 'electron-next'
+const { BrowserWindow, app, ipcMain } = require('electron')
+const isDev = require('electron-is-dev')
+const prepareNext = require('electron-next')
 
 // Prepare the renderer once the app is ready
 app.on('ready', async () => {

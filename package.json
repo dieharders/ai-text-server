@@ -17,7 +17,7 @@
     "start": "electron .",
     "lint": "next lint",
     "python-deps": "pip install -r requirements.txt",
-    "build:api": "pyinstaller -c -F --clean --name main-x86_64-pc-windows-msvc --distpath src-tauri/bin/api src/backends/main.py"
+    "build:api": "pyinstaller -c -F --clean --name main-x86_64-pc-windows-msvc --distpath includes/bin/api src/backends/main.py"
   },
   "build": {
     "asar": true,

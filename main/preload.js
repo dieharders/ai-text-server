@@ -1,4 +1,6 @@
-import { ipcRenderer, contextBridge } from 'electron'
+/* eslint-disable @typescript-eslint/no-var-requires */
+
+const { ipcRenderer, contextBridge } = require('electron')
 
 contextBridge.exposeInMainWorld('electron', {
   message: {
