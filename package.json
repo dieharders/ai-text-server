@@ -1,15 +1,30 @@
 {
   "name": "ai-knowledgebase-backend",
   "version": "0.1.0",
+  "author": "Spread Shot Studios",
+  "license": "MIT",
+  "productName": "HomeBrewAi",
+  "description": "A local & private ai inference engine.",
+  "main": "main/index.js",
   "private": true,
   "scripts": {
+    "clean": "rimraf dist renderer/.next renderer/out",
     "dev": "next dev",
-    "build": "npm run python-deps && npm run build:api && next build",
+    "build": "npm run python-deps && npm run build:api && next build renderer",
+    "pack-app": "npm run build && electron-builder --dir",
     "export": "next export",
-    "start": "next start",
+    "dist": "npm run build && electron-builder",
+    "start": "electron .",
     "lint": "next lint",
     "python-deps": "pip install -r requirements.txt",
     "build:api": "pyinstaller -c -F --clean --name main-x86_64-pc-windows-msvc --distpath src-tauri/bin/api src/backends/main.py"
+  },
+  "build": {
+    "asar": true,
+    "files": [
+      "main",
+      "renderer/out"
+    ]
   },
   "dependencies": {
     "@types/node": "20.2.4",
