@@ -2,7 +2,7 @@
 
 import { Dispatch, SetStateAction } from 'react'
 import ModelCard from './ModelCard'
-import { IModelCard } from '../../../../models/models'
+import { IModelCard } from '@/models/models'
 
 interface IProps {
   data: Array<IModelCard>
@@ -33,6 +33,7 @@ const ModelBrowser = ({
     }
   }
   const checkHasDownload = (modelId: string): boolean => {
+    if (typeof window === 'undefined') return false
     // @TODO We should find a way to check the last saved path for file existence
     const data = localStorage.getItem(ITEM_TEXT_MODELS)
     const list = data ? JSON.parse(data) : []

@@ -1,35 +1,17 @@
-import { useState, useEffect } from 'react'
+import Home from './home'
+import Head from 'next/head'
 
-const Home = () => {
-  const [input, setInput] = useState('')
-  const [message, setMessage] = useState(null)
-
-  useEffect(() => {
-    const handleMessage = (event, message) => setMessage(message)
-    window.electron.message.on(handleMessage)
-
-    return () => {
-      window.electron.message.off(handleMessage)
-    }
-  }, [])
-
-  const handleSubmit = event => {
-    event.preventDefault()
-    window.electron.message.send(input)
-    setMessage(null)
-  }
-
+const Layout = () => {
   return (
-    <div>
-      <h1>Hello Electron!</h1>
+    <>
+      <Head>
+        <title>HomebrewAi</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
 
-      {message && <p>{message}</p>}
-
-      <form onSubmit={handleSubmit}>
-        <input type="text" value={input} onChange={e => setInput(e.target.value)} />
-      </form>
-    </div>
+      <Home />
+    </>
   )
 }
 
-export default Home
+export default Layout

@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import textModels from '../models/models'
-import AppsBrowser from '../src/frontend/components/AppsBrowser'
-import TextInferenceConfigMenu from '../src/frontend/components/text-inference-config/TextInferenceConfigMenu'
-import TextModelBrowserMenu from '../src/frontend/components/text-model-browser/ModelBrowser'
+import textModels from '@/models/models'
+import AppsBrowser from '@/components/AppsBrowser'
+import TextInferenceConfigMenu from '@/components/text-inference-config/TextInferenceConfigMenu'
+import TextModelBrowserMenu from '@/components/text-model-browser/ModelBrowser'
 
 // Local Storage keys
 const ITEM_MODEL_PATH = 'model-path' // string
@@ -89,7 +89,7 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="xs:p-0 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:p-24">
+    <div className="xs:p-0 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:p-24">
       {/* Ai Inference config menu */}
       <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
         <TextInferenceConfigMenu
@@ -134,6 +134,6 @@ export default function Home() {
           ITEM_TEXT_MODELS={ITEM_TEXT_MODELS}
         />
       )}
-    </main>
+    </div>
   )
 }
