@@ -1,4 +1,4 @@
-import '../../renderer/src/frontend/components/globals.css'
+import '@/components/globals.css'
 import type { AppProps } from 'next/app'
 import Layout from '@/components/Layout'
 

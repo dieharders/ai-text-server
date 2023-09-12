@@ -21,9 +21,9 @@
     ],
     "baseUrl": "./",
     "paths": {
-      "@/components/*": ["src/frontend/components/*"],
-      "@/pages/*": ["renderer/pages/*"],
-      "@/models/*": ["src/frontend/models/*"]
+      "@/components/*": ["components/*"],
+      "@/pages/*": ["pages/*"],
+      "@/models/*": ["models/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

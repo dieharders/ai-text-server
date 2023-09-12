@@ -109,6 +109,10 @@ pnpm build
 
 Using this vercel project as starting point: https://github.com/vercel/next.js/tree/canary/examples/with-electron
 
+```bash
+pnpm start
+```
+
 ---
 
 ## API

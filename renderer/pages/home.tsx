@@ -13,7 +13,7 @@ const ITEM_TEXT_MODELS = 'text-models-list' // array<string>
 
 export default function Home() {
   // App vars
-  const ip = 'http://localhost:8008'
+  const INFERENCE_IP = 'http://localhost:8008'
   const [isStarted, setIsStarted] = useState(false)
   const [modelPath, setModelPath] = useState<string>('')
   const [currentTextModel, setCurrentTextModel] = useState<string>('')
@@ -26,7 +26,7 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch(ip + '/v1/completions', {
+      const response = await fetch(INFERENCE_IP + '/v1/completions', {
         method: 'POST',
         mode: 'cors', // must be enabled otherwise wont redirect
         redirect: 'follow', // we want to follow the re-direct automatically
@@ -93,7 +93,7 @@ export default function Home() {
       {/* Ai Inference config menu */}
       <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
         <TextInferenceConfigMenu
-          ip={ip}
+          ip={INFERENCE_IP}
           isStarted={isStarted}
           setIsStarted={setIsStarted}
           modelPath={modelPath}
