@@ -111,39 +111,40 @@ const FilePathChooser = ({
 
   const fileSelect = async (isDirMode: boolean): Promise<string | null> => {
     const desktopDir = async (): Promise<string> => {
-      // @TODO Get cwd
-      // ...
-      console.log('@@ desktopDir')
-      return ''
-    }
-    const cwd = await desktopDir()
-    const properties = {
-      defaultPath: cwd,
-      directory: isDirMode,
-      filters: [
-        {
-          extensions: ['txt', 'gif'],
-          name: '*',
-        },
-      ],
+      const path = await window.electron.api('getPath', 'desktop')
+      return path
     }
 
-    const dialogOpen = async (properties: any): Promise<Array<any> | null> => {
-      // @TODO Open a native OS file explorer
-      // ...
-      console.log('@@ opened dialogue box', properties)
-      return null
+    // Open a native OS file explorer
+    const dialogOpen = async () => {
+      const mode = isDirMode ? 'openDirectory' : 'openFile'
+      const cwd = await desktopDir()
+      const properties = {
+        defaultPath: cwd,
+        properties: [mode],
+        filters: [
+          {
+            extensions: ['txt', 'gif', 'bin'],
+            name: '*',
+          },
+        ],
+      }
+      return window.electron.api('showOpenDialog', properties)
     }
-    const selected = await dialogOpen(properties)
-    if (Array.isArray(selected)) {
+
+    const selected = await dialogOpen()
+    console.log('@@ User opened dialogue box', selected)
+
+    if (selected.canceled) {
+      console.log('@@ User cancelled the selection.')
+      return null
+    } else if (selected.filePaths.length > 1) {
       console.log('@@ Error: user selected multiple files.')
       return null
-    } else if (selected === null) {
-      console.log('@@ User cancelled the selection.')
     } else {
-      console.log('@@ User selected a single file:', selected)
+      console.log('@@ User selected a single file:', selected.filePaths[0])
+      return selected.filePaths[0]
     }
-    return selected
   }
 
   const hoverStyle = isStarted

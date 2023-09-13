@@ -69,9 +69,14 @@ export default function Home() {
   useEffect(() => {
     const saveDefaultPath = async () => {
       const desktopDir = async (): Promise<string> => {
-        // @TODO Get cwd
-        // ...
-        return ''
+        // Get cwd
+        try {
+          const basepath = await window.electron.api('getPath', 'desktop')
+          return basepath || ''
+        } catch (err) {
+          console.log('@@ Error getting cwd:', err)
+          return ''
+        }
       }
       const path = await desktopDir()
       if (path) {
