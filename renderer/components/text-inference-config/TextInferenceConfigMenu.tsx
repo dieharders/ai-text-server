@@ -115,13 +115,15 @@ const FilePathChooser = ({
       return path
     }
 
-    // Open a native OS file explorer
+    // Open a native OS file explorer to choose a save path
     const dialogOpen = async () => {
       const mode = isDirMode ? 'openDirectory' : 'openFile'
       const cwd = await desktopDir()
       const properties = {
+        title: 'Choose folder to save models',
         defaultPath: cwd,
         properties: [mode],
+        buttonLabel: 'Choose',
         filters: [
           {
             extensions: ['txt', 'gif', 'bin'],

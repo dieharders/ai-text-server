@@ -1,7 +1,6 @@
 'use client'
 
-import axios from 'axios'
-import { useState } from 'react'
+import useDownloader from './useDownloader'
 
 interface IProps {
   id: string
@@ -36,94 +35,16 @@ const ModelCard = ({
   onSelectModel,
   onDownloadComplete,
 }: IProps) => {
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
-  const [hasDownload, setHasDownload] = useState<boolean>(initialHasDownload)
   // Styling
   const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
   const colorStyles =
     'border-b border-gray-300 bg-gradient-to-b from-zinc-200 dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
 
-  /**
-   * This will do for now...
-   * But we could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
-   */
-  const onModelDownload = async (
-    url: string,
-    filePath: string,
-    fileName: string,
-    modelId: string,
-  ) => {
-    try {
-      if (!filePath || !url || !fileName)
-        throw Error(
-          `No arguments provided! filePath: ${filePath} | url: ${url} | fileName: ${fileName}`,
-        )
-
-      const response = await axios({
-        url,
-        method: 'GET',
-        headers: {
-          // Authorization: authHeader().Authorization,
-          Accept: 'application/octet-stream, application/json, text/plain, */*',
-          // 'Content-Type': 'application/octet-stream',
-          // Range: 'bytes=0-1023', // used to get partial file from specific range in data
-        },
-        responseType: 'arraybuffer', // 'blob' | 'stream' | 'arraybuffer' | 'json'
-        withCredentials: false,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-        onDownloadProgress: progressEvent => {
-          const total = progressEvent.total || 1000000000
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
-          // Handle file progress
-          console.log('@@ file progress:', percentCompleted)
-          setDownloadProgress(percentCompleted)
-        },
-      })
-
-      // Write response.data to file
-      const writeBinaryFile = async (props: any) => {
-        // @TODO Implement from electron
-        // ...
-        console.log('@@ writeBinaryFile', props)
-        return
-      }
-      const exists = async (path: string) => {
-        // @TODO Implement from electron
-        // ...
-        console.log('@@ exists?', path)
-        return false
-      }
-      const createDir = async (path: string) => {
-        // @TODO Implement from electron
-        // ...
-        console.log('@@ createDir', path)
-        return
-      }
-      // Check that file and target path exists
-      const fileExists = await exists(`${filePath}\\${fileName}`)
-      if (fileExists) throw Error('File already exists')
-      const pathExists = await exists(filePath)
-      if (!pathExists) await createDir(filePath)
-
-      // In order to write to chosen path (w/o user action) on subsequent restarts, we need to use plugin-persisted-scope
-      // When a user chooses a path, it is added dynamically to `fs: scope: []` but only for that session.
-      console.log('@@ Writing response to file...')
-      await writeBinaryFile({
-        path: `${filePath}\\${fileName}`,
-        contents: response.data,
-      })
-
-      // Mark download completed
-      onDownloadComplete(modelId)
-      setHasDownload(true)
-
-      return true
-    } catch (err) {
-      console.log('@@ [Error] Failed to download file:', err)
-      return
-    }
-  }
+  // Downloader Hook
+  const { hasDownload, downloadProgress, progressState, onModelDownload } = useDownloader({
+    initialHasDownload,
+    modelId: id,
+  })
 
   /**
    * This button selects this model for inference
@@ -154,8 +75,11 @@ const ModelCard = ({
         className={`h-12 w-full rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
         onClick={async () => {
           // Download model from huggingface
-          const success = await onModelDownload(downloadUrl, saveToPath, fileName, id)
-          if (success) console.log('@@ File saved successfully!')
+          const success = await onModelDownload(downloadUrl, saveToPath, fileName)
+          if (success) {
+            // onDownloadComplete(id)
+            console.log('@@ File saved successfully!')
+          }
         }}
       >
         <p className="font-bold">Download</p>
@@ -186,7 +110,7 @@ const ModelCard = ({
       <div className="w-full">
         <div className="mb-1 flex justify-between">
           <span className="font-mono text-sm font-medium text-yellow-600">
-            {progress}% complete
+            {`${progress}% ${progressState}`}
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
