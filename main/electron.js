@@ -5,7 +5,7 @@ const { join } = require('path')
 const { format } = require('url')
 
 // Packages
-const { BrowserWindow, app, ipcMain } = require('electron')
+const { BrowserWindow, app, dialog, ipcMain } = require('electron')
 const isDev = require('electron-is-dev')
 const prepareNext = require('electron-next')
 
@@ -14,13 +14,20 @@ app.on('ready', async () => {
   await prepareNext('./renderer')
 
   const mainWindow = new BrowserWindow({
-    width: 960,
+    title: 'HomebrewAi',
+    width: isDev ? 1280 : 960,
     height: 640,
+    autoHideMenuBar: true,
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
+      contextIsolation: true,
       preload: join(__dirname, 'preload.js'),
+      // enableRemoteModule: true,
     },
   })
+
+  // Open dev tools if in dev env
+  if (isDev) mainWindow.webContents.openDevTools()
 
   const url = isDev
     ? 'http://localhost:8000'
@@ -39,4 +46,18 @@ app.on('window-all-closed', app.quit)
 // listen the channel `message` and resend the received message to the renderer process
 ipcMain.on('message', (event, message) => {
   event.sender.send('message', message)
+})
+
+// listen for an api request, then invoke it and send back result
+ipcMain.handle('api', async (_event, eventName, options) => {
+  switch (eventName) {
+    case 'showOpenDialog':
+      return dialog.showOpenDialog(options)
+    case 'getPath':
+      return app.getPath(options)
+    case 'getAppPath':
+      return app.getAppPath()
+    default:
+      return
+  }
 })
