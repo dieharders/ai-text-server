@@ -2,13 +2,11 @@
 
 // Modules
 const { downloadChunkedFile } = require('./utils/downloader')
-const axios = require('axios')
 
 // Native Modules
 const { join } = require('path')
 const { format } = require('url')
 const fs = require('fs')
-// const fs = require('fs/promises')
 
 // Packages
 const { BrowserWindow, app, dialog, ipcMain } = require('electron')
@@ -66,9 +64,13 @@ ipcMain.handle('api', async (event, eventName, options) => {
     case 'download_chunked_file':
       // @TODO Check that file does not exist and that folder exists and can be written to (priveledges)
       try {
+        /**
+         * Send ipc command to front-end to update total progress
+         * @param {number} progress
+         * @returns
+         */
         const updateProgress = progress => {
-          // @TODO Send ipc command to front-end to update total progress
-          console.log('@@ chunk progress:', progress)
+          console.log('@@ [chunk progress]:', progress)
           event.sender.send('message', {
             eventId: 'download_progress',
             downloadId: options.id,
@@ -76,9 +78,13 @@ ipcMain.handle('api', async (event, eventName, options) => {
           })
           return progress
         }
+        /**
+         * Send ipc command to front-end to update state of progress
+         * @param {string} state
+         * @returns
+         */
         const updateProgressState = state => {
-          // @TODO Send ipc command to front-end to update state of progress
-          console.log('@@ updateProgressState', state)
+          console.log('@@ [updateProgressState]:', state)
           event.sender.send('message', {
             eventId: 'download_progress_state',
             downloadId: options.id,
@@ -86,46 +92,34 @@ ipcMain.handle('api', async (event, eventName, options) => {
           })
           return state
         }
-        // Save file
+        // Create file stream
         const writePath = join(options.path, options.name)
         console.log('@@ write path:', writePath, 'url:', options.url)
-        const handler = async res => {
-          console.log('@@ response data:')
-          const fileStream = fs.createWriteStream(writePath)
-          // @TODO Implement strategy to save chunks to file
-          // fs.openSync(path, 'w')
-          // fs.write(fd, chunk, 0, chunk.length, null, (err, written) => {})
-          // fs.closeSync(fd)
-
-          res.pipe(fileStream).on('finish', () => {
-            console.log('@@ File downloaded to path')
-            updateProgressState('Completed')
-            // @TODO Call a func to verify sha256 hash of file then set 'Completed'
-          })
+        const fileStream = fs.createWriteStream(writePath)
+        /**
+         * Save chunk to stream
+         * @param {Uint8Array} chunk
+         * @returns
+         */
+        const handleChunk = async chunk => {
+          console.log('@@ [saving chunk...]')
+          return fileStream.write(chunk)
         }
         // Download file
-        const response = await axios({
+        const result = await downloadChunkedFile({
           url: options.url,
-          method: 'GET',
-          responseType: 'stream',
-          onDownloadProgress: progressEvent => {
-            const total = progressEvent.total || 1000000000
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / total)
-            // Handle file progress
-            updateProgress(percentCompleted)
-          },
+          updateProgress,
+          updateProgressState,
+          handleChunk,
         })
-        handler(response.data)
 
-        // downloadChunkedFile({
-        //   url: options.url,
-        //   path: writePath,
-        //   updateProgress,
-        //   updateProgressState,
-        //   handleChunk: handler,
-        // })
-
-        return true
+        if (result) {
+          console.log('@@ File downloaded to path')
+          fileStream.end()
+          updateProgressState('Completed')
+          // @TODO Call a func to verify sha256 hash of file then set 'Completed'
+        }
+        return result
       } catch (err) {
         console.log('@@ [Error] Writing file to disk', err)
         return false

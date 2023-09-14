@@ -40,29 +40,40 @@ const fetchChunk = async ({ url, start, end }) =>
     maxBodyLength: Infinity,
   })
 
+const _createBinaryChunk = data => {
+  const vec8 = new Uint8Array(data)
+  const binaryChunk = Array.from(vec8)
+  if (!binaryChunk) throw Error('Error creating binary chunk!')
+  return binaryChunk
+}
+
+const createUint8ArrayChunk = data => {
+  const vec8 = new Uint8Array(data)
+  if (!vec8) throw Error('Error creating Uint8Array chunk!')
+  return vec8
+}
+
 /**
  * Save chunk to file stream.
- * @param string path
  * @param ArrayBuffer chunk
+ * @param Function handler
  * @returns
  */
-const onDownloadProgress = async (path, chunk, handleChunk) => {
+const onDownloadProgress = async (chunk, handleChunk) => {
+  // Handle data conversion
+  const data = createUint8ArrayChunk(chunk)
   // Save chunks here
-  const vec8 = new Uint8Array(chunk)
-  const binaryChunk = Array.from(vec8)
-  if (!binaryChunk) throw Error('Error reading chunk!')
-  // @TODO Save chunk
-  await handleChunk(binaryChunk)
-  return binaryChunk
+  await handleChunk(data)
+  return data
 }
 
 /**
  * Download a large file in chunks and save to disk as stream.
- * @param {*} options
+ * @param {any} props
  * @returns
  */
-const downloadChunkedFile = async options => {
-  const { url, path, updateProgress, updateProgressState, handleChunk } = options
+const downloadChunkedFile = async props => {
+  const { url, updateProgress, updateProgressState, handleChunk } = props
   const { size = 1000000000, modified } = await fetchTotalSize(url) // find file size
 
   // @TODO check if file is out of date by comparing `modified` to stored model's data.
@@ -79,20 +90,23 @@ const downloadChunkedFile = async options => {
       start,
       end,
     })
-    console.log('@@ response', response.data)
+
     if (!response) {
       console.log('[Error]: Failed to save chunk.')
       return false
     }
-    // Save chunk - Send chunks of a large file to Main Process for writing to disk
-    updateProgressState('Saving') // EProgressState.Saving
-    await onDownloadProgress(path, response.data, handleChunk)
+
+    // Send chunks of a large file to Main Process for writing to disk
+    updateProgressState('Saving')
+    await onDownloadProgress(response.data, handleChunk)
     // Increment progress after saving chunk
     const chunkProgress = (i + 1) / numChunks
     const progress = Math.floor(chunkProgress * 100)
     console.log('@@ [Downloading] progress:', progress)
     updateProgress(progress)
   }
+
+  return true
 }
 
 module.exports = { downloadChunkedFile }
