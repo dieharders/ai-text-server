@@ -252,8 +252,6 @@ const ModelCard = ({
         <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
           License: {license}
         </p>
-        {/* Load | Download | Progress */}
-        <div className="mb-0 mt-auto">{renderDownloadPane()}</div>
       </div>
       {/* Description & Load */}
       <div className="grow-1 inline-flex w-full flex-col items-stretch justify-between gap-4 p-0">
@@ -265,6 +263,8 @@ const ModelCard = ({
             <div className="absolute bottom-48 left-0 h-full w-full bg-gradient-to-t from-zinc-900 from-10% to-transparent to-35%"></div>
           </div>
         </div>
+        {/* Load | Download | Progress */}
+        <div className="mb-0 mt-auto">{renderDownloadPane()}</div>
       </div>
     </div>
   )

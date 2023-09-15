@@ -85,7 +85,8 @@ const models: Array<IModelCard> = [
     name: 'Wizard Vicuna 15B Coder',
     provider: Providers.TheBloke,
     license: LicenseType.Other,
-    description: 'StarCoder fine-tuned using Evol-Instruct method. Good for code generation.',
+    description:
+      'Wizardlm: Empowering large language models to follow complex instructions. A StarCoder fine-tuned model using Evol-Instruct method specifically for coding tasks. Use this for code generation, also good at logical reasoning skills.',
     fileSize: 14.3,
     ramSize: 8,
     tokenizers: ['WizardLM/WizardCoder-15B-V1.0'],
