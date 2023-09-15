@@ -3,7 +3,8 @@
 import { Dispatch, SetStateAction } from 'react'
 import ModelCard from './ModelCard'
 import { IModelCard } from '@/models/models'
-import createConfig, { IModelConfig } from './configs'
+import createConfig from './configs'
+import { getTextModelConfig, getTextModelsList, setTextModelConfig } from '@/utils/localStorage'
 
 interface IProps {
   data: Array<IModelCard>
@@ -31,16 +32,6 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
   const onDownloadComplete = () => {
     console.log('@@ [Downloader] File saved successfully!')
   }
-  // Look up the installed model.
-  const getModelConfig = (modelId: string): IModelConfig | undefined => {
-    if (typeof window === 'undefined') return undefined
-
-    const data = localStorage.getItem(INSTALLED_TEXT_MODELS)
-    const list = data ? JSON.parse(data) : []
-    const matched = list.find((item: IModelConfig) => item.id === modelId)
-
-    return matched
-  }
 
   interface IConfigProps {
     modelId: string
@@ -51,15 +42,12 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
   // Create new entry for the installed model and record the install path.
   const setModelConfig = ({ modelId, savePath, modified, size }: IConfigProps) => {
     // Get the stored list of installed configs
-    const data = localStorage.getItem(INSTALLED_TEXT_MODELS)
-    const list = data ? JSON.parse(data) : []
+    const list = getTextModelsList()
     // Create new config
     const config = createConfig({ modelId, savePath, modified, size })
     // Store new entry
     list.push(config)
-    const arrayStr = JSON.stringify(list)
-    localStorage.setItem(INSTALLED_TEXT_MODELS, arrayStr)
-
+    setTextModelConfig(list)
     console.log('@@ [localStorage] Created new config:', config)
   }
 
@@ -73,7 +61,8 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
         saveToPath={savePath}
         isLoaded={currentTextModel === item.id}
         getModelConfig={() => {
-          return getModelConfig(item.id)
+          // Look up the installed model.
+          return getTextModelConfig(item.id)
         }}
         setModelConfig={setModelConfig}
         onSelectModel={onSelectTextModel}

@@ -10,6 +10,7 @@ const { spawn } = require('child_process')
 const { join } = require('path')
 const { format } = require('url')
 const fs = require('fs')
+const fsp = require('fs/promises')
 
 // Packages
 const { BrowserWindow, app, dialog, ipcMain } = require('electron')
@@ -95,16 +96,24 @@ ipcMain.on('message', (event, message) => {
 // listen for an api request, then invoke it and send back result
 ipcMain.handle('api', async (event, eventName, options) => {
   switch (eventName) {
+    case 'showConfirmDialog':
+      return dialog.showMessageBoxSync(mainWindow, options)
     case 'showOpenDialog':
       return dialog.showOpenDialog(options)
     case 'getPath':
       return app.getPath(options)
     case 'getAppPath':
       return app.getAppPath()
-    // @TODO Implement
     case 'delete_file':
       if (!options?.path) return false
-      return true
+      try {
+        await fsp.unlink(options.path)
+        console.log('@@ [Electron] Deleted file from:', options.path)
+        return true
+      } catch (err) {
+        console.log(`@@ [Electron] Failed to delete file from ${options.path}: ${err}`)
+        return false
+      }
     // @TODO Implement
     case 'pause_download':
       return
@@ -144,7 +153,7 @@ ipcMain.handle('api', async (event, eventName, options) => {
         }
         // Create file stream
         const writePath = join(options.path, options.name)
-        console.log('@@ write path:', writePath, 'url:', options.url)
+        console.log('@@ [Electron] Created write stream:', writePath, 'url:', options.url)
         const fileStream = fs.createWriteStream(writePath)
         /**
          * Save chunk to stream
@@ -164,14 +173,14 @@ ipcMain.handle('api', async (event, eventName, options) => {
         })
 
         if (result) {
-          console.log('@@ File downloaded to path')
+          console.log('@@ [Electron] File downloaded to path')
           fileStream.end()
           updateProgressState(EProgressState.Completed)
           // @TODO Call a func to verify sha256 hash of file then set 'Completed'
         }
         return result
       } catch (err) {
-        console.log('@@ [Error] Writing file to disk', err)
+        console.log('@@ [Electron] Failed writing file to disk', err)
         return false
       }
     default:

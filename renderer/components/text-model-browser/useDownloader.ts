@@ -61,8 +61,7 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
 
       // Mark download completed
       setProgressState(EProgressState.None)
-      setDownloadProgress(0)
-      setHasDownload(true)
+      setDownloadProgress(null)
       // Make record of installation in storage
       setModelConfig({
         modelId,
@@ -70,6 +69,7 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
         modified: downloadStarted?.modified,
         size: downloadStarted?.size,
       })
+      setHasDownload(true)
 
       return true
     } catch (err) {
@@ -101,7 +101,7 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
           break
         case 'download_progress_state':
           if (payload.downloadId === modelId) {
-            console.log('@@ [state] event', payload.eventId)
+            console.log('@@ [Downloader] state:', payload.eventId)
             setProgressState(payload.data)
           }
           break
