@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 // Modules
+const { listenApiEvents } = require('./utils/api')
 const { downloadChunkedFile } = require('./utils/downloader')
 const { EProgressState } = require('./utils/downloader')
 
@@ -15,20 +16,20 @@ const { BrowserWindow, app, dialog, ipcMain } = require('electron')
 const isDev = require('electron-is-dev')
 const prepareNext = require('electron-next')
 
-// Start the backend process for the universal api
 // https://www.freecodecamp.org/news/node-js-child-processes-everything-you-need-to-know-e69498fe970a/
 const apiPath = isDev ? './backends/main.py' : './includes/api/main-x86_64.py'
-const universalAPI = spawn('python', [apiPath])
 
-// Prepare the renderer once the app is ready
-app.on('ready', async () => {
-  // Start frontend
-  await prepareNext('./renderer')
+let universalAPI
+let mainWindow
 
-  const mainWindow = new BrowserWindow({
+// Create the browser window
+const createWindow = () => {
+  mainWindow = new BrowserWindow({
     title: 'HomebrewAi',
     width: isDev ? 1280 : 960,
     height: 640,
+    // backgroundColor: '#ffffff',
+    // icon: `file://${__dirname}/dist/assets/logo.png`,
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -37,6 +38,22 @@ app.on('ready', async () => {
       enableRemoteModule: false,
     },
   })
+}
+
+// Start the frontend
+const start = async () => {
+  // Start the backend process for the universal api
+  universalAPI = spawn('python', [apiPath])
+  // Listen to universal api events
+  listenApiEvents(universalAPI)
+  // Prepare the renderer for frontend
+  await prepareNext('./renderer')
+  // Start frontend browser window
+  createWindow()
+}
+
+app.on('ready', async () => {
+  await start()
 
   // Open dev tools if in dev env
   if (isDev) mainWindow.webContents.openDevTools()
@@ -52,28 +69,22 @@ app.on('ready', async () => {
   mainWindow.loadURL(url)
 })
 
-// Quit the app once all windows are closed
-// @TODO Add another logic for macOS since it doesnt close when window closes.
-app.on('window-all-closed', app.quit)
+// Window closed event
+app.on('closed', () => {
+  mainWindow = null
+})
 
-// Listen to universal api events
-universalAPI.on('spawn', () => {
-  console.log('[universal api] started!')
+// Quit the app once all windows are closed
+app.on('window-all-closed', () => {
+  // On MacOs, users expect the app to stay open when the window is closed
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
 })
-universalAPI.on('exit', (code, signal) => {
-  console.log('[universal api] exited with ' + `code ${code} and signal ${signal}`)
-})
-universalAPI.on('message', msg => {
-  console.log('[universal api] message:', msg)
-})
-universalAPI.on('error', err => {
-  console.log('[universal api] error:', err)
-})
-universalAPI.stdout.on('data', data => {
-  console.log(`[universal api] stdout:\n${data}`)
-})
-universalAPI.stderr.on('data', data => {
-  console.error(`[universal api] stderr:\n${data}`)
+
+app.on('activate', async () => {
+  // macOS specific close process
+  if (mainWindow === null) await start()
 })
 
 // listen the channel `message` and resend the received message to the renderer process

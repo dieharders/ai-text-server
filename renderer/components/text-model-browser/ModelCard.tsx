@@ -92,12 +92,12 @@ const ModelCard = ({
   const CheckHardware = () => {
     return (
       <button
-        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} text-sm text-cyan-400 hover:bg-blue-500 hover:text-white`}
+        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} text-sm text-blue-400 hover:bg-blue-500 hover:text-white`}
         onClick={() => {
           return true
         }}
       >
-        <p className="font-bold">Check Specs</p>
+        <p className="font-bold">Check</p>
       </button>
     )
   }
