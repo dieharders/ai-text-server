@@ -3,19 +3,18 @@
 import { useEffect, useState } from 'react'
 import textModels from '@/models/models'
 import AppsBrowser from '@/components/AppsBrowser'
-import TextInferenceConfigMenu from '@/components/text-inference-config/TextInferenceConfigMenu'
-import TextModelBrowserMenu from '@/components/text-model-browser/ModelBrowser'
-
-// Local Storage keys
-const ITEM_MODEL_PATH = 'model-path' // string
-const ITEM_CURRENT_MODEL = 'current-text-model' // string
-const ITEM_TEXT_MODELS = 'text-models-list' // array<string>
+import TextInferenceConfigMenu, {
+  CURRENT_DOWNLOAD_PATH,
+} from '@/components/text-inference-config/TextInferenceConfigMenu'
+import TextModelBrowserMenu, {
+  ITEM_CURRENT_MODEL,
+} from '@/components/text-model-browser/ModelBrowser'
 
 export default function Home() {
   // App vars
   const INFERENCE_IP = 'http://localhost:8008'
   const [isStarted, setIsStarted] = useState(false)
-  const [modelPath, setModelPath] = useState<string>('')
+  const [savePath, setSavePath] = useState<string>('')
   const [currentTextModel, setCurrentTextModel] = useState<string>('')
   // Handlers
   const onTestInference = async () => {
@@ -80,13 +79,13 @@ export default function Home() {
       }
       const path = await desktopDir()
       if (path) {
-        setModelPath(path)
-        localStorage.setItem(ITEM_MODEL_PATH, path)
+        setSavePath(path)
+        localStorage.setItem(CURRENT_DOWNLOAD_PATH, path)
       }
     }
     // Load path from persistent storage
-    const storedPath = localStorage.getItem(ITEM_MODEL_PATH)
-    storedPath && setModelPath(storedPath)
+    const storedPath = localStorage.getItem(CURRENT_DOWNLOAD_PATH)
+    storedPath && setSavePath(storedPath)
     const currModel = localStorage.getItem(ITEM_CURRENT_MODEL)
     currModel && setCurrentTextModel(currModel)
 
@@ -101,10 +100,9 @@ export default function Home() {
           ip={INFERENCE_IP}
           isStarted={isStarted}
           setIsStarted={setIsStarted}
-          modelPath={modelPath}
-          setModelPath={setModelPath}
+          savePath={savePath}
+          setSavePath={setSavePath}
           currentTextModelId={currentTextModel}
-          ITEM_MODEL_PATH={ITEM_MODEL_PATH}
         />
       </div>
 
@@ -133,10 +131,8 @@ export default function Home() {
         <TextModelBrowserMenu
           data={textModels}
           currentTextModel={currentTextModel}
-          modelPath={modelPath}
+          savePath={savePath}
           setCurrentTextModel={setCurrentTextModel}
-          ITEM_CURRENT_MODEL={ITEM_CURRENT_MODEL}
-          ITEM_TEXT_MODELS={ITEM_TEXT_MODELS}
         />
       )}
     </div>

@@ -2,6 +2,11 @@
 
 import { Dispatch, SetStateAction } from 'react'
 import textModels from '@/models/models'
+import { IModelConfig } from '@/components/text-model-browser/configs'
+import { INSTALLED_TEXT_MODELS } from '@/components/text-model-browser/ModelBrowser'
+
+// Local Storage keys
+export const CURRENT_DOWNLOAD_PATH = 'current-download-path'
 
 const cStyles = 'border-gray-300 dark:border-zinc-700 dark:bg-zinc-800/80 dark:from-inherit'
 
@@ -9,29 +14,25 @@ interface IPropsStart {
   isStarted: boolean
   setIsStarted: Dispatch<SetStateAction<boolean>>
   currentTextModelId: string
-  modelPath: string
   ip: string
 }
 /**
  * Start Inference Engine
  */
-const StartEngine = ({
-  isStarted,
-  setIsStarted,
-  currentTextModelId,
-  modelPath,
-  ip,
-}: IPropsStart) => {
+const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IPropsStart) => {
   const onStart = async () => {
     console.log('@@ Starting inference...')
 
     try {
-      const modelCard = textModels.find(item => item.id === currentTextModelId)
+      // Get installed model configs list
+      const data = window.localStorage.getItem(INSTALLED_TEXT_MODELS)
+      const modelConfigs = data ? JSON.parse(data) : []
+      const modelConfig = modelConfigs.find((item: IModelConfig) => item.id === currentTextModelId)
 
-      if (!modelCard) throw Error('Cannot find text model card data')
+      if (!modelConfig) throw Error('Cannot find text model config data')
 
       const options = {
-        filePath: `${modelPath}/${modelCard.fileName}`,
+        filePath: modelConfig.installPath,
       }
 
       const response = await fetch(ip + '/api/text/v1/inference/start', {
@@ -93,19 +94,13 @@ const CurrentModelDisplay = ({ isStarted, currentTextModelId }: IPropsDisplay) =
 
 interface IPropsFilePath {
   isStarted: boolean
-  modelPath: string
-  ITEM_MODEL_PATH: string
-  setModelPath: Dispatch<SetStateAction<string>>
+  savePath: string
+  setSavePath: Dispatch<SetStateAction<string>>
 }
 /**
  * Choose file path for ai model
  */
-const FilePathChooser = ({
-  isStarted,
-  modelPath,
-  ITEM_MODEL_PATH,
-  setModelPath,
-}: IPropsFilePath) => {
+const FilePathChooser = ({ isStarted, savePath, setSavePath }: IPropsFilePath) => {
   const textColor = isStarted ? 'text-gray-400' : 'text-inherit'
   const buttonTextColor = isStarted ? 'text-gray-400' : 'text-white-300'
 
@@ -144,7 +139,7 @@ const FilePathChooser = ({
       console.log('@@ Error: user selected multiple files.')
       return null
     } else {
-      console.log('@@ User selected a single file:', selected.filePaths[0])
+      console.log('@@ User selected a single folder:', selected.filePaths[0])
       return selected.filePaths[0]
     }
   }
@@ -159,7 +154,7 @@ const FilePathChooser = ({
       <span
         className={`text-md lg:text-lg overflow-hidden text-ellipsis whitespace-nowrap p-2 lg:p-4 ${textColor} ${cStyles} border`}
       >
-        {modelPath}
+        {savePath}
       </span>
       {/* Button */}
       <button
@@ -168,8 +163,8 @@ const FilePathChooser = ({
         disabled={isStarted}
         onClick={async () => {
           const path = await fileSelect(true)
-          path && setModelPath(path)
-          path && localStorage.setItem(ITEM_MODEL_PATH, path)
+          path && setSavePath(path)
+          path && localStorage.setItem(CURRENT_DOWNLOAD_PATH, path)
         }}
         className={`text-md lg:text-lg border ${buttonTextColor} ${cStyles} ${hoverStyle} rounded-l-none rounded-r-lg p-2 lg:p-4`}
       >
@@ -180,24 +175,22 @@ const FilePathChooser = ({
 }
 
 interface IProps {
-  ITEM_MODEL_PATH: string
   isStarted: boolean
   setIsStarted: Dispatch<SetStateAction<boolean>>
   currentTextModelId: string
-  modelPath: string
-  setModelPath: Dispatch<SetStateAction<string>>
+  savePath: string
+  setSavePath: Dispatch<SetStateAction<string>>
   ip: string
 }
 /**
  * Ai Inference config menu
  */
 const TextInferenceConfigMenu = ({
-  ITEM_MODEL_PATH,
   isStarted,
   setIsStarted,
   currentTextModelId,
-  modelPath,
-  setModelPath,
+  savePath,
+  setSavePath,
   ip,
 }: IProps) => {
   return (
@@ -206,16 +199,10 @@ const TextInferenceConfigMenu = ({
         isStarted={isStarted}
         setIsStarted={setIsStarted}
         currentTextModelId={currentTextModelId}
-        modelPath={modelPath}
         ip={ip}
       />
       <CurrentModelDisplay isStarted={isStarted} currentTextModelId={currentTextModelId} />
-      <FilePathChooser
-        isStarted={isStarted}
-        modelPath={modelPath}
-        setModelPath={setModelPath}
-        ITEM_MODEL_PATH={ITEM_MODEL_PATH}
-      />
+      <FilePathChooser isStarted={isStarted} savePath={savePath} setSavePath={setSavePath} />
     </div>
   )
 }

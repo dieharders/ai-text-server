@@ -2,6 +2,7 @@
 
 // Modules
 const { downloadChunkedFile } = require('./utils/downloader')
+const { EProgressState } = require('./utils/downloader')
 
 // Native Modules
 const { join } = require('path')
@@ -61,6 +62,16 @@ ipcMain.handle('api', async (event, eventName, options) => {
       return app.getPath(options)
     case 'getAppPath':
       return app.getAppPath()
+    // @TODO Implement
+    case 'delete_file':
+      if (!options?.path) return false
+      return true
+    // @TODO Implement
+    case 'pause_download':
+      return
+    // @TODO Implement
+    case 'resume_download':
+      return
     case 'download_chunked_file':
       // @TODO Check that file does not exist and that folder exists and can be written to (priveledges)
       try {
@@ -116,7 +127,7 @@ ipcMain.handle('api', async (event, eventName, options) => {
         if (result) {
           console.log('@@ File downloaded to path')
           fileStream.end()
-          updateProgressState('Completed')
+          updateProgressState(EProgressState.Completed)
           // @TODO Call a func to verify sha256 hash of file then set 'Completed'
         }
         return result

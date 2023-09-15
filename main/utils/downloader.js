@@ -1,5 +1,14 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
+const EProgressState = Object.freeze({
+  None: 'none',
+  Idle: 'idle',
+  Downloading: 'downloading',
+  Validating: 'validating',
+  Completed: 'completed',
+  Errored: 'errored',
+})
+
 // 3rd party Modules
 const axios = require('axios')
 
@@ -97,7 +106,7 @@ const downloadChunkedFile = async props => {
     }
 
     // Send chunks of a large file to Main Process for writing to disk
-    updateProgressState('Saving')
+    updateProgressState(EProgressState.Downloading)
     await onDownloadProgress(response.data, handleChunk)
     // Increment progress after saving chunk
     const chunkProgress = (i + 1) / numChunks
@@ -106,7 +115,10 @@ const downloadChunkedFile = async props => {
     updateProgress(progress)
   }
 
-  return true
+  return {
+    modified,
+    size,
+  }
 }
 
-module.exports = { downloadChunkedFile }
+module.exports = { downloadChunkedFile, EProgressState }

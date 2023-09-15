@@ -3,27 +3,23 @@
 import { Dispatch, SetStateAction } from 'react'
 import ModelCard from './ModelCard'
 import { IModelCard } from '@/models/models'
+import createConfig, { IModelConfig } from './configs'
 
 interface IProps {
   data: Array<IModelCard>
   currentTextModel: string
-  modelPath: string
-  ITEM_CURRENT_MODEL: string
-  ITEM_TEXT_MODELS: string
+  savePath: string
   setCurrentTextModel: Dispatch<SetStateAction<string>>
 }
+
+// LocalStorage keys
+export const INSTALLED_TEXT_MODELS = 'installed-list-text-models'
+export const ITEM_CURRENT_MODEL = 'current-text-model'
 
 /**
  * List of curated text inference models
  */
-const ModelBrowser = ({
-  data,
-  currentTextModel,
-  modelPath,
-  ITEM_CURRENT_MODEL,
-  ITEM_TEXT_MODELS,
-  setCurrentTextModel,
-}: IProps) => {
+const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }: IProps) => {
   // Handlers
   const onSelectTextModel = (val: string) => {
     console.log('@@ Set current text model:', val)
@@ -32,38 +28,55 @@ const ModelBrowser = ({
       localStorage.setItem(ITEM_CURRENT_MODEL, val)
     }
   }
-  const checkHasDownload = (modelId: string): boolean => {
-    if (typeof window === 'undefined') return false
-    // @TODO We should find a way to check the last saved path for file existence
-    const data = localStorage.getItem(ITEM_TEXT_MODELS)
+  const onDownloadComplete = () => {
+    console.log('@@ [Downloader] File saved successfully!')
+  }
+  // Look up the installed model.
+  const getModelConfig = (modelId: string): IModelConfig | undefined => {
+    if (typeof window === 'undefined') return undefined
+
+    const data = localStorage.getItem(INSTALLED_TEXT_MODELS)
     const list = data ? JSON.parse(data) : []
-    const matched = list.find((item: string) => item === modelId)
+    const matched = list.find((item: IModelConfig) => item.id === modelId)
+    console.log('@@ modelConfig:', matched)
+
     return matched
   }
-  const onDownloadComplete = (modelId: string) => {
-    const data = localStorage.getItem(ITEM_TEXT_MODELS)
+
+  interface IConfigProps {
+    modelId: string
+    savePath: string
+    modified: string
+    size: number
+  }
+  // Create new entry for the installed model and record the install path.
+  const setModelConfig = ({ modelId, savePath, modified, size }: IConfigProps) => {
+    // Get the stored list of installed configs
+    const data = localStorage.getItem(INSTALLED_TEXT_MODELS)
     const list = data ? JSON.parse(data) : []
-    list.push(modelId)
+    // Create new config
+    const config = createConfig({ modelId, savePath, modified, size })
+    // Store new entry
+    list.push(config)
     const arrayStr = JSON.stringify(list)
-    localStorage.setItem(ITEM_TEXT_MODELS, arrayStr)
+    localStorage.setItem(INSTALLED_TEXT_MODELS, arrayStr)
+
+    console.log('@@ [localStorage] Created new config:', config)
   }
 
+  // Components
+  // @TODO Put in useMemo()
   const cards = data?.map(item => {
     return (
       <ModelCard
         key={item.id}
-        id={item.id}
-        name={item.name}
-        description={item.description}
-        fileSize={item.fileSize}
-        ramSize={item?.ramSize}
-        provider={item.provider}
-        license={item.license}
-        downloadUrl={item.downloadUrl}
-        saveToPath={modelPath}
-        fileName={item.fileName}
+        modelCard={item}
+        saveToPath={savePath}
         isLoaded={currentTextModel === item.id}
-        initialHasDownload={checkHasDownload(item.id)}
+        getModelConfig={() => {
+          return getModelConfig(item.id)
+        }}
+        setModelConfig={setModelConfig}
         onSelectModel={onSelectTextModel}
         onDownloadComplete={onDownloadComplete}
       ></ModelCard>

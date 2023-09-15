@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react'
+import { IConfigProps, IModelConfig } from './configs'
 
-enum EProgressState {
-  Idle = 'Idle',
-  Downloading = 'Downloading',
-  Saving = 'Saving',
-  Validating = 'Validating',
-  Completed = 'Completed',
+export enum EProgressState {
+  None = 'none',
+  Idle = 'idle',
+  Downloading = 'downloading',
+  Validating = 'validating',
+  Completed = 'completed',
+  Errored = 'errored',
 }
 
 interface IProps {
-  initialHasDownload: boolean
   modelId: string
+  setModelConfig: (props: IConfigProps) => void
 }
 
-const useDownloader = ({ initialHasDownload, modelId }: IProps) => {
-  const [progressState, setProgressState] = useState<EProgressState>(EProgressState.Idle)
+const useDownloader = ({ modelId, setModelConfig }: IProps) => {
+  const [config, setConfig] = useState<IModelConfig | undefined>(undefined)
+  const [progressState, setProgressState] = useState<EProgressState>(EProgressState.None)
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
-  const [hasDownload, setHasDownload] = useState<boolean>(initialHasDownload)
+  const [hasDownload, setHasDownload] = useState<boolean>(false)
 
   /**
    * Start the download of the chosen model.
@@ -55,12 +58,18 @@ const useDownloader = ({ initialHasDownload, modelId }: IProps) => {
       const fileOptions = { path: filePath, name: fileName, url, id: modelId }
       const downloadStarted = await window.electron.api('download_chunked_file', fileOptions)
       if (!downloadStarted) throw Error('Failed to download file.')
-      console.log('@@ DL started', downloadStarted)
 
       // Mark download completed
-      // setProgressState(EProgressState.Idle)
-      // setDownloadProgress(0)
-      // setHasDownload(true)
+      setProgressState(EProgressState.None)
+      setDownloadProgress(0)
+      setHasDownload(true)
+      // Make record of installation in storage
+      setModelConfig({
+        modelId,
+        savePath: path,
+        modified: downloadStarted?.modified,
+        size: downloadStarted?.size,
+      })
 
       return true
     } catch (err) {
@@ -68,6 +77,10 @@ const useDownloader = ({ initialHasDownload, modelId }: IProps) => {
       return
     }
   }
+
+  const cancelDownload = () => {}
+  const pauseDownload = () => {}
+  const resumeDownload = () => {}
 
   // Listen to main process for `progress` events
   useEffect(() => {
@@ -105,9 +118,15 @@ const useDownloader = ({ initialHasDownload, modelId }: IProps) => {
 
   return {
     hasDownload,
+    setHasDownload,
+    config,
+    setConfig,
     progressState,
     downloadProgress,
     onModelDownload,
+    pauseDownload,
+    resumeDownload,
+    cancelDownload,
   }
 }
 

@@ -1,49 +1,52 @@
 'use client'
 
-import useDownloader from './useDownloader'
+import useDownloader, { EProgressState } from './useDownloader'
+import { IModelCard } from '@/models/models'
+import { useEffect } from 'react'
+import { IConfigProps, IModelConfig } from './configs'
 
 interface IProps {
-  id: string
-  name: string
-  description: string
-  fileSize: number
-  ramSize?: number
-  downloadUrl: string
-  saveToPath: string
-  fileName: string
-  license: string
-  provider: string
+  modelCard: IModelCard
   isLoaded: boolean
-  initialHasDownload: boolean
+  saveToPath: string
   onSelectModel: (modelId: string) => void
-  onDownloadComplete: (modelId: string) => void
+  onDownloadComplete: () => void
+  getModelConfig: () => IModelConfig | undefined
+  setModelConfig: (props: IConfigProps) => void
 }
 
 const ModelCard = ({
-  id,
-  name,
-  description,
-  fileSize,
-  ramSize,
-  downloadUrl,
+  modelCard,
   saveToPath,
-  fileName,
-  license,
-  provider,
   isLoaded,
-  initialHasDownload,
   onSelectModel,
   onDownloadComplete,
+  getModelConfig,
+  setModelConfig,
 }: IProps) => {
+  // Vars
+  const { id, name, description, fileSize, ramSize, downloadUrl, fileName, license, provider } =
+    modelCard
   // Styling
   const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
   const colorStyles =
     'border-b border-gray-300 bg-gradient-to-b from-zinc-200 dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit'
 
   // Downloader Hook
-  const { hasDownload, downloadProgress, progressState, onModelDownload } = useDownloader({
-    initialHasDownload,
+  const {
+    hasDownload,
+    setHasDownload,
+    config,
+    setConfig,
+    downloadProgress,
+    progressState,
+    onModelDownload,
+    pauseDownload,
+    cancelDownload,
+    resumeDownload,
+  } = useDownloader({
     modelId: id,
+    setModelConfig,
   })
 
   /**
@@ -57,7 +60,7 @@ const ModelCard = ({
         : 'hover:cursor-not-allowed'
     return (
       <button
-        className={`h-12 rounded-lg border border-gray-300 text-center dark:border-neutral-800 dark:bg-zinc-800/30 ${hoverStyle} ${textColor}`}
+        className={`h-12 w-full ${sizingStyles} rounded-lg border border-gray-300 text-center dark:border-neutral-800 dark:bg-zinc-800/30 ${hoverStyle} ${textColor}`}
         disabled={isLoaded || !hasDownload}
         onClick={() => onSelectModel(id)}
       >
@@ -76,13 +79,66 @@ const ModelCard = ({
         onClick={async () => {
           // Download model from huggingface
           const success = await onModelDownload(downloadUrl, saveToPath, fileName)
-          if (success) {
-            // onDownloadComplete(id)
-            console.log('@@ File saved successfully!')
-          }
+          if (success) onDownloadComplete()
         }}
       >
         <p className="font-bold">Download</p>
+      </button>
+    )
+  }
+  /**
+   * Check the user's hardware specs to see if they can run the specified model.
+   */
+  const CheckHardware = () => {
+    return (
+      <button
+        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} text-sm text-cyan-400 hover:bg-blue-500 hover:text-white`}
+        onClick={() => {
+          return true
+        }}
+      >
+        <p className="font-bold">Check Specs</p>
+      </button>
+    )
+  }
+  /**
+   * Stop the download and delete cached file.
+   */
+  const CancelDownloadButton = () => {
+    return (
+      <button
+        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} text-sm text-white hover:bg-red-500 hover:text-white`}
+        onClick={cancelDownload}
+      >
+        <p className="font-bold">Cancel</p>
+      </button>
+    )
+  }
+  /**
+   * Pause the download
+   */
+  const PauseButton = () => {
+    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-400'
+    return (
+      <button
+        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
+        onClick={pauseDownload}
+      >
+        <p className="font-bold">Pause</p>
+      </button>
+    )
+  }
+  /**
+   * Resume the download
+   */
+  const ResumeButton = () => {
+    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-400'
+    return (
+      <button
+        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
+        onClick={resumeDownload}
+      >
+        <p className="font-bold">Resume</p>
       </button>
     )
   }
@@ -94,8 +150,14 @@ const ModelCard = ({
       <button
         className={`h-12 w-full rounded-lg ${colorStyles} ${sizingStyles} text-sm text-red-500 hover:bg-red-500 hover:text-red-900`}
         onClick={async () => {
-          // @TODO Add logic to delete file
-          console.log('@@ File removed successfully!', id)
+          // @TODO Ask user before deleting
+          const confirm = async (_msg: string) => true
+          if (!(await confirm(`Deleting ${name}?`))) {
+            return
+          }
+          // Delete file
+          const success = await window.electron.api('delete_file', { path: config?.installPath })
+          if (success) console.log('@@ File removed successfully!', id)
         }}
       >
         <p className="font-bold">Remove</p>
@@ -105,24 +167,60 @@ const ModelCard = ({
   /**
    * Render indicator of the total progress of download
    */
-  const DownloadProgressBar = ({ progress }: { progress: number }) => {
+  const DownloadProgressBar = () => {
+    const progress = downloadProgress && `${downloadProgress}%`
     return (
-      <div className="w-full">
+      <div className="w-full  self-end">
         <div className="mb-1 flex justify-between">
           <span className="font-mono text-sm font-medium text-yellow-600">
-            {`${progress}% ${progressState}`}
+            <span className="capitalize">{progressState}</span> {progress}
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-          <div className="h-2 rounded-full bg-yellow-400" style={{ width: `${progress}%` }}></div>
+          <div
+            className="h-2 rounded-full bg-yellow-400"
+            style={{ width: `${downloadProgress}%` }}
+          ></div>
         </div>
       </div>
     )
   }
+  const installedMenu = (
+    <div className="flex flex-row gap-4">
+      <LoadButton />
+      <DeleteButton id={id} />
+    </div>
+  )
+  const uninstalledMenu = (
+    <div className="flex flex-row gap-4">
+      <DownloadButton />
+      <CheckHardware />
+    </div>
+  )
+  const inProgressMenu = (
+    <div className="flex flex-row gap-4">
+      {progressState === EProgressState.Downloading && <PauseButton />}
+      {progressState === EProgressState.Idle && <ResumeButton />}
+      <CancelDownloadButton />
+      <DownloadProgressBar />
+    </div>
+  )
+  const renderDownloadPane = () => {
+    if (hasDownload) return installedMenu
+    if (downloadProgress && downloadProgress >= 0) return inProgressMenu
+    return uninstalledMenu
+  }
+
+  // Determine if we have installed this model already
+  useEffect(() => {
+    const config = getModelConfig()
+    setHasDownload(config ? true : false)
+    setConfig(config)
+  }, [getModelConfig, setConfig, setHasDownload])
 
   return (
     <div className="flex flex-col items-stretch justify-start gap-6 rounded-md border border-gray-300 p-6 dark:border-neutral-800 dark:bg-zinc-900 lg:flex-row">
-      {/* Info/Stats & Download */}
+      {/* Info/Stats */}
       <div className="inline-flex w-full shrink-0 flex-col items-stretch justify-start gap-2 break-words p-0 lg:w-72">
         <h1 className="mb-2 text-left text-xl leading-tight">{name}</h1>
         <p className="text-md overflow-hidden text-ellipsis whitespace-nowrap text-left">
@@ -139,15 +237,8 @@ const ModelCard = ({
         <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
           License: {license}
         </p>
-        <div className="mb-0 mt-auto">
-          {hasDownload ? (
-            <DeleteButton id={id} />
-          ) : downloadProgress !== null && downloadProgress >= 0 ? (
-            <DownloadProgressBar progress={downloadProgress} />
-          ) : (
-            <DownloadButton />
-          )}
-        </div>
+        {/* Load | Download | Progress */}
+        <div className="mb-0 mt-auto">{renderDownloadPane()}</div>
       </div>
       {/* Description & Load */}
       <div className="grow-1 inline-flex w-full flex-col items-stretch justify-between gap-4 p-0">
@@ -159,7 +250,6 @@ const ModelCard = ({
             <div className="absolute bottom-48 left-0 h-full w-full bg-gradient-to-t from-zinc-900 from-10% to-transparent to-35%"></div>
           </div>
         </div>
-        <LoadButton />
       </div>
     </div>
   )
