@@ -1,6 +1,6 @@
 const listenApiEvents = child => {
   child.on('spawn', () => {
-    console.log('[universal api] started!')
+    console.log('[universal api] process started!')
   })
   child.on('exit', (code, signal) => {
     console.log('[universal api] exited with ' + `code ${code} and signal ${signal}`)

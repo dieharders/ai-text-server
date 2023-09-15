@@ -44,12 +44,12 @@ export default function Home() {
   // Company credits (built by)
   const renderCredits = () => {
     return (
-      <div className="fixed bottom-0 left-0 z-30 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white font-mono text-sm dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
+      <div className="fixed bottom-0 left-0 z-30 flex h-36 w-full flex-col items-center justify-end bg-gradient-to-t from-white via-white font-mono text-sm dark:from-zinc-900 dark:via-zinc-900 lg:static lg:h-auto lg:w-auto lg:bg-none">
         <button
           // onClick={onTestInference}
-          className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
+          className="pointer-events-none flex place-items-center gap-2 p-4 lg:pointer-events-auto lg:p-0"
         >
-          By{' '}
+          Built with 🍺{' '}
           {/* <Image
               src="/vercel.svg"
               alt="Vercel Logo"
@@ -60,6 +60,18 @@ export default function Home() {
             /> */}
           <h2 className="text-md">Spread Shot Studios</h2>
         </button>
+        <p className="pb-4">
+          Refer to{' '}
+          <a
+            href="http://localhost:8008/docs"
+            target="_blank"
+            className="text-yellow-400"
+            rel="noreferrer"
+          >
+            http://localhost:8008/docs
+          </a>{' '}
+          for api docs
+        </p>
       </div>
     )
   }

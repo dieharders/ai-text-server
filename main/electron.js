@@ -13,7 +13,7 @@ const fs = require('fs')
 const fsp = require('fs/promises')
 
 // Packages
-const { BrowserWindow, app, dialog, ipcMain } = require('electron')
+const { BrowserWindow, app, dialog, ipcMain, shell } = require('electron')
 const isDev = require('electron-is-dev')
 const prepareNext = require('electron-next')
 
@@ -51,14 +51,30 @@ const start = async () => {
   await prepareNext('./renderer')
   // Start frontend browser window
   createWindow()
-}
-
-app.on('ready', async () => {
-  await start()
-
   // Open dev tools if in dev env
   if (isDev) mainWindow.webContents.openDevTools()
-
+  // Configure opening new windows from links
+  mainWindow.webContents.setWindowOpenHandler(async ({ url }) => {
+    // open url in a browser and prevent default
+    try {
+      await shell.openExternal(url)
+    } catch (err) {
+      console.log('@@ [Electron] Failed to open external website')
+    }
+    if (url.startsWith('about_blank')) {
+      return { action: 'allow' }
+    }
+    return { action: 'deny' }
+  })
+  // Window closed event
+  mainWindow.on('closed', () => {
+    console.log('@@ [App] closed')
+    // Dereference the window object, usually you would store windows
+    // in an array if your app supports multi windows, this is the time
+    // when you should delete the corresponding element.
+    mainWindow = null
+  })
+  // Load the html for frontend
   const url = isDev
     ? 'http://localhost:8000'
     : format({
@@ -68,24 +84,31 @@ app.on('ready', async () => {
       })
 
   mainWindow.loadURL(url)
-})
+}
 
-// Window closed event
-app.on('closed', () => {
-  mainWindow = null
+// Normal start process
+app.on('ready', async () => {
+  console.log('@@ [App] ready')
+  await start()
 })
 
 // Quit the app once all windows are closed
 app.on('window-all-closed', () => {
-  // On MacOs, users expect the app to stay open when the window is closed
+  console.log('@@ [App] all windows closed')
+  // On MacOs, users expect the app to stay open in bg when the window is closed
   if (process.platform !== 'darwin') {
+    console.log('@@ [App] quit')
     app.quit()
   }
 })
 
+// On macOS it's common to re-create a window in the app when the
+// dock icon is clicked and there are no other windows open.
 app.on('activate', async () => {
-  // macOS specific close process
-  if (mainWindow === null) await start()
+  if (mainWindow === null) {
+    console.log('@@ [App] activate')
+    await start()
+  }
 })
 
 // listen the channel `message` and resend the received message to the renderer process
