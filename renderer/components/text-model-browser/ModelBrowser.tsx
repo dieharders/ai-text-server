@@ -38,7 +38,6 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
     const data = localStorage.getItem(INSTALLED_TEXT_MODELS)
     const list = data ? JSON.parse(data) : []
     const matched = list.find((item: IModelConfig) => item.id === modelId)
-    console.log('@@ modelConfig:', matched)
 
     return matched
   }

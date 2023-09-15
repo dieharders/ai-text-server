@@ -5,6 +5,7 @@ const { downloadChunkedFile } = require('./utils/downloader')
 const { EProgressState } = require('./utils/downloader')
 
 // Native Modules
+const { spawn } = require('child_process')
 const { join } = require('path')
 const { format } = require('url')
 const fs = require('fs')
@@ -14,8 +15,14 @@ const { BrowserWindow, app, dialog, ipcMain } = require('electron')
 const isDev = require('electron-is-dev')
 const prepareNext = require('electron-next')
 
+// Start the backend process for the universal api
+// https://www.freecodecamp.org/news/node-js-child-processes-everything-you-need-to-know-e69498fe970a/
+const apiPath = isDev ? './backends/main.py' : './includes/api/main-x86_64.py'
+const universalAPI = spawn('python', [apiPath])
+
 // Prepare the renderer once the app is ready
 app.on('ready', async () => {
+  // Start frontend
   await prepareNext('./renderer')
 
   const mainWindow = new BrowserWindow({
@@ -24,10 +31,10 @@ app.on('ready', async () => {
     height: 640,
     autoHideMenuBar: true,
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
       preload: join(__dirname, 'preload.js'),
-      // enableRemoteModule: true,
+      enableRemoteModule: false,
     },
   })
 
@@ -46,7 +53,28 @@ app.on('ready', async () => {
 })
 
 // Quit the app once all windows are closed
+// @TODO Add another logic for macOS since it doesnt close when window closes.
 app.on('window-all-closed', app.quit)
+
+// Listen to universal api events
+universalAPI.on('spawn', () => {
+  console.log('[universal api] started!')
+})
+universalAPI.on('exit', (code, signal) => {
+  console.log('[universal api] exited with ' + `code ${code} and signal ${signal}`)
+})
+universalAPI.on('message', msg => {
+  console.log('[universal api] message:', msg)
+})
+universalAPI.on('error', err => {
+  console.log('[universal api] error:', err)
+})
+universalAPI.stdout.on('data', data => {
+  console.log(`[universal api] stdout:\n${data}`)
+})
+universalAPI.stderr.on('data', data => {
+  console.error(`[universal api] stderr:\n${data}`)
+})
 
 // listen the channel `message` and resend the received message to the renderer process
 ipcMain.on('message', (event, message) => {
