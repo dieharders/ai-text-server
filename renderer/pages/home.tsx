@@ -105,7 +105,7 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="xs:p-0 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:p-24">
+    <div className="xs:p-0 mb-32 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:mb-0 lg:p-24">
       {/* Ai Inference config menu */}
       <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
         <TextInferenceConfigMenu

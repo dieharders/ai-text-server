@@ -2,7 +2,7 @@
 
 import useDownloader, { EProgressState } from './useDownloader'
 import { IModelCard } from '@/models/models'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { IConfigProps, IModelConfig } from './configs'
 import { removeTextModelConfig } from '@/utils/localStorage'
 
@@ -26,6 +26,7 @@ const ModelCard = ({
   setModelConfig,
 }: IProps) => {
   // Vars
+  const [startup, setStartup] = useState(false)
   const { id, name, description, fileSize, ramSize, downloadUrl, fileName, license, provider } =
     modelCard
   // Styling
@@ -143,6 +144,35 @@ const ModelCard = ({
       </button>
     )
   }
+  const deleteAction = useCallback(
+    async (id: string) => {
+      // Ask user before deleting
+      const options = {
+        type: 'question',
+        buttons: ['Yes', 'Cancel'],
+        defaultId: 1,
+        title: 'Delete file',
+        message: `Do you really want to delete file ${name}?`,
+        detail: 'Confirm you want to remove this Ai text model',
+      }
+      const confirmed = await window.electron.api('showConfirmDialog', options)
+      // "No" was pressed
+      if (confirmed !== 0) return
+      // Delete file
+      const success = await window.electron.api('delete_file', { path: config?.savePath })
+      if (success) {
+        // Remove config record
+        removeTextModelConfig(id)
+        console.log('@@ File removed successfully!', config?.savePath)
+        // Set the state
+        setHasDownload(false)
+        return true
+      }
+      console.log('@@ File removal failed!', success)
+      return false
+    },
+    [config, name, setHasDownload],
+  )
   /**
    * Remove the model file
    */
@@ -150,30 +180,7 @@ const ModelCard = ({
     return (
       <button
         className={`h-12 w-full rounded-lg ${colorStyles} ${sizingStyles} text-sm text-red-500 hover:bg-red-500 hover:text-red-900`}
-        onClick={async () => {
-          // Ask user before deleting
-          const options = {
-            type: 'question',
-            buttons: ['Yes', 'Cancel'],
-            defaultId: 1,
-            title: 'Delete file',
-            message: `Do you really want to delete file ${name}?`,
-            detail: 'Confirm you want to remove this Ai text model',
-          }
-          const confirmed = await window.electron.api('showConfirmDialog', options)
-          // "No" was pressed
-          if (confirmed !== 0) return
-          // Delete file
-          const success = await window.electron.api('delete_file', { path: config?.installPath })
-          if (success) {
-            // Remove config record
-            removeTextModelConfig(id)
-            console.log('@@ File removed successfully!', config?.installPath)
-            // Set the state
-            setHasDownload(false)
-            return true
-          }
-        }}
+        onClick={async () => deleteAction(id)}
       >
         <p className="font-bold">Remove</p>
       </button>
@@ -228,10 +235,13 @@ const ModelCard = ({
 
   // Determine if we have installed this model already
   useEffect(() => {
-    const config = getModelConfig()
-    setHasDownload(config ? true : false)
-    setConfig(config)
-  }, [getModelConfig, setConfig, setHasDownload])
+    const model = getModelConfig()
+    if (!startup) {
+      setHasDownload(model ? true : false)
+      setStartup(true)
+    }
+    setConfig(model)
+  }, [getModelConfig, setConfig, setHasDownload, hasDownload, startup])
 
   return (
     <div className="flex flex-col items-stretch justify-start gap-6 rounded-md border border-gray-300 p-6 dark:border-neutral-800 dark:bg-zinc-900 lg:flex-row">

@@ -1,6 +1,6 @@
 export interface IModelConfig {
   id: string
-  installPath: string
+  savePath: string
   numTimesRun: number
   isFavorited: boolean
   modified: string
@@ -20,7 +20,7 @@ export interface IConfigProps {
 const createConfig = ({ modelId, savePath, modified, size }: IConfigProps) => {
   const defaultConfig: IModelConfig = {
     id: modelId,
-    installPath: savePath || '',
+    savePath: savePath || '',
     numTimesRun: 0,
     isFavorited: false,
     modified: modified || '',

@@ -32,42 +32,24 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
           `No arguments provided! filePath: ${filePath} | url: ${url} | fileName: ${fileName}`,
         )
 
-      const exists = async (path: string) => {
-        // @TODO Implement from electron
-        // ...
-        console.log('@@ exists?', path)
-        return false
-      }
-      const createDir = async (path: string) => {
-        // @TODO Implement from electron
-        // ...
-        console.log('@@ createDir', path)
-        return
-      }
-      // Check that file and target path exists
-      const path = `${filePath}\\${fileName}` // @TODO Need to join the paths correctly
-      const fileExists = await exists(path)
-      if (fileExists) throw Error('File already exists')
-      // const pathExists = await exists(filePath)
-      // if (!pathExists) await createDir(filePath)
-
       // Start download
       setProgressState(EProgressState.Downloading)
 
       // Download file in Main Process
       const fileOptions = { path: filePath, name: fileName, url, id: modelId }
-      const downloadStarted = await window.electron.api('download_chunked_file', fileOptions)
-      if (!downloadStarted) throw Error('Failed to download file.')
+      const result = await window.electron.api('download_chunked_file', fileOptions)
+      if (!result) throw Error('Failed to download file.')
 
-      // Mark download completed
+      // Reset downloader state
       setProgressState(EProgressState.None)
       setDownloadProgress(null)
+
       // Make record of installation in storage
       setModelConfig({
         modelId,
-        savePath: path,
-        modified: downloadStarted?.modified,
-        size: downloadStarted?.size,
+        savePath: result?.savePath,
+        modified: result?.modified,
+        size: result?.size,
       })
       setHasDownload(true)
 

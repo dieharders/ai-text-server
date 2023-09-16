@@ -2,8 +2,12 @@
 
 // Modules
 const { listenApiEvents } = require('./utils/api')
-const { downloadChunkedFile } = require('./utils/downloader')
-const { EProgressState } = require('./utils/downloader')
+const {
+  downloadChunkedFile,
+  EProgressState,
+  updateProgress,
+  updateProgressState,
+} = require('./utils/downloader')
 
 // Native Modules
 const { spawn } = require('child_process')
@@ -128,9 +132,14 @@ ipcMain.handle('api', async (event, eventName, options) => {
     case 'getAppPath':
       return app.getAppPath()
     case 'delete_file':
-      if (!options?.path) return false
+      if (!options?.path) {
+        console.log('@@ [Electron] No path passed', options.path)
+        return false
+      }
       try {
-        await fsp.unlink(options.path)
+        // Remove double slashes
+        const parsePath = options.path.replace(/\\\\/g, '\\')
+        await fsp.unlink(parsePath)
         console.log('@@ [Electron] Deleted file from:', options.path)
         return true
       } catch (err) {
@@ -146,34 +155,6 @@ ipcMain.handle('api', async (event, eventName, options) => {
     case 'download_chunked_file':
       // @TODO Check that file does not exist and that folder exists and can be written to (priveledges)
       try {
-        /**
-         * Send ipc command to front-end to update total progress
-         * @param {number} progress
-         * @returns
-         */
-        const updateProgress = progress => {
-          console.log('@@ [chunk progress]:', progress)
-          event.sender.send('message', {
-            eventId: 'download_progress',
-            downloadId: options.id,
-            data: progress,
-          })
-          return progress
-        }
-        /**
-         * Send ipc command to front-end to update state of progress
-         * @param {string} state
-         * @returns
-         */
-        const updateProgressState = state => {
-          console.log('@@ [updateProgressState]:', state)
-          event.sender.send('message', {
-            eventId: 'download_progress_state',
-            downloadId: options.id,
-            data: state,
-          })
-          return state
-        }
         // Create file stream
         const writePath = join(options.path, options.name)
         console.log('@@ [Electron] Created write stream:', writePath, 'url:', options.url)
@@ -190,20 +171,21 @@ ipcMain.handle('api', async (event, eventName, options) => {
         // Download file
         const result = await downloadChunkedFile({
           url: options.url,
-          updateProgress,
-          updateProgressState,
+          updateProgress: value => updateProgress(event, value, options),
+          updateProgressState: value => updateProgressState(event, value, options),
           handleChunk,
         })
 
         if (result) {
           console.log('@@ [Electron] File downloaded to path')
           fileStream.end()
-          updateProgressState(EProgressState.Completed)
+          updateProgressState(event, EProgressState.Completed, options)
           // @TODO Call a func to verify sha256 hash of file then set 'Completed'
         }
-        return result
+        return { ...result, savePath: writePath }
       } catch (err) {
         console.log('@@ [Electron] Failed writing file to disk', err)
+        updateProgressState(event, EProgressState.Errored, options)
         return false
       }
     default:

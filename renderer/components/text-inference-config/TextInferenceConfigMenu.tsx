@@ -26,13 +26,13 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
     try {
       // Get installed model configs list
       const data = window.localStorage.getItem(INSTALLED_TEXT_MODELS)
-      const modelConfigs = data ? JSON.parse(data) : []
-      const modelConfig = modelConfigs.find((item: IModelConfig) => item.id === currentTextModelId)
+      const modelConfigs: Array<IModelConfig> = data ? JSON.parse(data) : []
+      const modelConfig = modelConfigs.find(item => item.id === currentTextModelId)
 
       if (!modelConfig) throw Error('Cannot find text model config data')
 
       const options = {
-        filePath: modelConfig.installPath,
+        filePath: modelConfig.savePath,
       }
 
       const response = await fetch(ip + '/api/text/v1/inference/start', {

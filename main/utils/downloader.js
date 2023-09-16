@@ -77,6 +77,40 @@ const onDownloadProgress = async (chunk, handleChunk) => {
 }
 
 /**
+ * Send ipc command to front-end to update total progress
+ * @param {function} send
+ * @param {number} progress
+ * @param {object} options
+ * @returns
+ */
+const updateProgress = (event, progress, options) => {
+  console.log('@@ [chunk progress]:', progress, options)
+  event.sender.send('message', {
+    eventId: 'download_progress',
+    downloadId: options?.id,
+    data: progress,
+  })
+  return progress
+}
+
+/**
+ * Send ipc command to front-end to update state of progress
+ * @param {function} send
+ * @param {string} state
+ * @param {object} options
+ * @returns
+ */
+const updateProgressState = (event, state, options) => {
+  console.log('@@ [updateProgressState]:', state, options)
+  event.sender.send('message', {
+    eventId: 'download_progress_state',
+    downloadId: options?.id,
+    data: state,
+  })
+  return state
+}
+
+/**
  * Download a large file in chunks and save to disk as stream.
  * @param {any} props
  * @returns
@@ -121,4 +155,4 @@ const downloadChunkedFile = async props => {
   }
 }
 
-module.exports = { downloadChunkedFile, EProgressState }
+module.exports = { downloadChunkedFile, EProgressState, updateProgress, updateProgressState }
