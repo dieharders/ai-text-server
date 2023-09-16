@@ -153,36 +153,57 @@ ipcMain.handle('api', async (event, eventName, options) => {
     case 'resume_download':
       return
     case 'download_chunked_file':
-      // @TODO Check that file does not exist and that folder exists and can be written to (priveledges)
       try {
-        // Create file stream
-        const writePath = join(options.path, options.name)
-        console.log('@@ [Electron] Created write stream:', writePath, 'url:', options.url)
-        const fileStream = fs.createWriteStream(writePath)
-        /**
-         * Save chunk to stream
-         * @param {Uint8Array} chunk
-         * @returns
-         */
-        const handleChunk = async chunk => {
-          console.log('@@ [saving chunk...]')
-          return fileStream.write(chunk)
-        }
-        // Download file
-        const result = await downloadChunkedFile({
-          url: options.url,
-          updateProgress: value => updateProgress(event, value, options),
-          updateProgressState: value => updateProgressState(event, value, options),
-          handleChunk,
-        })
-
-        if (result) {
-          console.log('@@ [Electron] File downloaded to path')
+        const writeStreamFile = async () => {
+          // Create file stream
+          const writePath = join(options.path, options.name)
+          console.log('@@ [Electron] Created write stream:', writePath, 'url:', options.url)
+          const fileStream = fs.createWriteStream(writePath)
+          /**
+           * Save chunk to stream
+           * @param {Uint8Array} chunk
+           * @returns
+           */
+          const handleChunk = async chunk => {
+            console.log('@@ [saving chunk...]')
+            return fileStream.write(chunk)
+          }
+          // Download file
+          const result = await downloadChunkedFile({
+            url: options.url,
+            updateProgress: value => updateProgress(event, value, options),
+            updateProgressState: value => updateProgressState(event, value, options),
+            handleChunk,
+          })
+          // Close stream
           fileStream.end()
-          updateProgressState(event, EProgressState.Completed, options)
-          // @TODO Call a func to verify sha256 hash of file then set 'Completed'
+          // Finish up
+          return new Promise((resolve, reject) => {
+            // Check download result
+            if (result) {
+              console.log('@@ [Electron] File downloaded successfully')
+            } else {
+              console.log('@@ [Electron] File failed to download')
+              reject(null)
+            }
+            // Stream closed event
+            fileStream.on('finish', () => {
+              console.log('@@ [Electron] File saved to disk successfully')
+              resolve({ ...result, savePath: writePath })
+            })
+            // Error in stream
+            fileStream.on('error', err => {
+              console.log('@@ [Electron] File save failed:', err)
+              reject(null)
+            })
+          })
         }
-        return { ...result, savePath: writePath }
+        const config = await writeStreamFile()
+        // @TODO Call a func to verify sha256 hash of file then set 'Completed'
+        // ...
+        // Done
+        updateProgressState(event, EProgressState.Completed, options)
+        return config
       } catch (err) {
         console.log('@@ [Electron] Failed writing file to disk', err)
         updateProgressState(event, EProgressState.Errored, options)
