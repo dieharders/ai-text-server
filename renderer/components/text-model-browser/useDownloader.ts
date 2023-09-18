@@ -25,7 +25,12 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
    * Start the download of the chosen model.
    * Could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
    */
-  const onModelDownload = async (url: string, filePath: string, fileName: string) => {
+  const onModelDownload = async (
+    url: string,
+    filePath: string,
+    fileName: string,
+    signature = '',
+  ) => {
     try {
       if (!filePath || !url || !fileName)
         throw Error(
@@ -36,7 +41,7 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
       setProgressState(EProgressState.Downloading)
 
       // Download file in Main Process
-      const fileOptions = { path: filePath, name: fileName, url, id: modelId }
+      const fileOptions = { path: filePath, name: fileName, url, id: modelId, signature }
       const result = await window.electron.api('download_chunked_file', fileOptions)
       if (!result) throw Error('Failed to download file.')
 
@@ -49,6 +54,7 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
         modelId,
         savePath: result?.savePath,
         modified: result?.modified,
+        validation: result?.validation,
         size: result?.size,
       })
       setHasDownload(true)

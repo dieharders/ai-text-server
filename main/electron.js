@@ -154,18 +154,30 @@ ipcMain.handle('api', async (event, eventName, options) => {
       return
     case 'download_chunked_file':
       try {
+        const verifiedSig = options.signature
+
         const writeStreamFile = async () => {
           // Create file stream
           const writePath = join(options.path, options.name)
           console.log('@@ [Electron] Created write stream:', writePath, 'url:', options.url)
           const fileStream = fs.createWriteStream(writePath)
+          // Create crypto hash object and update with each chunk
+          let hash
+          let crypto
+          if (verifiedSig) {
+            crypto = require('crypto')
+            hash = crypto.createHash('sha256')
+          }
           /**
            * Save chunk to stream
            * @param {Uint8Array} chunk
            * @returns
            */
           const handleChunk = async chunk => {
-            console.log('@@ [saving chunk...]')
+            // Update the hash with chunk content
+            hash.update(chunk, 'binary')
+            // Save chunk to disk
+            console.log('@@ [Electron] Saving chunk...')
             return fileStream.write(chunk)
           }
           // Download file
@@ -186,24 +198,38 @@ ipcMain.handle('api', async (event, eventName, options) => {
               console.log('@@ [Electron] File failed to download')
               reject(null)
             }
-            // Stream closed event
+            // Stream closed event, return config
             fileStream.on('finish', () => {
               console.log('@@ [Electron] File saved to disk successfully')
-              resolve({ ...result, savePath: writePath })
+              resolve({ ...result, savePath: writePath, checksum: hash.digest('hex') })
             })
             // Error in stream
             fileStream.on('error', err => {
-              console.log('@@ [Electron] File save failed:', err)
+              console.log('@@ [Electron] File failed to save:', err)
               reject(null)
             })
           })
         }
+        // Download and hash large file in chunks
         const config = await writeStreamFile()
-        // @TODO Call a func to verify sha256 hash of file then set 'Completed'
-        // ...
+        // Verify downloaded file hash
+        updateProgressState(event, EProgressState.Validating, options)
+        const downloadedFileHash = config.checksum
+        const validated = downloadedFileHash === verifiedSig
+        // Error validating
+        if (verifiedSig && !validated) {
+          // @TODO Should auto delete the file or show button to re-download?
+          updateProgressState(event, EProgressState.Errored, options)
+          // @TODO Show a toast to user that validation failed
+          console.log('@@ [Electron] Failed to verify file integrity.')
+          return { ...config, validation: 'fail' }
+        }
         // Done
         updateProgressState(event, EProgressState.Completed, options)
-        return config
+        console.log(
+          `@@ [Electron] Finished downloading. File integrity verified [${validated}], ${downloadedFileHash} against ${verifiedSig}.`,
+        )
+        return { ...config, validation: 'success' }
       } catch (err) {
         console.log('@@ [Electron] Failed writing file to disk', err)
         updateProgressState(event, EProgressState.Errored, options)

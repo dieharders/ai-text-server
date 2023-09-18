@@ -111,6 +111,32 @@ const updateProgressState = (event, state, options) => {
 }
 
 /**
+ * Read a file from disk and create a hash for comparison to a verified signature.
+ * @param {string} filePath
+ * @param {string} signature
+ * @returns Promise<boolean>
+ */
+const hashFileSignature = async (filePath, signature) => {
+  const crypto = require('crypto')
+  const hash = crypto.createHash('sha256').setEncoding('hex')
+  let fileHash = ''
+
+  return new Promise((resolve, _reject) => {
+    const fs = require('fs')
+
+    fs.createReadStream(filePath)
+      .pipe(hash)
+      .on('finish', () => {
+        fileHash = hash.read()
+        console.log(`Filehash calculated: ${fileHash} | ${signature}.`)
+        // Verified
+        if (fileHash === signature) resolve(true)
+        else resolve(false)
+      })
+  })
+}
+
+/**
  * Download a large file in chunks and save to disk as stream.
  * @param {any} props
  * @returns
@@ -155,4 +181,10 @@ const downloadChunkedFile = async props => {
   }
 }
 
-module.exports = { downloadChunkedFile, EProgressState, updateProgress, updateProgressState }
+module.exports = {
+  downloadChunkedFile,
+  EProgressState,
+  updateProgress,
+  updateProgressState,
+  hashFileSignature,
+}

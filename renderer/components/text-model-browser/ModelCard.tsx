@@ -80,7 +80,12 @@ const ModelCard = ({
         className={`h-12 w-full rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
         onClick={async () => {
           // Download model from huggingface
-          const success = await onModelDownload(downloadUrl, saveToPath, fileName)
+          const success = await onModelDownload(
+            downloadUrl,
+            saveToPath,
+            fileName,
+            modelCard?.sha256,
+          )
           if (success) onDownloadComplete()
         }}
       >
@@ -120,7 +125,7 @@ const ModelCard = ({
    * Pause the download
    */
   const PauseButton = () => {
-    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-400'
+    const textColor = hasDownload || downloadProgress !== null ? 'text-white' : 'text-yellow-400'
     return (
       <button
         className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}

@@ -10,10 +10,12 @@ export interface IModelConfig {
   endByte?: number // allow to resume from last byte window
 }
 
+// This is the model info saved to persistent memory
 export interface IConfigProps {
   modelId: string
   savePath: string
   modified: string
+  validation: 'success' | 'fail' | 'none'
   size: number
 }
 
