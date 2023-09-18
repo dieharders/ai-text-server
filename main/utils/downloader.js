@@ -83,9 +83,9 @@ const onDownloadProgress = async (chunk, handleChunk) => {
  * @param {object} options
  * @returns
  */
-const updateProgress = (event, progress, options) => {
+const updateProgress = (ipcEvent, progress, options) => {
   console.log('@@ [chunk progress]:', progress, options)
-  event.sender.send('message', {
+  ipcEvent.sender.send('message', {
     eventId: 'download_progress',
     downloadId: options?.id,
     data: progress,
@@ -100,9 +100,9 @@ const updateProgress = (event, progress, options) => {
  * @param {object} options
  * @returns
  */
-const updateProgressState = (event, state, options) => {
+const updateProgressState = (ipcEvent, state, options) => {
   console.log('@@ [updateProgressState]:', state, options)
-  event.sender.send('message', {
+  ipcEvent.sender.send('message', {
     eventId: 'download_progress_state',
     downloadId: options?.id,
     data: state,
@@ -181,10 +181,77 @@ const downloadChunkedFile = async props => {
   }
 }
 
+/**
+ * Download in chunks, hash and save model file to disk.
+ * @TODO Add `tokenizerPath` and `endByte` to returned props if available
+ * @returns IConfigProps
+ */
+const writeStreamFile = async ({ verifiedSig, ipcEvent, options }) => {
+  const fs = require('fs')
+  const { join } = require('path')
+  // Create file stream
+  const writePath = join(options.path, options.name)
+  console.log('@@ [Electron] Created write stream:', writePath, 'url:', options.url)
+  const fileStream = fs.createWriteStream(writePath)
+  // Create crypto hash object and update with each chunk
+  let hash
+  let crypto
+  if (verifiedSig) {
+    crypto = require('crypto')
+    hash = crypto.createHash('sha256')
+  }
+  /**
+   * Save chunk to stream
+   * @param {Uint8Array} chunk
+   * @returns
+   */
+  const handleChunk = async chunk => {
+    // Update the hash with chunk content
+    if (verifiedSig) hash.update(chunk, 'binary')
+    // Save chunk to disk
+    console.log('@@ [Electron] Saving chunk...')
+    return fileStream.write(chunk)
+  }
+  // Download file
+  const result = await downloadChunkedFile({
+    url: options.url,
+    updateProgress: value => updateProgress(ipcEvent, value, options),
+    updateProgressState: value => updateProgressState(ipcEvent, value, options),
+    handleChunk,
+  })
+  // Close stream
+  fileStream.end()
+  // Finish up
+  return new Promise((resolve, reject) => {
+    // Check download result
+    if (result) {
+      console.log('@@ [Electron] File downloaded successfully')
+    } else {
+      console.log('@@ [Electron] File failed to download')
+      reject(null)
+    }
+    // Stream closed event, return config
+    fileStream.on('finish', () => {
+      console.log('@@ [Electron] File saved to disk successfully')
+      resolve({
+        ...result,
+        savePath: writePath,
+        ...(verifiedSig && { checksum: hash.digest('hex') }),
+      })
+    })
+    // Error in stream
+    fileStream.on('error', err => {
+      console.log('@@ [Electron] File failed to save:', err)
+      reject(null)
+    })
+  })
+}
+
 module.exports = {
   downloadChunkedFile,
   EProgressState,
   updateProgress,
   updateProgressState,
   hashFileSignature,
+  writeStreamFile,
 }

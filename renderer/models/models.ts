@@ -72,7 +72,7 @@ const models: Array<IModelCard> = [
     license: LicenseType.Other,
     description:
       'Llama 2 is a collection of pretrained and fine-tuned generative text models ranging in scale from 7 billion to 70 billion parameters. Our fine-tuned LLMs, called Llama-2-Chat, are optimized for dialogue use cases. Llama-2-Chat models outperform open-source chat models on most benchmarks we tested, and in our human evaluations for helpfulness and safety, are on par with some popular closed-source models like ChatGPT and PaLM',
-    fileSize: 5.51,
+    fileSize: 5.51, // 5508521088 bytes
     fileName: 'llama-2-13b-chat.ggmlv3.q2_K.bin',
     modelType: ModelType.Llama,
     modelUrl: 'https://huggingface.co/TheBloke/Llama-2-13B-chat-GGML',
@@ -104,7 +104,7 @@ const models: Array<IModelCard> = [
     license: LicenseType.Apache2,
     description:
       'RedPajama is fine-tuned for Chat conversation. It was developed by Together and leaders from the open-source AI community. The training was done as part of the INCITE 2023 project on Scalable Foundation Models.',
-    fileSize: 2.09,
+    fileSize: 2.09, // 2086120608 bytes
     ramSize: 16,
     fileName: 'RedPajama-INCITE-Chat-3B-v1-q5_1-ggjt.bin',
     modelType: ModelType.NeoX,
@@ -114,6 +114,7 @@ const models: Array<IModelCard> = [
       'https://huggingface.co/rustformers/redpajama-3b-ggml/resolve/ef3021e148238890ceba93c9fe4e17d49d8b279b/RedPajama-INCITE-Chat-3B-v1-q5_1-ggjt.bin',
     sha256: '5943bc928dcaafb6e0155e5517ce00a4ae75e117b9e4e03e1575a24e883d040a',
   },
+  // @TODO 404 not found
   {
     id: 'orca-mini-7b-ggml',
     name: 'Orca Mini 7B',
@@ -136,7 +137,7 @@ const models: Array<IModelCard> = [
     provider: 'giphy',
     license: LicenseType.Other,
     description: 'This is a test file (gif) for testing download behavior.',
-    fileSize: 0.03,
+    fileSize: 0.03, // 3060203 bytes
     fileName: 'cute-cat-anim.gif',
     downloadUrl: 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif',
   },

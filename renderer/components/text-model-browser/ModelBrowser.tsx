@@ -3,7 +3,7 @@
 import { Dispatch, SetStateAction } from 'react'
 import ModelCard from './ModelCard'
 import { IModelCard } from '@/models/models'
-import createConfig from './configs'
+import createConfig, { IConfigProps } from './configs'
 import { getTextModelConfig, getTextModelsList, setTextModelConfig } from '@/utils/localStorage'
 
 interface IProps {
@@ -14,7 +14,7 @@ interface IProps {
 }
 
 // LocalStorage keys
-export const INSTALLED_TEXT_MODELS = 'installed-list-text-models'
+export const INSTALLED_TEXT_MODELS = 'installed-text-models'
 export const ITEM_CURRENT_MODEL = 'current-text-model'
 
 /**
@@ -33,18 +33,12 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
     console.log('@@ [Downloader] File saved successfully!')
   }
 
-  interface IConfigProps {
-    modelId: string
-    savePath: string
-    modified: string
-    size: number
-  }
   // Create new entry for the installed model and record the install path.
-  const setModelConfig = ({ modelId, savePath, modified, size }: IConfigProps) => {
+  const setModelConfig = (props: IConfigProps) => {
     // Get the stored list of installed configs
     const list = getTextModelsList()
     // Create new config
-    const config = createConfig({ modelId, savePath, modified, size })
+    const config = createConfig(props)
     // Store new entry
     list.push(config)
     setTextModelConfig(list)

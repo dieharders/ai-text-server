@@ -2,18 +2,12 @@
 
 // Modules
 const { listenApiEvents } = require('./utils/api')
-const {
-  downloadChunkedFile,
-  EProgressState,
-  updateProgress,
-  updateProgressState,
-} = require('./utils/downloader')
+const { EProgressState, updateProgressState, writeStreamFile } = require('./utils/downloader')
 
 // Native Modules
 const { spawn } = require('child_process')
 const { join } = require('path')
 const { format } = require('url')
-const fs = require('fs')
 const fsp = require('fs/promises')
 
 // Packages
@@ -155,68 +149,13 @@ ipcMain.handle('api', async (event, eventName, options) => {
     case 'download_chunked_file':
       try {
         const verifiedSig = options.signature
-
-        const writeStreamFile = async () => {
-          // Create file stream
-          const writePath = join(options.path, options.name)
-          console.log('@@ [Electron] Created write stream:', writePath, 'url:', options.url)
-          const fileStream = fs.createWriteStream(writePath)
-          // Create crypto hash object and update with each chunk
-          let hash
-          let crypto
-          if (verifiedSig) {
-            crypto = require('crypto')
-            hash = crypto.createHash('sha256')
-          }
-          /**
-           * Save chunk to stream
-           * @param {Uint8Array} chunk
-           * @returns
-           */
-          const handleChunk = async chunk => {
-            // Update the hash with chunk content
-            hash.update(chunk, 'binary')
-            // Save chunk to disk
-            console.log('@@ [Electron] Saving chunk...')
-            return fileStream.write(chunk)
-          }
-          // Download file
-          const result = await downloadChunkedFile({
-            url: options.url,
-            updateProgress: value => updateProgress(event, value, options),
-            updateProgressState: value => updateProgressState(event, value, options),
-            handleChunk,
-          })
-          // Close stream
-          fileStream.end()
-          // Finish up
-          return new Promise((resolve, reject) => {
-            // Check download result
-            if (result) {
-              console.log('@@ [Electron] File downloaded successfully')
-            } else {
-              console.log('@@ [Electron] File failed to download')
-              reject(null)
-            }
-            // Stream closed event, return config
-            fileStream.on('finish', () => {
-              console.log('@@ [Electron] File saved to disk successfully')
-              resolve({ ...result, savePath: writePath, checksum: hash.digest('hex') })
-            })
-            // Error in stream
-            fileStream.on('error', err => {
-              console.log('@@ [Electron] File failed to save:', err)
-              reject(null)
-            })
-          })
-        }
         // Download and hash large file in chunks
-        const config = await writeStreamFile()
+        const config = await writeStreamFile({ verifiedSig, ipcEvent: event, options })
         // Verify downloaded file hash
         updateProgressState(event, EProgressState.Validating, options)
-        const downloadedFileHash = config.checksum
+        const downloadedFileHash = config?.checksum
         const validated = downloadedFileHash === verifiedSig
-        // Error validating
+        // Error validating, only check if a valid signature is supplied
         if (verifiedSig && !validated) {
           // @TODO Should auto delete the file or show button to re-download?
           updateProgressState(event, EProgressState.Errored, options)
@@ -226,9 +165,10 @@ ipcMain.handle('api', async (event, eventName, options) => {
         }
         // Done
         updateProgressState(event, EProgressState.Completed, options)
-        console.log(
-          `@@ [Electron] Finished downloading. File integrity verified [${validated}], ${downloadedFileHash} against ${verifiedSig}.`,
-        )
+        const integrityMsg = verifiedSig
+          ? `File integrity verified [${validated}], ${downloadedFileHash} against ${verifiedSig}.`
+          : 'File integrity verification skipped.'
+        console.log(`@@ [Electron] Finished downloading. ${integrityMsg}`)
         return { ...config, validation: 'success' }
       } catch (err) {
         console.log('@@ [Electron] Failed writing file to disk', err)

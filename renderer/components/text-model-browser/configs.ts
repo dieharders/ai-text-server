@@ -3,30 +3,44 @@ export interface IModelConfig {
   savePath: string
   numTimesRun: number
   isFavorited: boolean
+  validation: 'success' | 'fail' | 'none'
   modified: string
   size: number
-  promptTemplate?: string
+  endByte?: number // allow to resume from last byte downloaded
+  // promptTemplate?: @TODO string put this in the "model info card" type
   tokenizerPath?: string
-  endByte?: number // allow to resume from last byte window
 }
 
-// This is the model info saved to persistent memory
 export interface IConfigProps {
   modelId: string
   savePath: string
   modified: string
   validation: 'success' | 'fail' | 'none'
   size: number
+  endByte?: number
+  tokenizerPath?: string
 }
 
-const createConfig = ({ modelId, savePath, modified, size }: IConfigProps) => {
+// This is the model info saved to persistent memory
+const createConfig = ({
+  modelId,
+  savePath,
+  modified,
+  size,
+  validation,
+  endByte,
+  tokenizerPath,
+}: IConfigProps): IModelConfig => {
   const defaultConfig: IModelConfig = {
     id: modelId,
     savePath: savePath || '',
     numTimesRun: 0,
     isFavorited: false,
+    validation,
     modified: modified || '',
     size: size || 0,
+    endByte,
+    tokenizerPath,
   }
 
   return defaultConfig

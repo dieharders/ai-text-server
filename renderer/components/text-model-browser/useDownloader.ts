@@ -56,6 +56,8 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
         modified: result?.modified,
         validation: result?.validation,
         size: result?.size,
+        ...(result?.tokenizerPath && { tokenizerPath: result?.tokenizerPath }),
+        ...(result?.endByte && { endByte: result?.endByte }),
       })
       setHasDownload(true)
 

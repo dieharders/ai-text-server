@@ -125,10 +125,10 @@ const ModelCard = ({
    * Pause the download
    */
   const PauseButton = () => {
-    const textColor = hasDownload || downloadProgress !== null ? 'text-white' : 'text-yellow-400'
+    const textColor = hasDownload || downloadProgress !== null ? 'text-white' : 'text-gray-400'
     return (
       <button
-        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
+        className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-blue-500 hover:text-blue-100`}
         onClick={pauseDownload}
       >
         <p className="font-bold">Pause</p>
