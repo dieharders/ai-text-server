@@ -142,7 +142,7 @@ const hashFileSignature = async (filePath, signature) => {
  * @returns
  */
 const downloadChunkedFile = async props => {
-  const { url, updateProgress, updateProgressState, handleChunk } = props
+  const { url, handleChunk } = props
   const { size = 1000000000, modified } = await fetchTotalSize(url) // find file size
 
   // @TODO check if file is out of date by comparing `modified` to stored model's data.
@@ -184,9 +184,11 @@ const downloadChunkedFile = async props => {
 /**
  * Download in chunks, hash and save model file to disk.
  * @TODO Add `tokenizerPath` and `endByte` to returned props if available
+ * @param {string} verifiedSig
+ * @param {object} options
  * @returns IConfigProps
  */
-const writeStreamFile = async ({ verifiedSig, ipcEvent, options }) => {
+const writeStreamFile = async ({ verifiedSig, options }) => {
   const fs = require('fs')
   const { join } = require('path')
   // Create file stream
@@ -215,8 +217,6 @@ const writeStreamFile = async ({ verifiedSig, ipcEvent, options }) => {
   // Download file
   const result = await downloadChunkedFile({
     url: options.url,
-    updateProgress: value => updateProgress(ipcEvent, value, options),
-    updateProgressState: value => updateProgressState(ipcEvent, value, options),
     handleChunk,
   })
   // Close stream
@@ -248,10 +248,7 @@ const writeStreamFile = async ({ verifiedSig, ipcEvent, options }) => {
 }
 
 module.exports = {
-  downloadChunkedFile,
   EProgressState,
-  updateProgress,
-  updateProgressState,
   hashFileSignature,
   writeStreamFile,
 }
