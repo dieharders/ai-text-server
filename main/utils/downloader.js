@@ -35,8 +35,10 @@ const fetchTotalSize = async url => {
  * @param number end
  * @returns Promise<AxiosResponse<any, any>>
  */
-const fetchChunk = async ({ url, start, end }) =>
-  await axios({
+const fetchChunk = async ({ url, start = 0, end }) => {
+  if (!url || !end) return
+
+  const response = await axios({
     url,
     method: 'GET',
     headers: {
@@ -48,6 +50,9 @@ const fetchChunk = async ({ url, start, end }) =>
     maxContentLength: Infinity,
     maxBodyLength: Infinity,
   })
+
+  return response
+}
 
 const _createBinaryChunk = data => {
   const vec8 = new Uint8Array(data)
@@ -77,178 +82,321 @@ const onDownloadProgress = async (chunk, handleChunk) => {
 }
 
 /**
- * Send ipc command to front-end to update total progress
- * @param {function} send
- * @param {number} progress
- * @param {object} options
- * @returns
- */
-const updateProgress = (ipcEvent, progress, options) => {
-  console.log('@@ [chunk progress]:', progress, options)
-  ipcEvent.sender.send('message', {
-    eventId: 'download_progress',
-    downloadId: options?.id,
-    data: progress,
-  })
-  return progress
-}
-
-/**
- * Send ipc command to front-end to update state of progress
- * @param {function} send
- * @param {string} state
- * @param {object} options
- * @returns
- */
-const updateProgressState = (ipcEvent, state, options) => {
-  console.log('@@ [updateProgressState]:', state, options)
-  ipcEvent.sender.send('message', {
-    eventId: 'download_progress_state',
-    downloadId: options?.id,
-    data: state,
-  })
-  return state
-}
-
-/**
  * Read a file from disk and create a hash for comparison to a verified signature.
  * @param {string} filePath
  * @param {string} signature
- * @returns Promise<boolean>
+ * @returns Promise<string>
  */
-const hashFileSignature = async (filePath, signature) => {
+const hashEntireFile = async (filePath, signature) => {
   const crypto = require('crypto')
-  const hash = crypto.createHash('sha256').setEncoding('hex')
+  const hs = crypto.createHash('sha256').setEncoding('hex')
   let fileHash = ''
 
   return new Promise((resolve, _reject) => {
     const fs = require('fs')
 
     fs.createReadStream(filePath)
-      .pipe(hash)
+      .pipe(hs)
       .on('finish', () => {
-        fileHash = hash.read()
-        console.log(`Filehash calculated: ${fileHash} | ${signature}.`)
+        fileHash = hs.read()
+        console.log(`@@ [Downloader] Filehash calculated: ${fileHash} | ${signature}.`)
         // Verified
-        if (fileHash === signature) resolve(true)
-        else resolve(false)
+        if (fileHash === signature) resolve(fileHash)
+        else resolve('')
       })
   })
 }
 
 /**
- * Download a large file in chunks and save to disk as stream.
- * @param {any} props
- * @returns
+ * Create a new instance (closure) of a downloader service which will
+ * hand back callbacks for consumers to use to change its state (pause, etc.)
  */
-const downloadChunkedFile = async props => {
-  const { url, handleChunk } = props
-  const { size = 1000000000, modified } = await fetchTotalSize(url) // find file size
+const downloader = payload => {
+  let hash // object used to create checksum from chunks
+  let state = EProgressState.None
+  const ipcEvent = payload?.event
+  // Card info
+  const modelCard = payload?.modelCard
+  const filePath = payload?.filePath
+  const fileName = modelCard?.fileName
+  const signature = modelCard?.sha256
+  const downloadUrl = modelCard?.downloadUrl
+  const id = modelCard?.id
+  // Config data (local state)
+  const config = payload?.config
+  let validation = config?.validation
+  let lastModified = config?.modified
+  let savePath = config?.savePath
+  let progress = config?.progress
+  let endChunk = config?.endChunk
 
-  // @TODO check if file is out of date by comparing `modified` to stored model's data.
-  console.log('@@ file last modified:', modified, 'size:', size)
-
-  const chunkSize = 1024 * 1024 * 10 // 10MB
-  const numChunks = Math.ceil(size / chunkSize)
-  for (let i = 0; i < numChunks; i++) {
-    const start = i * chunkSize
-    const end = Math.min(start + chunkSize - 1, size)
-    // Download chunk
-    const response = await fetchChunk({
-      url,
-      start,
-      end,
+  /**
+   * Send ipc command to front-end to update total progress
+   * @param {number} amount
+   * @returns
+   */
+  const updateProgress = amount => {
+    console.log('@@ [Downloader] Download progress:', amount)
+    ipcEvent.sender.send('message', {
+      eventId: 'download_progress',
+      downloadId: id,
+      data: amount,
     })
+    return amount
+  }
+  /**
+   * Send ipc command to front-end to update state of progress
+   * @param {string} val
+   * @returns
+   */
+  const updateProgressState = val => {
+    console.log('@@ [Downloader] updateProgressState:', val)
+    state = val
+    ipcEvent.sender.send('message', {
+      eventId: 'download_progress_state',
+      downloadId: id,
+      data: val,
+    })
+    return val
+  }
+  /**
+   * Download in chunks, create checksum and save model file to disk.
+   * @param {object} isResume
+   * @returns IConfigProps
+   */
+  const writeStreamFile = async (isResume = false) => {
+    const fs = require('fs')
+    const { join } = require('path')
+    const startChunk = endChunk
+    // Create file stream, if this is resume, set stream to append from supplied `start`
+    const writePath = join(filePath, fileName)
+    savePath = writePath
+    console.log('@@ [Downloader] Created write stream:', writePath, 'url:', downloadUrl)
+    const options = startChunk > 0 ? { flags: 'a' } : null
+    const fileStream = fs.createWriteStream(writePath, options)
+    // Create crypto hash object and update with each chunk.
+    // Dont create a chunked hash if we are resuming from cold boot.
+    const shouldHash = signature && (validation === null || validation === 'none') && !hash
+    if (shouldHash) {
+      const crypto = require('crypto')
+      hash = crypto.createHash('sha256')
+    }
+    /**
+     * Save chunk to stream
+     * @param {Uint8Array} chunk
+     * @returns
+     */
+    const handleChunk = async chunk => {
+      // Update the hash with chunk content
+      const shouldUpdateHash = signature && !isResume && hash
+      if (shouldUpdateHash) hash.update(chunk, 'binary')
+      // Save chunk to disk
+      console.log('@@ [Downloader] Saving chunk...chunk:', endChunk)
+      return fileStream.write(chunk)
+    }
+    // Download file
+    const result = await downloadChunkedFile({ handleChunk, startChunk })
+    // Close stream
+    fileStream.end()
+    // Finish up
+    return new Promise((resolve, reject) => {
+      // Check download result
+      if (result && !result?.error) {
+        console.log('@@ [Downloader] File download finished successfully')
+      } else {
+        console.log('@@ [Downloader] File failed to download or was cancelled')
+        hash = null
+        reject(null)
+      }
+      // Stream closed event, return config
+      fileStream.on('finish', async () => {
+        console.log(
+          '@@ [Downloader] Stream finished: File saved to disk successfully. endChunk:',
+          endChunk,
+        )
+        // Create a checksum from completed file only
+        const createChecksum = async () =>
+          isResume && !hash
+            ? { checksum: await hashEntireFile(writePath, signature) }
+            : { checksum: hash?.digest('hex') }
+        const shouldCreateChecksum = signature && (progress === 100 || progress === null)
+        if (shouldCreateChecksum) updateProgressState(EProgressState.Validating) // Notify state change
+        const checksum = shouldCreateChecksum ? await createChecksum() : {}
+        hash = null
+        // Send the config data to UI to save to storage
+        resolve({
+          ...result,
+          ...checksum,
+          savePath: writePath,
+          endChunk,
+          progress,
+        })
+      })
+      // Error in stream
+      fileStream.on('error', err => {
+        hash = null
+        console.log('@@ [Downloader] File failed to save:', err)
+        reject(null)
+      })
+    })
+  }
+  /**
+   * Permanently removes a file from disk
+   * @returns boolean
+   */
+  const onDelete = async () => {
+    const path = savePath
 
-    if (!response) {
-      console.log('[Error]: Failed to save chunk.')
+    if (!path) {
+      console.log('@@ [Electron] No path passed')
       return false
     }
 
-    // Send chunks of a large file to Main Process for writing to disk
-    updateProgressState(EProgressState.Downloading)
-    await onDownloadProgress(response.data, handleChunk)
-    // Increment progress after saving chunk
-    const chunkProgress = (i + 1) / numChunks
-    const progress = Math.floor(chunkProgress * 100)
-    console.log('@@ [Downloading] progress:', progress)
-    updateProgress(progress)
+    try {
+      const fsp = require('fs/promises')
+      // Remove double slashes
+      const parsePath = path.replace(/\\\\/g, '\\')
+      await fsp.unlink(parsePath)
+      console.log('@@ [Electron] Deleted file from:', path)
+      return true
+    } catch (err) {
+      console.log(`@@ [Electron] Failed to delete file from ${path}: ${err}`)
+      return false
+    }
+  }
+  const onCancel = async () => {
+    const newState = EProgressState.None
+    // Delete partial file content
+    await onDelete()
+    // Notify UI to delete saved config if any exists
+    const payload = { eventId: 'delete-text-model', downloadId: id, data: newState }
+    ipcEvent.sender.send('message', payload)
+    // Inform frontend of state change
+    return newState
+  }
+  const onPause = async () => {
+    // Record new state
+    const newState = EProgressState.Idle
+    updateProgressState(newState)
+    // Inform frontend of state change
+    return newState
+  }
+  /**
+   * Start the download.
+   */
+  const onStart = async (isResume = false) => {
+    try {
+      console.log('@@ [Downloader] Starting download...')
+      updateProgressState(EProgressState.Downloading)
+      // Download large file in chunks and return a checksum for validation
+      const streamFileConfig = await writeStreamFile(isResume)
+      // In-progress downloads skip validation
+      if (progress < 100) {
+        console.log('@@ [Downloader] Halted downloading. Validation skipped.')
+        updateProgressState(EProgressState.Idle)
+        const v = 'undetermined'
+        validation = v
+        return { ...streamFileConfig, validation: v }
+      }
+      // Verify downloaded file hash for integrity
+      const downloadedFileHash = streamFileConfig?.checksum
+      const validated = downloadedFileHash === signature
+      // Error validating, skip validation if no signature supplied
+      if (signature && !validated) {
+        updateProgressState(EProgressState.Errored)
+        console.log('@@ [Downloader] Failed to verify file integrity.')
+        const v = 'fail'
+        validation = v
+        return { ...streamFileConfig, validation: v }
+      }
+      // Done
+      updateProgressState(EProgressState.Completed)
+      const integrityMsg = signature
+        ? `File integrity verified [${validated}], ${downloadedFileHash} against ${signature}.`
+        : 'File integrity verification skipped.'
+      console.log(`@@ [Downloader] Finished downloading. ${integrityMsg}`)
+      const v = 'success'
+      validation = v
+      return { ...streamFileConfig, validation: v }
+    } catch (err) {
+      console.log('@@ [Downloader] Failed writing file to disk', err)
+      updateProgressState(EProgressState.Errored)
+      return false
+    }
+  }
+  /**
+   * Download a large file in chunks and save to disk as stream.
+   * @param {any} props
+   */
+  const downloadChunkedFile = async props => {
+    let error = false
+    const { handleChunk, startChunk = 0 } = props
+    const { size = 1000000000, modified } = await fetchTotalSize(downloadUrl)
+    lastModified = modified
+
+    // If resuming, check if file is out of date by comparing current file modified date to stored data's date.
+    if (startChunk > 0) {
+      console.log(
+        `@@ [Downloader] Chunk last modified: ${modified}, file last modified: ${lastModified}, size: ${size}`,
+      )
+      if (modified !== lastModified) {
+        console.log(
+          '@@ [Downloader] File out of date, cancel the download, delete the file and restart download.',
+        )
+        return { error: true }
+      }
+    }
+
+    const chunkSize = 1024 * 1024 * 10 // 10MB
+    const numChunks = Math.ceil(size / chunkSize)
+    for (let i = startChunk; i < numChunks; i++) {
+      // Stop if state changes
+      const isHaltState = state !== EProgressState.Downloading
+      if (isHaltState) {
+        console.log('@@ [Downloader] Event: Download halted by user:', state)
+        // If this is a cancel then we dont want to save in-progress info
+        if (state === EProgressState.None) error = true
+        break
+      }
+
+      // Download chunk
+      const start = i * chunkSize
+      const end = Math.min(start + chunkSize - 1, size)
+      const response = await fetchChunk({
+        url: downloadUrl,
+        start,
+        end,
+      })
+
+      // Handle errors
+      if (!response) {
+        console.log('[Downloader] Error: Failed to receive chunk.')
+        break
+      }
+
+      // Send chunks of a large file to Main Process for writing to disk
+      await onDownloadProgress(response.data, handleChunk)
+      endChunk = i + 1 // record last chunk downloaded
+
+      // Increment progress after saving chunk
+      const chunkProgress = (i + 1) / numChunks
+      progress = Math.floor(chunkProgress * 100)
+      updateProgress(progress)
+    }
+
+    if (error) return { error: true }
+    return {
+      modified,
+      size,
+    }
   }
 
   return {
-    modified,
-    size,
+    onStart,
+    onCancel,
+    onPause,
+    onDelete,
   }
 }
 
-/**
- * Download in chunks, hash and save model file to disk.
- * @TODO Add `tokenizerPath` and `endByte` to returned props if available
- * @param {string} verifiedSig
- * @param {object} options
- * @returns IConfigProps
- */
-const writeStreamFile = async ({ verifiedSig, options }) => {
-  const fs = require('fs')
-  const { join } = require('path')
-  // Create file stream
-  const writePath = join(options.path, options.name)
-  console.log('@@ [Electron] Created write stream:', writePath, 'url:', options.url)
-  const fileStream = fs.createWriteStream(writePath)
-  // Create crypto hash object and update with each chunk
-  let hash
-  let crypto
-  if (verifiedSig) {
-    crypto = require('crypto')
-    hash = crypto.createHash('sha256')
-  }
-  /**
-   * Save chunk to stream
-   * @param {Uint8Array} chunk
-   * @returns
-   */
-  const handleChunk = async chunk => {
-    // Update the hash with chunk content
-    if (verifiedSig) hash.update(chunk, 'binary')
-    // Save chunk to disk
-    console.log('@@ [Electron] Saving chunk...')
-    return fileStream.write(chunk)
-  }
-  // Download file
-  const result = await downloadChunkedFile({
-    url: options.url,
-    handleChunk,
-  })
-  // Close stream
-  fileStream.end()
-  // Finish up
-  return new Promise((resolve, reject) => {
-    // Check download result
-    if (result) {
-      console.log('@@ [Electron] File downloaded successfully')
-    } else {
-      console.log('@@ [Electron] File failed to download')
-      reject(null)
-    }
-    // Stream closed event, return config
-    fileStream.on('finish', () => {
-      console.log('@@ [Electron] File saved to disk successfully')
-      resolve({
-        ...result,
-        savePath: writePath,
-        ...(verifiedSig && { checksum: hash.digest('hex') }),
-      })
-    })
-    // Error in stream
-    fileStream.on('error', err => {
-      console.log('@@ [Electron] File failed to save:', err)
-      reject(null)
-    })
-  })
-}
-
-module.exports = {
-  EProgressState,
-  hashFileSignature,
-  writeStreamFile,
-}
+module.exports = { EProgressState, downloader }

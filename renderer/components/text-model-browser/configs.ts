@@ -3,22 +3,13 @@ export interface IModelConfig {
   savePath: string
   numTimesRun: number
   isFavorited: boolean
-  validation: 'success' | 'fail' | 'none'
+  validation: 'success' | 'fail' | 'none' | 'undetermined'
   modified: string
   size: number
-  endByte?: number // allow to resume from last byte downloaded
-  // promptTemplate?: @TODO string put this in the "model info card" type
+  endChunk?: number // allow to resume from last byte downloaded
+  progress?: number
   tokenizerPath?: string
-}
-
-export interface IConfigProps {
-  modelId: string
-  savePath: string
-  modified: string
-  validation: 'success' | 'fail' | 'none'
-  size: number
-  endByte?: number
-  tokenizerPath?: string
+  checksum: string
 }
 
 // This is the model info saved to persistent memory
@@ -28,19 +19,23 @@ const createConfig = ({
   modified,
   size,
   validation,
-  endByte,
+  endChunk,
+  progress,
   tokenizerPath,
-}: IConfigProps): IModelConfig => {
+  checksum,
+}: any): IModelConfig => {
   const defaultConfig: IModelConfig = {
     id: modelId,
     savePath: savePath || '',
     numTimesRun: 0,
     isFavorited: false,
-    validation,
+    validation: validation || 'none',
     modified: modified || '',
     size: size || 0,
-    endByte,
-    tokenizerPath,
+    endChunk: endChunk || 0,
+    progress: progress || 0,
+    tokenizerPath: tokenizerPath || '',
+    checksum: checksum || '',
   }
 
   return defaultConfig

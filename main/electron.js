@@ -2,13 +2,12 @@
 
 // Modules
 const { listenApiEvents } = require('./utils/api')
-const { EProgressState, updateProgressState, writeStreamFile } = require('./utils/downloader')
+const { downloader } = require('./utils/downloader')
 
 // Native Modules
 const { spawn } = require('child_process')
 const { join } = require('path')
 const { format } = require('url')
-const fsp = require('fs/promises')
 
 // Packages
 const { BrowserWindow, app, dialog, ipcMain, shell } = require('electron')
@@ -16,7 +15,7 @@ const isDev = require('electron-is-dev')
 const prepareNext = require('electron-next')
 
 // https://www.freecodecamp.org/news/node-js-child-processes-everything-you-need-to-know-e69498fe970a/
-const apiPath = isDev ? './backends/main.py' : './includes/api/main-x86_64.py'
+const apiProgramPath = isDev ? './backends/main.py' : './includes/api/main-x86_64.py'
 
 let universalAPI
 let mainWindow
@@ -42,7 +41,7 @@ const createWindow = () => {
 // Start the frontend
 const start = async () => {
   // Start the backend process for the universal api
-  universalAPI = spawn('python', [apiPath])
+  universalAPI = spawn('python', [apiProgramPath])
   // Listen to universal api events
   listenApiEvents(universalAPI)
   // Prepare the renderer for frontend
@@ -114,8 +113,22 @@ ipcMain.on('message', (event, message) => {
   event.sender.send('message', message)
 })
 
-// listen for an api request, then invoke it and send back result
+// Listen for an api request, then invoke it and send back result
+let downloaders = {}
 ipcMain.handle('api', async (event, eventName, options) => {
+  // Create an instance of a service to handle dl operations (if none exist)
+  // This only concerns endpoints using `dlService`.
+  const filePath = options?.filePath
+  const config = options?.config
+  const modelCard = options?.modelCard
+  const id = modelCard?.id
+  let dlService = downloaders[id]
+  if (!dlService) {
+    dlService = downloader({ config, modelCard, event, filePath })
+    downloaders[id] = dlService
+    console.log('@@ [Electron] New downloader created.')
+  }
+
   switch (eventName) {
     case 'showConfirmDialog':
       return dialog.showMessageBoxSync(mainWindow, options)
@@ -125,56 +138,22 @@ ipcMain.handle('api', async (event, eventName, options) => {
       return app.getPath(options)
     case 'getAppPath':
       return app.getAppPath()
-    case 'delete_file':
-      if (!options?.path) {
-        console.log('@@ [Electron] No path passed', options.path)
-        return false
-      }
-      try {
-        // Remove double slashes
-        const parsePath = options.path.replace(/\\\\/g, '\\')
-        await fsp.unlink(parsePath)
-        console.log('@@ [Electron] Deleted file from:', options.path)
-        return true
-      } catch (err) {
-        console.log(`@@ [Electron] Failed to delete file from ${options.path}: ${err}`)
-        return false
-      }
-    // @TODO Implement
+    case 'delete_file': {
+      if (dlService) delete downloaders[id]
+      return dlService.onDelete()
+    }
     case 'pause_download':
-      return
-    // @TODO Implement
+      return dlService.onPause()
+    case 'cancel_download': {
+      const result = await dlService.onCancel()
+      if (dlService) delete downloaders[id]
+      return result
+    }
     case 'resume_download':
-      return
-    case 'download_chunked_file':
-      try {
-        const verifiedSig = options.signature
-        // Download and hash large file in chunks
-        const config = await writeStreamFile({ verifiedSig, ipcEvent: event, options })
-        // Verify downloaded file hash
-        updateProgressState(event, EProgressState.Validating, options)
-        const downloadedFileHash = config?.checksum
-        const validated = downloadedFileHash === verifiedSig
-        // Error validating, only check if a valid signature is supplied
-        if (verifiedSig && !validated) {
-          // @TODO Should auto delete the file or show button to re-download?
-          updateProgressState(event, EProgressState.Errored, options)
-          // @TODO Show a toast to user that validation failed
-          console.log('@@ [Electron] Failed to verify file integrity.')
-          return { ...config, validation: 'fail' }
-        }
-        // Done
-        updateProgressState(event, EProgressState.Completed, options)
-        const integrityMsg = verifiedSig
-          ? `File integrity verified [${validated}], ${downloadedFileHash} against ${verifiedSig}.`
-          : 'File integrity verification skipped.'
-        console.log(`@@ [Electron] Finished downloading. ${integrityMsg}`)
-        return { ...config, validation: 'success' }
-      } catch (err) {
-        console.log('@@ [Electron] Failed writing file to disk', err)
-        updateProgressState(event, EProgressState.Errored, options)
-        return false
-      }
+      return dlService.onStart(true)
+    // Start service and return a config
+    case 'start_download':
+      return dlService.onStart()
     default:
       return
   }

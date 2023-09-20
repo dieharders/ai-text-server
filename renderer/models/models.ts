@@ -41,6 +41,7 @@ export interface IModelCard {
   downloadUrl: string
   modelUrl?: string
   modelType?: string
+  promptTemplate?: string
   tokenizers?: string[]
   tags?: string[]
 }

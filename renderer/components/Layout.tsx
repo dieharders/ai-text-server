@@ -8,5 +8,6 @@ export const metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // @TODO inter.className causing mismatch warning
   return <main className={inter.className}>{children}</main>
 }

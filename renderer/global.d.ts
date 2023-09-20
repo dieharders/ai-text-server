@@ -7,7 +7,7 @@ declare global {
         on: (handler: THandler) => void
         off: (handler: THandler) => void
       }
-      api: (methodName: string, options: any) => Promise<any>
+      api: (methodName: string, options?: any) => Promise<any>
     }
   }
 }

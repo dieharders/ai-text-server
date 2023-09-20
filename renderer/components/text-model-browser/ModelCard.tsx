@@ -1,10 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import useDownloader, { EProgressState } from './useDownloader'
 import { IModelCard } from '@/models/models'
-import { useCallback, useEffect, useState } from 'react'
-import { IConfigProps, IModelConfig } from './configs'
-import { removeTextModelConfig } from '@/utils/localStorage'
+import { IModelConfig } from './configs'
 
 interface IProps {
   modelCard: IModelCard
@@ -12,8 +11,8 @@ interface IProps {
   saveToPath: string
   onSelectModel: (modelId: string) => void
   onDownloadComplete: () => void
-  getModelConfig: () => IModelConfig | undefined
-  setModelConfig: (props: IConfigProps) => void
+  loadModelConfig: () => IModelConfig | undefined
+  saveModelConfig: (props: any) => void
 }
 
 const ModelCard = ({
@@ -22,13 +21,11 @@ const ModelCard = ({
   isLoaded,
   onSelectModel,
   onDownloadComplete,
-  getModelConfig,
-  setModelConfig,
+  loadModelConfig,
+  saveModelConfig,
 }: IProps) => {
   // Vars
-  const [startup, setStartup] = useState(false)
-  const { id, name, description, fileSize, ramSize, downloadUrl, fileName, license, provider } =
-    modelCard
+  const { id, name, description, fileSize, ramSize, license, provider } = modelCard
   // Styling
   const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
   const colorStyles =
@@ -36,63 +33,15 @@ const ModelCard = ({
 
   // Downloader Hook
   const {
-    hasDownload,
-    setHasDownload,
-    config,
-    setConfig,
+    modelConfig,
     downloadProgress,
     progressState,
-    onModelDownload,
+    startDownload,
     pauseDownload,
     cancelDownload,
-    resumeDownload,
-  } = useDownloader({
-    modelId: id,
-    setModelConfig,
-  })
+    deleteDownload,
+  } = useDownloader({ modelCard, saveToPath, loadModelConfig, saveModelConfig })
 
-  /**
-   * This button selects this model for inference
-   */
-  const LoadButton = () => {
-    const textColor = hasDownload && !isLoaded ? 'text-yellow-300' : 'text-gray-400'
-    const hoverStyle =
-      hasDownload && !isLoaded
-        ? 'hover:bg-zinc-700/30 hover:text-white'
-        : 'hover:cursor-not-allowed'
-    return (
-      <button
-        className={`h-12 w-full ${sizingStyles} rounded-lg border border-gray-300 text-center dark:border-neutral-800 dark:bg-zinc-800/30 ${hoverStyle} ${textColor}`}
-        disabled={isLoaded || !hasDownload}
-        onClick={() => onSelectModel(id)}
-      >
-        <code className="text-md font-mono font-bold">Load</code>
-      </button>
-    )
-  }
-  /**
-   * Download this ai model from a repository
-   */
-  const DownloadButton = () => {
-    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-400'
-    return (
-      <button
-        className={`h-12 w-full rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
-        onClick={async () => {
-          // Download model from huggingface
-          const success = await onModelDownload(
-            downloadUrl,
-            saveToPath,
-            fileName,
-            modelCard?.sha256,
-          )
-          if (success) onDownloadComplete()
-        }}
-      >
-        <p className="font-bold">Download</p>
-      </button>
-    )
-  }
   /**
    * Check the user's hardware specs to see if they can run the specified model.
    */
@@ -109,13 +58,64 @@ const ModelCard = ({
     )
   }
   /**
+   * This button selects this model for inference
+   */
+  const LoadButton = () => {
+    const textColor = !isLoaded ? 'text-yellow-300' : 'text-gray-400'
+    const hoverStyle = !isLoaded
+      ? 'hover:bg-zinc-700/30 hover:text-white'
+      : 'hover:cursor-not-allowed'
+    return (
+      <button
+        className={`h-12 w-full ${sizingStyles} rounded-lg border border-gray-300 text-center dark:border-neutral-800 dark:bg-zinc-800/30 ${hoverStyle} ${textColor}`}
+        disabled={isLoaded}
+        onClick={() => onSelectModel(id)}
+      >
+        <code className="text-md font-mono font-bold">Load</code>
+      </button>
+    )
+  }
+  /**
+   * Download this ai model from a repository
+   */
+  const StartDownloadButton = () => {
+    const [isDisabled, setIsDisabled] = useState(false)
+    const textColor = isDisabled ? 'text-gray-400 hover:text-gray-400' : 'text-yellow-400'
+
+    return (
+      <button
+        className={`h-12 w-full rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
+        disabled={isDisabled}
+        onClick={async () => {
+          setIsDisabled(true)
+          const success = await startDownload()
+          if (success) {
+            onDownloadComplete()
+            return true
+          }
+          setIsDisabled(false)
+          return
+        }}
+      >
+        <p className="font-bold">Download</p>
+      </button>
+    )
+  }
+  /**
    * Stop the download and delete cached file.
    */
   const CancelDownloadButton = () => {
+    const [isDisabled, setIsDisabled] = useState(false)
     return (
       <button
         className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} text-sm text-white hover:bg-red-500 hover:text-white`}
-        onClick={cancelDownload}
+        disabled={isDisabled}
+        onClick={async () => {
+          setIsDisabled(true)
+          await cancelDownload()
+          setIsDisabled(false)
+          return
+        }}
       >
         <p className="font-bold">Cancel</p>
       </button>
@@ -125,11 +125,19 @@ const ModelCard = ({
    * Pause the download
    */
   const PauseButton = () => {
-    const textColor = hasDownload || downloadProgress !== null ? 'text-white' : 'text-gray-400'
+    const [isDisabled, setIsDisabled] = useState(false)
+    const textColor = downloadProgress !== null || !isDisabled ? 'text-white' : 'text-gray-400'
+
     return (
       <button
         className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-blue-500 hover:text-blue-100`}
-        onClick={pauseDownload}
+        disabled={isDisabled}
+        onClick={async () => {
+          setIsDisabled(true)
+          await pauseDownload()
+          setIsDisabled(false)
+          return
+        }}
       >
         <p className="font-bold">Pause</p>
       </button>
@@ -139,53 +147,32 @@ const ModelCard = ({
    * Resume the download
    */
   const ResumeButton = () => {
-    const textColor = hasDownload || downloadProgress !== null ? 'text-gray-400' : 'text-yellow-400'
+    const [isDisabled, setIsDisabled] = useState(false)
+    const textColor = isDisabled ? 'text-gray-400' : 'text-yellow-400'
     return (
       <button
         className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
-        onClick={resumeDownload}
+        disabled={isDisabled}
+        onClick={async () => {
+          setIsDisabled(true)
+          const success = await startDownload(true)
+          if (success) onDownloadComplete()
+          setIsDisabled(false)
+          return
+        }}
       >
         <p className="font-bold">Resume</p>
       </button>
     )
   }
-  const deleteAction = useCallback(
-    async (id: string) => {
-      // Ask user before deleting
-      const options = {
-        type: 'question',
-        buttons: ['Yes', 'Cancel'],
-        defaultId: 1,
-        title: 'Delete file',
-        message: `Do you really want to delete file ${name}?`,
-        detail: 'Confirm you want to remove this Ai text model',
-      }
-      const confirmed = await window.electron.api('showConfirmDialog', options)
-      // "No" was pressed
-      if (confirmed !== 0) return
-      // Delete file
-      const success = await window.electron.api('delete_file', { path: config?.savePath })
-      if (success) {
-        // Remove config record
-        removeTextModelConfig(id)
-        console.log('@@ File removed successfully!', config?.savePath)
-        // Set the state
-        setHasDownload(false)
-        return true
-      }
-      console.log('@@ File removal failed!', success)
-      return false
-    },
-    [config, name, setHasDownload],
-  )
   /**
    * Remove the model file
    */
-  const DeleteButton = ({ id }: { id: string }) => {
+  const DeleteButton = () => {
     return (
       <button
         className={`h-12 w-full rounded-lg ${colorStyles} ${sizingStyles} text-sm text-red-500 hover:bg-red-500 hover:text-red-900`}
-        onClick={async () => deleteAction(id)}
+        onClick={deleteDownload}
       >
         <p className="font-bold">Remove</p>
       </button>
@@ -212,41 +199,33 @@ const ModelCard = ({
       </div>
     )
   }
-  const installedMenu = (
+  const loadRemoveMenu = (
     <div className="flex flex-row gap-4">
       <LoadButton />
-      <DeleteButton id={id} />
+      <DeleteButton />
     </div>
   )
-  const uninstalledMenu = (
+  const downloadCheckHardwareMenu = (
     <div className="flex flex-row gap-4">
-      <DownloadButton />
+      <StartDownloadButton />
       <CheckHardware />
     </div>
   )
   const inProgressMenu = (
     <div className="flex flex-row gap-4">
       {progressState === EProgressState.Downloading && <PauseButton />}
-      {progressState === EProgressState.Idle && <ResumeButton />}
+      {(progressState === EProgressState.Idle || progressState === EProgressState.None) && (
+        <ResumeButton />
+      )}
       <CancelDownloadButton />
       <DownloadProgressBar />
     </div>
   )
   const renderDownloadPane = () => {
-    if (hasDownload) return installedMenu
+    if (modelConfig && downloadProgress === null) return loadRemoveMenu
     if (downloadProgress && downloadProgress >= 0) return inProgressMenu
-    return uninstalledMenu
+    return downloadCheckHardwareMenu
   }
-
-  // Determine if we have installed this model already
-  useEffect(() => {
-    const model = getModelConfig()
-    if (!startup) {
-      setHasDownload(model ? true : false)
-      setStartup(true)
-    }
-    setConfig(model)
-  }, [getModelConfig, setConfig, setHasDownload, hasDownload, startup])
 
   return (
     <div className="flex flex-col items-stretch justify-start gap-6 rounded-md border border-gray-300 p-6 dark:border-neutral-800 dark:bg-zinc-900 lg:flex-row">

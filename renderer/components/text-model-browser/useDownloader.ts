@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
-import { IConfigProps, IModelConfig } from './configs'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { IModelCard } from '@/models/models'
+import { removeTextModelConfig, setUpdateTextModelConfig } from '@/utils/localStorage'
+import { IModelConfig } from './configs'
 
 export enum EProgressState {
   None = 'none',
@@ -11,94 +13,148 @@ export enum EProgressState {
 }
 
 interface IProps {
-  modelId: string
-  setModelConfig: (props: IConfigProps) => void
+  saveToPath: string
+  modelCard: IModelCard
+  loadModelConfig: () => IModelConfig | undefined
+  saveModelConfig: (props: any) => void
 }
 
-const useDownloader = ({ modelId, setModelConfig }: IProps) => {
-  const [config, setConfig] = useState<IModelConfig | undefined>(undefined)
+const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig }: IProps) => {
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [modelConfig, setModelConfig] = useState<IModelConfig | undefined>(undefined)
   const [progressState, setProgressState] = useState<EProgressState>(EProgressState.None)
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
-  const [hasDownload, setHasDownload] = useState<boolean>(false)
+  const { id: modelId } = modelCard
+  const apiPayload = useMemo(
+    () => ({ config: modelConfig, modelCard, filePath: saveToPath }),
+    [modelCard, modelConfig, saveToPath],
+  )
 
   /**
-   * Start the download of the chosen model.
+   * Start the download of the chosen model from huggingface.
    * Could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
    */
-  const onModelDownload = async (
-    url: string,
-    filePath: string,
-    fileName: string,
-    signature = '',
-  ) => {
-    try {
-      if (!filePath || !url || !fileName)
-        throw Error(
-          `No arguments provided! filePath: ${filePath} | url: ${url} | fileName: ${fileName}`,
-        )
+  const startDownload = useCallback(
+    async (resume = false) => {
+      const url = modelCard?.downloadUrl
+      const fileName = modelCard?.fileName
 
-      // Start download
-      setProgressState(EProgressState.Downloading)
+      try {
+        if (!saveToPath || !url || !fileName)
+          throw Error(
+            `No arguments provided! filePath: ${saveToPath} | url: ${url} | fileName: ${fileName}`,
+          )
 
-      // Download file in Main Process
-      const fileOptions = { path: filePath, name: fileName, url, id: modelId, signature }
-      const result = await window.electron.api('download_chunked_file', fileOptions)
-      if (!result) throw Error('Failed to download file.')
+        // Download file in Main Process
+        const eventName = resume ? 'resume_download' : 'start_download'
+        const result = await window.electron.api(eventName, apiPayload)
+        if (!result) throw Error('Failed to download file.')
 
-      // Reset downloader state
-      setProgressState(EProgressState.None)
-      setDownloadProgress(null)
+        // Make record of installation in storage
+        const newConfig = {
+          modelId,
+          ...result,
+        }
 
-      // Make record of installation in storage
-      setModelConfig({
-        modelId,
-        savePath: result?.savePath,
-        modified: result?.modified,
-        validation: result?.validation,
-        size: result?.size,
-        ...(result?.tokenizerPath && { tokenizerPath: result?.tokenizerPath }),
-        ...(result?.endByte && { endByte: result?.endByte }),
-      })
-      setHasDownload(true)
+        saveModelConfig(newConfig) // persistent storage
+        setModelConfig(newConfig) // local (component) state
 
-      return true
-    } catch (err) {
-      console.log('@@ [Error]:', err)
-      return
+        return true
+      } catch (err) {
+        console.log('@@ [Error]:', err)
+        return
+      }
+    },
+    [apiPayload, modelCard?.downloadUrl, modelCard?.fileName, modelId, saveModelConfig, saveToPath],
+  )
+  /**
+   * Stop the download and remove the assets.
+   * @returns Promise<string>
+   */
+  const cancelDownload = useCallback(async () => {
+    const newState: EProgressState = await window.electron.api('cancel_download', apiPayload)
+    return newState
+  }, [apiPayload])
+  /**
+   * Stop the download but allow to resume.
+   * @returns Promise<string>
+   */
+  const pauseDownload = useCallback(async () => {
+    const newState: EProgressState = await window.electron.api('pause_download', apiPayload)
+    return newState
+  }, [apiPayload])
+  /**
+   * Remove the download assets from disk and state.
+   * @returns Promise<boolean>
+   */
+  const deleteDownload = useCallback(async () => {
+    // Ask user before deleting
+    const options = {
+      type: 'question',
+      buttons: ['Yes', 'Cancel'],
+      defaultId: 1,
+      title: 'Delete file',
+      message: `Do you really want to delete the file "${modelCard.name}" ?`,
+      detail: 'Confirm you want to remove this Ai text model',
     }
-  }
+    const confirmed = await window.electron.api('showConfirmDialog', options)
+    // "No" was pressed
+    if (confirmed !== 0) return false
+    // Delete file
+    const success = await window.electron.api('delete_file', apiPayload)
+    if (success) {
+      // Remove config record
+      removeTextModelConfig(modelId)
+      console.log(`@@ File ${modelId} removed successfully!`)
+      // Set the state
+      setModelConfig(undefined)
+      return true
+    }
+    console.log('@@ File removal failed!', success)
+    return false
+  }, [apiPayload, modelCard.name, modelId])
 
-  const cancelDownload = () => {}
-  const pauseDownload = () => {}
-  const resumeDownload = () => {}
+  // Set our local state initially since the backend doesnt know
+  useEffect(() => {
+    if (!isInitialized) {
+      if (modelConfig?.validation === 'success') setProgressState(EProgressState.Completed)
+      setIsInitialized(true)
+    }
+  }, [isInitialized, modelConfig?.validation])
 
   // Listen to main process for `progress` events
   useEffect(() => {
     const handler = (_event: any, payload: any) => {
+      if (payload.downloadId !== modelId) return
+
       switch (payload.eventId) {
         case 'download_progress':
-          if (payload.downloadId === modelId) {
-            console.log(
-              '@@ [progress] event',
-              payload.eventId,
-              'progress:',
-              payload.data,
-              'modelId:',
-              payload.downloadId,
-            )
-            setDownloadProgress(payload.data)
-          }
+          console.log(
+            '@@ [UI] "progress" event:',
+            payload.eventId,
+            'progress:',
+            payload.data,
+            'modelId:',
+            payload.downloadId,
+          )
+          setDownloadProgress(payload.data)
           break
         case 'download_progress_state':
-          if (payload.downloadId === modelId) {
-            console.log('@@ [Downloader] state:', payload.eventId)
-            setProgressState(payload.data)
-          }
+          console.log('@@ [UI] "progress state" event:', payload.eventId)
+          setProgressState(payload.data)
           break
+        case 'delete-text-model': {
+          setProgressState(payload.data)
+          return removeTextModelConfig(modelId)
+        }
+        case 'update-text-model': {
+          return setUpdateTextModelConfig(payload.id, payload.data)
+        }
         default:
           break
       }
     }
+
     window.electron.message.on(handler)
 
     return () => {
@@ -106,17 +162,23 @@ const useDownloader = ({ modelId, setModelConfig }: IProps) => {
     }
   }, [modelId])
 
+  // Load and update model config from storage whenever progress state changes
+  useEffect(() => {
+    const c = loadModelConfig()
+    const progress = c?.progress
+    setModelConfig(c)
+    setDownloadProgress(progress ?? null)
+    console.log('@@ [UI] Updating config data')
+  }, [loadModelConfig, progressState])
+
   return {
-    hasDownload,
-    setHasDownload,
-    config,
-    setConfig,
+    modelConfig,
     progressState,
     downloadProgress,
-    onModelDownload,
+    startDownload,
     pauseDownload,
-    resumeDownload,
     cancelDownload,
+    deleteDownload,
   }
 }
 
