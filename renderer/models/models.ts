@@ -32,7 +32,7 @@ export interface IModelCard {
   id: string
   name: string
   provider: string
-  license: string // @TODO Should be array
+  licenses: Array<string>
   description: string
   fileSize: number
   sha256?: string
@@ -55,7 +55,7 @@ const models: Array<IModelCard> = [
     id: 'llama-13b-ggml',
     name: 'Llama 13B',
     provider: Providers.TheBloke,
-    license: LicenseType.Other,
+    licenses: [LicenseType.Other],
     modelType: ModelType.Llama,
     description:
       "These files are GGML format model files for Meta's LLaMA 13b. GGML files are for CPU + GPU inference using llama.cpp and libraries and UIs which support this format.",
@@ -70,7 +70,7 @@ const models: Array<IModelCard> = [
     id: 'llama-2-13b-chat-ggml',
     name: 'Llama 2 13B',
     provider: Providers.TheBloke,
-    license: LicenseType.Other,
+    licenses: [LicenseType.Other],
     description:
       'Llama 2 is a collection of pretrained and fine-tuned generative text models ranging in scale from 7 billion to 70 billion parameters. Our fine-tuned LLMs, called Llama-2-Chat, are optimized for dialogue use cases. Llama-2-Chat models outperform open-source chat models on most benchmarks we tested, and in our human evaluations for helpfulness and safety, are on par with some popular closed-source models like ChatGPT and PaLM',
     fileSize: 5.51, // 5508521088 bytes
@@ -85,7 +85,7 @@ const models: Array<IModelCard> = [
     id: 'wizard-vicuna-15b-coder',
     name: 'Wizard Vicuna 15B Coder',
     provider: Providers.TheBloke,
-    license: LicenseType.Other,
+    licenses: [LicenseType.Other],
     description:
       'Wizardlm: Empowering large language models to follow complex instructions. A StarCoder fine-tuned model using Evol-Instruct method specifically for coding tasks. Use this for code generation, also good at logical reasoning skills.',
     fileSize: 14.3,
@@ -102,7 +102,7 @@ const models: Array<IModelCard> = [
     id: 'redpajama-chat-3b-ggml',
     name: 'RedPajama Chat 3B',
     provider: Providers.Together,
-    license: LicenseType.Apache2,
+    licenses: [LicenseType.Apache2],
     description:
       'RedPajama is fine-tuned for Chat conversation. It was developed by Together and leaders from the open-source AI community. The training was done as part of the INCITE 2023 project on Scalable Foundation Models.',
     fileSize: 2.09, // 2086120608 bytes
@@ -120,7 +120,7 @@ const models: Array<IModelCard> = [
     id: 'orca-mini-7b-ggml',
     name: 'Orca Mini 7B',
     provider: Providers.TheBloke,
-    license: LicenseType.MIT,
+    licenses: [LicenseType.MIT],
     description:
       'An Uncensored LLaMA-7b model trained on explain tuned datasets, created using Instructions and Input from WizardLM, Alpaca & Dolly-V2 datasets and applying Orca Research Paper dataset construction approaches.',
     fileSize: 4.21,
@@ -136,7 +136,7 @@ const models: Array<IModelCard> = [
     id: 'example-cat-anim',
     name: 'Example Cute Cat Animation',
     provider: 'giphy',
-    license: LicenseType.Other,
+    licenses: [LicenseType.Academic, LicenseType.Commercial, LicenseType.Other],
     description: 'This is a test file (gif) for testing download behavior.',
     fileSize: 0.03, // 3060203 bytes
     fileName: 'cute-cat-anim.gif',

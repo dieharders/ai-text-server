@@ -25,7 +25,7 @@ const ModelCard = ({
   saveModelConfig,
 }: IProps) => {
   // Vars
-  const { id, name, description, fileSize, ramSize, license, provider } = modelCard
+  const { id, name, description, fileSize, ramSize, licenses, provider } = modelCard
   // Styling
   const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
   const colorStyles =
@@ -244,7 +244,7 @@ const ModelCard = ({
           Provider: {provider}
         </p>
         <p className="overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm">
-          License: {license}
+          License: {licenses.join(', ')}
         </p>
       </div>
       {/* Description & Load */}
