@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import useDownloader, { EProgressState } from './useDownloader'
 import { IModelCard } from '@/models/models'
-import { IModelConfig } from './configs'
+import { EValidationState, IModelConfig } from './configs'
 
 interface IProps {
   modelCard: IModelCard
@@ -126,7 +126,7 @@ const ModelCard = ({
    */
   const PauseButton = () => {
     const [isDisabled, setIsDisabled] = useState(false)
-    const textColor = downloadProgress !== null || !isDisabled ? 'text-white' : 'text-gray-400'
+    const textColor = downloadProgress > 0 || !isDisabled ? 'text-white' : 'text-gray-400'
 
     return (
       <button
@@ -182,12 +182,25 @@ const ModelCard = ({
    * Render indicator of the total progress of download
    */
   const DownloadProgressBar = () => {
-    const progress = downloadProgress && `${downloadProgress}%`
+    const progress = () => {
+      if (downloadProgress && progressState === EProgressState.Downloading)
+        return `${downloadProgress}%`
+      return null
+    }
+    const isInvalid = modelConfig?.validation === EValidationState.Fail
+    const error = isInvalid && ' File integrity failed. Please re-download.'
+    const label = (
+      <div>
+        <span className="capitalize">{progressState}</span> {progress()}
+      </div>
+    )
+
     return (
       <div className="w-full  self-end">
         <div className="mb-1 flex justify-between">
           <span className="font-mono text-sm font-medium text-yellow-600">
-            <span className="capitalize">{progressState}</span> {progress}
+            {!isInvalid && label}
+            {error}
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
@@ -205,6 +218,12 @@ const ModelCard = ({
       <DeleteButton />
     </div>
   )
+  const cancelProgressMenu = (
+    <div className="flex flex-row gap-4">
+      <CancelDownloadButton />
+      <DownloadProgressBar />
+    </div>
+  )
   const downloadCheckHardwareMenu = (
     <div className="flex flex-row gap-4">
       <StartDownloadButton />
@@ -214,17 +233,22 @@ const ModelCard = ({
   const inProgressMenu = (
     <div className="flex flex-row gap-4">
       {progressState === EProgressState.Downloading && <PauseButton />}
+      {progressState === EProgressState.Idle && <ResumeButton />}
       {(progressState === EProgressState.Idle || progressState === EProgressState.None) && (
-        <ResumeButton />
+        <CancelDownloadButton />
       )}
-      <CancelDownloadButton />
-      <DownloadProgressBar />
+      {(progressState === EProgressState.Idle ||
+        progressState === EProgressState.Validating ||
+        progressState === EProgressState.Downloading) && <DownloadProgressBar />}
     </div>
   )
   const renderDownloadPane = () => {
-    if (modelConfig && downloadProgress === null) return loadRemoveMenu
-    if (downloadProgress && downloadProgress >= 0) return inProgressMenu
-    return downloadCheckHardwareMenu
+    if (modelConfig?.validation === EValidationState.Success && downloadProgress === 100)
+      return loadRemoveMenu
+    if (modelConfig?.validation === EValidationState.Fail) return cancelProgressMenu
+    if (progressState === EProgressState.None && downloadProgress === 0)
+      return downloadCheckHardwareMenu
+    return inProgressMenu
   }
 
   return (

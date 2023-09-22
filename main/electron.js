@@ -139,16 +139,12 @@ ipcMain.handle('api', async (event, eventName, options) => {
     case 'getAppPath':
       return app.getAppPath()
     case 'delete_file': {
+      const success = await dlService.onDelete()
       if (dlService) delete downloaders[id]
-      return dlService.onDelete()
+      return success
     }
     case 'pause_download':
       return dlService.onPause()
-    case 'cancel_download': {
-      const result = await dlService.onCancel()
-      if (dlService) delete downloaders[id]
-      return result
-    }
     case 'resume_download':
       return dlService.onStart(true)
     // Start service and return a config

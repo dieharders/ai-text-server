@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IModelCard } from '@/models/models'
 import { removeTextModelConfig, setUpdateTextModelConfig } from '@/utils/localStorage'
-import { IModelConfig } from './configs'
+import { EValidationState, IModelConfig } from './configs'
 
 export enum EProgressState {
   None = 'none',
@@ -23,7 +23,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
   const [isInitialized, setIsInitialized] = useState(false)
   const [modelConfig, setModelConfig] = useState<IModelConfig | undefined>(undefined)
   const [progressState, setProgressState] = useState<EProgressState>(EProgressState.None)
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
+  const [downloadProgress, setDownloadProgress] = useState<number>(0)
   const { id: modelId } = modelCard
   const apiPayload = useMemo(
     () => ({ config: modelConfig, modelCard, filePath: saveToPath }),
@@ -67,14 +67,32 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     },
     [apiPayload, modelCard?.downloadUrl, modelCard?.fileName, modelId, saveModelConfig, saveToPath],
   )
+  // Remove config record
+  const deleteConfig = useCallback(() => {
+    removeTextModelConfig(modelId)
+    console.log(`@@ [Downloader] File ${modelId} removed successfully!`)
+  }, [modelId])
+  // Delete file
+  const deleteFile = useCallback(async () => {
+    const success = await window.electron.api('delete_file', apiPayload)
+
+    if (success) {
+      deleteConfig()
+      // Set the state
+      setModelConfig(undefined)
+      return true
+    }
+
+    console.log('@@ [Downloader] File removal failed!', success)
+    return false
+  }, [apiPayload, deleteConfig])
   /**
    * Stop the download and remove the assets.
-   * @returns Promise<string>
+   * @returns Promise<boolean>
    */
   const cancelDownload = useCallback(async () => {
-    const newState: EProgressState = await window.electron.api('cancel_download', apiPayload)
-    return newState
-  }, [apiPayload])
+    return deleteFile()
+  }, [deleteFile])
   /**
    * Stop the download but allow to resume.
    * @returns Promise<string>
@@ -100,24 +118,15 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     const confirmed = await window.electron.api('showConfirmDialog', options)
     // "No" was pressed
     if (confirmed !== 0) return false
-    // Delete file
-    const success = await window.electron.api('delete_file', apiPayload)
-    if (success) {
-      // Remove config record
-      removeTextModelConfig(modelId)
-      console.log(`@@ File ${modelId} removed successfully!`)
-      // Set the state
-      setModelConfig(undefined)
-      return true
-    }
-    console.log('@@ File removal failed!', success)
-    return false
-  }, [apiPayload, modelCard.name, modelId])
+
+    return deleteFile()
+  }, [deleteFile, modelCard.name])
 
   // Set our local state initially since the backend doesnt know
   useEffect(() => {
     if (!isInitialized) {
-      if (modelConfig?.validation === 'success') setProgressState(EProgressState.Completed)
+      if (modelConfig?.validation === EValidationState.Success)
+        setProgressState(EProgressState.Completed)
       setIsInitialized(true)
     }
   }, [isInitialized, modelConfig?.validation])
@@ -143,10 +152,6 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
           console.log('@@ [UI] "progress state" event:', payload.eventId)
           setProgressState(payload.data)
           break
-        case 'delete-text-model': {
-          setProgressState(payload.data)
-          return removeTextModelConfig(modelId)
-        }
         case 'update-text-model': {
           return setUpdateTextModelConfig(payload.id, payload.data)
         }
@@ -165,9 +170,12 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
   // Load and update model config from storage whenever progress state changes
   useEffect(() => {
     const c = loadModelConfig()
-    const progress = c?.progress
+    const progress = c?.progress ?? 0
     setModelConfig(c)
-    setDownloadProgress(progress ?? null)
+    // We shouldnt have to do this here but the backend has no access to initial `config` state.
+    // This allows UI to display correctly when restoring from previous download.
+    if (progressState === EProgressState.None && progress > 0) setProgressState(EProgressState.Idle)
+    setDownloadProgress(progress)
     console.log('@@ [UI] Updating config data')
   }, [loadModelConfig, progressState])
 

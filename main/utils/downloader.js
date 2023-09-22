@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
+const EValidationState = Object.freeze({
+  Success: 'success',
+  Fail: 'fail',
+  None: 'none',
+})
+
 const EProgressState = Object.freeze({
   None: 'none',
   Idle: 'idle',
@@ -112,9 +118,6 @@ const hashEntireFile = async (filePath, signature) => {
  * hand back callbacks for consumers to use to change its state (pause, etc.)
  */
 const downloader = payload => {
-  let hash // object used to create checksum from chunks
-  let state = EProgressState.None
-  const ipcEvent = payload?.event
   // Card info
   const modelCard = payload?.modelCard
   const filePath = payload?.filePath
@@ -127,8 +130,12 @@ const downloader = payload => {
   let validation = config?.validation
   let lastModified = config?.modified
   let savePath = config?.savePath
-  let progress = config?.progress
+  let progress = config?.progress ?? 0
   let endChunk = config?.endChunk
+  // Other
+  let hash // object used to create checksum from chunks
+  let state = progress > 0 ? EProgressState.Idle : EProgressState.None
+  const ipcEvent = payload?.event
 
   /**
    * Send ipc command to front-end to update total progress
@@ -171,13 +178,25 @@ const downloader = payload => {
     // Create file stream, if this is resume, set stream to append from supplied `start`
     const writePath = join(filePath, fileName)
     savePath = writePath
-    console.log('@@ [Downloader] Created write stream:', writePath, 'url:', downloadUrl)
+    console.log(
+      '@@ [Downloader] Created write stream, startChunk:',
+      startChunk,
+      'writePath:',
+      writePath,
+      'url:',
+      downloadUrl,
+    )
     const options = startChunk > 0 ? { flags: 'a' } : null
     const fileStream = fs.createWriteStream(writePath, options)
     // Create crypto hash object and update with each chunk.
     // Dont create a chunked hash if we are resuming from cold boot.
-    const shouldHash = signature && (validation === null || validation === 'none') && !hash
-    if (shouldHash) {
+    const shouldCreateChunkedHashing =
+      signature &&
+      !hash &&
+      progress === 0 &&
+      (validation === undefined || validation === EValidationState.None)
+
+    if (shouldCreateChunkedHashing) {
       const crypto = require('crypto')
       hash = crypto.createHash('sha256')
     }
@@ -188,8 +207,7 @@ const downloader = payload => {
      */
     const handleChunk = async chunk => {
       // Update the hash with chunk content
-      const shouldUpdateHash = signature && !isResume && hash
-      if (shouldUpdateHash) hash.update(chunk, 'binary')
+      if (hash) hash.update(chunk, 'binary')
       // Save chunk to disk
       console.log('@@ [Downloader] Saving chunk...chunk:', endChunk)
       return fileStream.write(chunk)
@@ -205,7 +223,6 @@ const downloader = payload => {
         console.log('@@ [Downloader] File download finished successfully')
       } else {
         console.log('@@ [Downloader] File failed to download or was cancelled')
-        hash = null
         reject(null)
       }
       // Stream closed event, return config
@@ -215,14 +232,21 @@ const downloader = payload => {
           endChunk,
         )
         // Create a checksum from completed file only
-        const createChecksum = async () =>
-          isResume && !hash
-            ? { checksum: await hashEntireFile(writePath, signature) }
-            : { checksum: hash?.digest('hex') }
-        const shouldCreateChecksum = signature && (progress === 100 || progress === null)
-        if (shouldCreateChecksum) updateProgressState(EProgressState.Validating) // Notify state change
-        const checksum = shouldCreateChecksum ? await createChecksum() : {}
-        hash = null
+        let checksum
+        const createChecksum = async () => {
+          if (isResume && !hash) {
+            checksum = await hashEntireFile(writePath, signature)
+            return { checksum }
+          }
+          checksum = hash.digest('hex')
+          hash = null
+          return { checksum }
+        }
+        const shouldCreateChecksum = signature && progress === 100
+        if (shouldCreateChecksum) {
+          updateProgressState(EProgressState.Validating) // Notify state change
+          checksum = await createChecksum()
+        } else checksum = {}
         // Send the config data to UI to save to storage
         resolve({
           ...result,
@@ -234,7 +258,6 @@ const downloader = payload => {
       })
       // Error in stream
       fileStream.on('error', err => {
-        hash = null
         console.log('@@ [Downloader] File failed to save:', err)
         reject(null)
       })
@@ -258,21 +281,13 @@ const downloader = payload => {
       const parsePath = path.replace(/\\\\/g, '\\')
       await fsp.unlink(parsePath)
       console.log('@@ [Electron] Deleted file from:', path)
+      updateProgress(0)
+      updateProgressState(EProgressState.None)
       return true
     } catch (err) {
       console.log(`@@ [Electron] Failed to delete file from ${path}: ${err}`)
       return false
     }
-  }
-  const onCancel = async () => {
-    const newState = EProgressState.None
-    // Delete partial file content
-    await onDelete()
-    // Notify UI to delete saved config if any exists
-    const payload = { eventId: 'delete-text-model', downloadId: id, data: newState }
-    ipcEvent.sender.send('message', payload)
-    // Inform frontend of state change
-    return newState
   }
   const onPause = async () => {
     // Record new state
@@ -294,9 +309,8 @@ const downloader = payload => {
       if (progress < 100) {
         console.log('@@ [Downloader] Halted downloading. Validation skipped.')
         updateProgressState(EProgressState.Idle)
-        const v = 'undetermined'
-        validation = v
-        return { ...streamFileConfig, validation: v }
+        validation = EValidationState.None
+        return { ...streamFileConfig, validation }
       }
       // Verify downloaded file hash for integrity
       const downloadedFileHash = streamFileConfig?.checksum
@@ -304,10 +318,9 @@ const downloader = payload => {
       // Error validating, skip validation if no signature supplied
       if (signature && !validated) {
         updateProgressState(EProgressState.Errored)
-        console.log('@@ [Downloader] Failed to verify file integrity.')
-        const v = 'fail'
-        validation = v
-        return { ...streamFileConfig, validation: v }
+        console.log('@@ [Downloader] Failed to verify file integrity.', streamFileConfig)
+        validation = EValidationState.Fail
+        return { ...streamFileConfig, validation }
       }
       // Done
       updateProgressState(EProgressState.Completed)
@@ -315,9 +328,8 @@ const downloader = payload => {
         ? `File integrity verified [${validated}], ${downloadedFileHash} against ${signature}.`
         : 'File integrity verification skipped.'
       console.log(`@@ [Downloader] Finished downloading. ${integrityMsg}`)
-      const v = 'success'
-      validation = v
-      return { ...streamFileConfig, validation: v }
+      validation = EValidationState.Success
+      return { ...streamFileConfig, validation }
     } catch (err) {
       console.log('@@ [Downloader] Failed writing file to disk', err)
       updateProgressState(EProgressState.Errored)
@@ -393,7 +405,6 @@ const downloader = payload => {
 
   return {
     onStart,
-    onCancel,
     onPause,
     onDelete,
   }

@@ -1,9 +1,15 @@
+export enum EValidationState {
+  Success = 'success',
+  Fail = 'fail',
+  None = 'none',
+}
+
 export interface IModelConfig {
   id: string
   savePath: string
   numTimesRun: number
   isFavorited: boolean
-  validation: 'success' | 'fail' | 'none' | 'undetermined'
+  validation: EValidationState
   modified: string
   size: number
   endChunk?: number // allow to resume from last byte downloaded
@@ -29,7 +35,7 @@ const createConfig = ({
     savePath: savePath || '',
     numTimesRun: 0,
     isFavorited: false,
-    validation: validation || 'none',
+    validation: validation || EValidationState.None,
     modified: modified || '',
     size: size || 0,
     endChunk: endChunk || 0,
