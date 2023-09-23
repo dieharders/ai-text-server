@@ -1,6 +1,8 @@
-import '@/components/globals.css'
 import type { AppProps } from 'next/app'
-import Layout from '@/components/Layout'
+import { Inter } from 'next/font/google'
+import '@/components/globals.css'
+
+const inter = Inter({ subsets: ['latin'] })
 
 /**
  * Used to setup layouts for each page.
@@ -8,8 +10,8 @@ import Layout from '@/components/Layout'
  */
 export default function MyApp({ Component, pageProps }: AppProps) {
   return (
-    <Layout>
+    <main className={inter.className}>
       <Component {...pageProps} />
-    </Layout>
+    </main>
   )
 }
