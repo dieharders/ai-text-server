@@ -62,7 +62,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
         return true
       } catch (err) {
         console.log('@@ [Error]:', err)
-        return
+        return false
       }
     },
     [apiPayload, modelCard?.downloadUrl, modelCard?.fileName, modelId, saveModelConfig, saveToPath],
@@ -176,7 +176,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     // This allows UI to display correctly when restoring from previous download.
     if (progressState === EProgressState.None && progress > 0) setProgressState(EProgressState.Idle)
     setDownloadProgress(progress)
-    console.log('@@ [UI] Updating config data')
+    console.log('@@ [UI] Updating config data', c?.id)
   }, [loadModelConfig, progressState])
 
   return {
