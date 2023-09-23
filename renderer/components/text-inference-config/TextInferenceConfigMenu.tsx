@@ -2,8 +2,7 @@
 
 import { Dispatch, SetStateAction } from 'react'
 import textModels from '@/models/models'
-import { IModelConfig } from '@/components/text-model-browser/configs'
-import { INSTALLED_TEXT_MODELS } from '@/components/text-model-browser/ModelBrowser'
+import { getTextModelConfig } from '@/utils/localStorage'
 
 // Local Storage keys
 export const CURRENT_DOWNLOAD_PATH = 'current-download-path'
@@ -25,9 +24,7 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
 
     try {
       // Get installed model configs list
-      const data = window.localStorage.getItem(INSTALLED_TEXT_MODELS)
-      const modelConfigs: Array<IModelConfig> = data ? JSON.parse(data) : []
-      const modelConfig = modelConfigs.find(item => item.id === currentTextModelId)
+      const modelConfig = getTextModelConfig(currentTextModelId)
 
       if (!modelConfig) throw Error('Cannot find text model config data')
 
