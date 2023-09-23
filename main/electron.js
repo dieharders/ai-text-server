@@ -66,6 +66,12 @@ const start = async () => {
   // Window closed event
   mainWindow.on('closed', () => {
     console.log('@@ [App] closed')
+    // Kill all child processes here
+    // @TODO Look into npm `tree-kill` to kill all child sub-processes too: https://stackoverflow.com/questions/18694684/spawn-and-kill-a-process-in-node-js
+    universalAPI.stdin.pause()
+    universalAPI.kill()
+    universalAPI = null
+    console.log('@@ [App] Universal API process killed')
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
