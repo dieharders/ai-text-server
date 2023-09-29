@@ -13,8 +13,6 @@ const PauseButton = ({ action }: { action: () => Promise<EProgressState> }) => {
   const [isDisabled, setIsDisabled] = useState(false)
   const textColor = isDisabled ? 'text-gray-400' : 'text-white'
 
-  console.log('@@ render pause button')
-
   return (
     <button
       className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-blue-500 hover:text-blue-100`}

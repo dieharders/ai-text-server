@@ -20,9 +20,10 @@ global inference_process
 
 # Configure CORS settings
 origins = [
-    "http://localhost:3000",  # for testing
-    "https://hoppscotch.io",  # for testing
-    "https://brain-dump-dieharders.vercel.app/",  # client app origin
+    "http://localhost:3000",  # (optional) for testing
+    "https://hoppscotch.io",  # (optional) for testing
+    "http://localhost:8000",  # (required) Homebrew front-end
+    "https://brain-dump-dieharders.vercel.app/",  # (required) client app origin
 ]
 
 text_inference_routes = [
