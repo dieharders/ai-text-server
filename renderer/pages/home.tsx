@@ -12,43 +12,23 @@ import TextModelBrowserMenu, {
 
 export default function Home() {
   // App vars
-  const INFERENCE_IP = 'http://localhost:8008'
+  const PORT_HOMEBREW_API = 8008
+  const HOMEBREW_BASE_PATH = `http://localhost:${PORT_HOMEBREW_API}`
+  const HOMEBREW_URL = `${HOMEBREW_BASE_PATH}/docs`
+  const START_INFERENCE_URL = `http://localhost:${PORT_HOMEBREW_API}`
+
+  const PORT_TEXT_INFERENCE = 8080
+  const TEXT_INFERENCE_BASE_PATH = `http://localhost:${PORT_TEXT_INFERENCE}`
+  const TEXT_INFERENCE_URL = `${TEXT_INFERENCE_BASE_PATH}/docs`
+
   const [isStarted, setIsStarted] = useState(false)
   const [savePath, setSavePath] = useState<string>('')
   const [currentTextModel, setCurrentTextModel] = useState<string>('')
-  // Handlers
-  const onTestInference = async () => {
-    console.log('@@ Testing inference...')
-
-    const options = {
-      prompt: 'Whats your name',
-    }
-
-    try {
-      const response = await fetch(INFERENCE_IP + '/v1/completions', {
-        method: 'POST',
-        mode: 'cors', // must be enabled otherwise wont redirect
-        redirect: 'follow', // we want to follow the re-direct automatically
-        cache: 'no-cache',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(options),
-      })
-      const result = await response.json()
-      console.log('@@ [onLoadModel] Result:', result)
-    } catch (error) {
-      console.log('@@ [Error] Failed to connect to backend:', error)
-    }
-  }
   // Company credits (built by)
   const renderCredits = () => {
     return (
-      <div className="fixed bottom-0 left-0 z-30 flex h-36 w-full flex-col items-center justify-end bg-gradient-to-t from-white via-white font-mono text-sm dark:from-zinc-900 dark:via-zinc-900 lg:static lg:h-auto lg:w-auto lg:bg-none">
-        <button
-          // onClick={onTestInference}
-          className="pointer-events-none flex place-items-center gap-2 p-4 lg:pointer-events-auto lg:p-0"
-        >
+      <div className="fixed bottom-0 left-0 z-30 flex h-36 w-full flex-col items-center justify-end gap-1 bg-gradient-to-t from-white via-white font-mono text-sm dark:from-zinc-900 dark:via-zinc-900 lg:static lg:h-auto lg:w-auto lg:bg-none">
+        <button className="pointer-events-none flex place-items-center gap-2 lg:pointer-events-auto lg:p-0">
           Built with 🍺{' '}
           {/* <Image
               src="/vercel.svg"
@@ -58,19 +38,17 @@ export default function Home() {
               height={24}
               priority
             /> */}
-          <h2 className="text-md">Spread Shot Studios</h2>
+          <h2 className="text-md">by Spread Shot Studios</h2>
         </button>
-        <p className="pb-4">
-          Refer to{' '}
-          <a
-            href="http://localhost:8008/docs"
-            target="_blank"
-            className="text-yellow-400"
-            rel="noreferrer"
-          >
-            http://localhost:8008/docs
+        <p className="pb-2">
+          Refer to api docs for{' '}
+          <a href={HOMEBREW_URL} target="_blank" className="text-yellow-400" rel="noreferrer">
+            HomebrewAi
           </a>{' '}
-          for api docs
+          and{' '}
+          <a href={TEXT_INFERENCE_URL} target="_blank" className="text-yellow-400" rel="noreferrer">
+            Text Inference api
+          </a>
         </p>
       </div>
     )
@@ -109,7 +87,7 @@ export default function Home() {
       {/* Ai Inference config menu */}
       <div className="text-md z-10 w-full items-center justify-center font-mono lg:flex">
         <TextInferenceConfigMenu
-          ip={INFERENCE_IP}
+          ip={START_INFERENCE_URL}
           isStarted={isStarted}
           setIsStarted={setIsStarted}
           savePath={savePath}

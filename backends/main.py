@@ -1,67 +1,35 @@
-import os
-import re
+# import os
 import subprocess
-from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from inference import infer_text_api
+from pydantic import BaseModel
+from inference import redirects
+import uvicorn
 
 # from llama_cpp.server.app import create_app
 # from pydantic_settings import BaseSettings
-import uvicorn
 
 app = FastAPI(
     title="🍺 HomeBrew API server",
     version="0.0.1",
 )
-PORT_API = 8008
-PORT_TEXT_INFERENCE = "8000"
+PORT_HOMEBREW_API = 8008
+PORT_TEXT_INFERENCE = 8080
 global inference_process
 
 # Configure CORS settings
 origins = [
-    "http://localhost:3000",  # (optional) for testing
-    "https://hoppscotch.io",  # (optional) for testing
+    "http://localhost:3000",  # (optional) for testing client apps
+    "https://hoppscotch.io",  # (optional) for testing endpoints
     "http://localhost:8000",  # (required) Homebrew front-end
     "https://brain-dump-dieharders.vercel.app/",  # (required) client app origin
 ]
 
-text_inference_routes = [
-    "/v1/completions",
-    "/v1/embeddings",
-    "/v1/chat/completions",
-    "/v1/models",
-]
 
-
-# Redirect requests to external providers
-@app.middleware("http")
-async def redirect_middleware(request: Request, call_next):
-    # Match route
-    if request.url.path in text_inference_routes and request.url.port == PORT_API:
-        print(f"Redirect match found: {request.url}")
-        # Make new route with a different port
-        pattern = r":([^/]+)"
-        replacement = f":{PORT_TEXT_INFERENCE}"
-        new_url_str = re.sub(pattern, replacement, str(request.url))
-        request.scope["path"] = new_url_str
-        headers = dict(request.scope["headers"])
-        # Set status code to determine Method when redirected
-        # HTTP_303_SEE_OTHER for POST
-        # HTTP_302_FOUND for GET
-        # HTTP_307_TEMPORARY_REDIRECT should handle all
-        # if request.method == "POST":
-        #     status_code = status.HTTP_303_SEE_OTHER
-        # else:
-        #     status_code = status.HTTP_302_FOUND
-        request.scope["headers"] = [(k, v) for k, v in headers.items()]
-        return RedirectResponse(
-            url=new_url_str,
-            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
-            headers={"Content-Type": "application/json"},
-        )
-    else:
-        return await call_next(request)
+# Redirect requests to our custom endpoints
+# @app.middleware("http")
+# async def redirect_middleware(request: Request, call_next):
+#     return await redirects.text(request, call_next, str(PORT_TEXT_INFERENCE))
 
 
 app.add_middleware(
@@ -73,20 +41,66 @@ app.add_middleware(
 )
 
 
+class ConnectResponse(BaseModel):
+    message: str
+    success: bool
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Connected to api server on port 8008.",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 # Tell client we are ready to accept requests
 @app.get("/api/connect")
-def connect():
+def connect() -> ConnectResponse:
     return {
-        "message": f"Connected to api server on port {PORT_API}. Refer to 'http://localhost:{PORT_API}/docs' for api docs.",
+        "message": f"Connected to api server on port {PORT_HOMEBREW_API}. Refer to 'http://localhost:{PORT_HOMEBREW_API}/docs' for api docs.",
         "success": True,
     }
 
 
 # Load in the ai model to be used for inference.
+class LoadInferenceRequest(BaseModel):
+    modelId: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "modelId": "llama-2-13b-chat-ggml",
+                }
+            ]
+        }
+    }
+
+
+class LoadInferenceResponse(BaseModel):
+    message: str
+    success: bool
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "AI model [llama-2-13b-chat-ggml] loaded.",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 @app.post("/api/text/v1/inference/load")
-def load_inference(data: dict):
+def load_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
     try:
-        model_id: str = data["modelId"]
+        model_id: str = data.modelId
         # Logic to load the specified ai model here...
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
     except KeyError:
@@ -95,24 +109,56 @@ def load_inference(data: dict):
         )
 
 
+class StartInferenceRequest(BaseModel):
+    filePath: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "filePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
+                }
+            ]
+        }
+    }
+
+
+class StartInferenceResponse(BaseModel):
+    message: str
+    port: int
+    docs: str
+    success: bool
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "AI text inference started.",
+                    "port": 8080,
+                    "docs": "http://localhost:8080/docs",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 # Starts the text inference server
 @app.post("/api/text/v1/inference/start")
-def start_inference(data: dict):
+def start_inference(data: StartInferenceRequest) -> StartInferenceResponse:
     try:
-        model_file_path: str = data["filePath"]
+        model_file_path: str = data.filePath
         isStarted = start_text_inference_server(model_file_path)
-        return {"message": "AI inference started", "success": isStarted}
+        return {
+            "message": "AI inference started.",
+            "port": PORT_TEXT_INFERENCE,
+            "docs": f"http://localhost:{PORT_TEXT_INFERENCE}/docs",
+            "success": isStarted,
+        }
     except KeyError:
         raise HTTPException(
             status_code=400, detail="Invalid JSON format: 'filePath' key not found"
         )
-
-
-# Main text inference endpoint for prompting.
-@app.post("/api/text/v1/inference/completions")
-def run_completion(data: dict):
-    print("endpoint: /completions")
-    return infer_text_api.completions(data)
 
 
 # Pre-process docs into a text format specified by user.
@@ -139,11 +185,14 @@ def get_threads():
     return {"message": "get_threads"}
 
 
+# Methods...
+
+
 def start_api_server():
     try:
         print("Starting API server...")
         # Start the ASGI server
-        uvicorn.run(app, host="0.0.0.0", port=PORT_API, log_level="info")
+        uvicorn.run(app, host="0.0.0.0", port=PORT_HOMEBREW_API, log_level="info")
         return True
     except:
         print("Failed to start API server")
@@ -152,8 +201,6 @@ def start_api_server():
 
 def start_text_inference_server(file_path: str):
     try:
-        print(f"Starting Inference server from: {file_path}")
-
         # curr_dir = os.getcwd()
         # model_filename = "llama-13b.ggmlv3.q3_K_S.bin"
         # path = os.path.join(curr_dir, f"models/{model_filename}").replace(
@@ -171,6 +218,7 @@ def start_text_inference_server(file_path: str):
         #     cache_type: str
         #     verbose: bool
 
+        # @TODO Send these settings to inference engine
         # settings = Settings(
         #     model="models/llama-13b.ggmlv3.q3_K_S.bin",
         #     alias_name="Llama13b",
@@ -187,8 +235,8 @@ def start_text_inference_server(file_path: str):
         #     appInference,
         #     # host=os.getenv("HOST", "localhost"),
         #     host="0.0.0.0",
-        #     # port=int(os.getenv("PORT", PORT_TEXT_INFERENCE)),
-        #     port=PORT_TEXT_INFERENCE,
+        #     # port=int(os.getenv("PORT", str(PORT_TEXT_INFERENCE))),
+        #     port=str(PORT_TEXT_INFERENCE),
         #     log_level="info",
         # )
 
@@ -201,13 +249,15 @@ def start_text_inference_server(file_path: str):
             "--host",
             "0.0.0.0",
             "--port",
-            PORT_TEXT_INFERENCE,
+            str(PORT_TEXT_INFERENCE),
             "--model",
             path,
         ]
         # Execute the command
         # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.
         inference_process = subprocess.Popen(serve_llama_cpp)
+        process_id = inference_process.pid
+        print(f"Starting Inference server from: {file_path} with pid: {process_id}")
         # Can use `inference_process.terminate()` later to shutdown manually
         return True
     except:
@@ -216,7 +266,5 @@ def start_text_inference_server(file_path: str):
 
 
 if __name__ == "__main__":
-    # Starts the text inference server
-    # start_text_inference_server()
     # Starts the universal API server
     start_api_server()
