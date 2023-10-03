@@ -1,21 +1,19 @@
-# import os
+import json
+import uvicorn
 import subprocess
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from inference import redirects
-import uvicorn
 
 # from llama_cpp.server.app import create_app
 # from pydantic_settings import BaseSettings
+
 
 app = FastAPI(
     title="🍺 HomeBrew API server",
     version="0.0.1",
 )
-PORT_HOMEBREW_API = 8008
-PORT_TEXT_INFERENCE = 8080
-global inference_process
 
 # Configure CORS settings
 origins = [
@@ -29,7 +27,7 @@ origins = [
 # Redirect requests to our custom endpoints
 # @app.middleware("http")
 # async def redirect_middleware(request: Request, call_next):
-#     return await redirects.text(request, call_next, str(PORT_TEXT_INFERENCE))
+#     return await redirects.text(request, call_next, str(app.PORT_TEXT_INFERENCE))
 
 
 app.add_middleware(
@@ -39,6 +37,12 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+# Also works with "shutdown"
+@app.on_event("startup")
+async def startup_event():
+    print("[homebrew api] Server started up.")
 
 
 class ConnectResponse(BaseModel):
@@ -58,10 +62,10 @@ class ConnectResponse(BaseModel):
 
 
 # Tell client we are ready to accept requests
-@app.get("/api/connect")
+@app.get("/v1/connect")
 def connect() -> ConnectResponse:
     return {
-        "message": f"Connected to api server on port {PORT_HOMEBREW_API}. Refer to 'http://localhost:{PORT_HOMEBREW_API}/docs' for api docs.",
+        "message": f"Connected to api server on port {app.PORT_HOMEBREW_API}. Refer to 'http://localhost:{app.PORT_HOMEBREW_API}/docs' for api docs.",
         "success": True,
     }
 
@@ -97,7 +101,7 @@ class LoadInferenceResponse(BaseModel):
     }
 
 
-@app.post("/api/text/v1/inference/load")
+@app.post("/v1/text/load")
 def load_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
     try:
         model_id: str = data.modelId
@@ -144,15 +148,15 @@ class StartInferenceResponse(BaseModel):
 
 
 # Starts the text inference server
-@app.post("/api/text/v1/inference/start")
+@app.post("/v1/text/start")
 def start_inference(data: StartInferenceRequest) -> StartInferenceResponse:
     try:
         model_file_path: str = data.filePath
         isStarted = start_text_inference_server(model_file_path)
         return {
             "message": "AI inference started.",
-            "port": PORT_TEXT_INFERENCE,
-            "docs": f"http://localhost:{PORT_TEXT_INFERENCE}/docs",
+            "port": app.PORT_TEXT_INFERENCE,
+            "docs": f"http://localhost:{app.PORT_TEXT_INFERENCE}/docs",
             "success": isStarted,
         }
     except KeyError:
@@ -161,38 +165,49 @@ def start_inference(data: StartInferenceRequest) -> StartInferenceResponse:
         )
 
 
+@app.get("/v1/services/shutdown")
+async def shutdown_text_inference():
+    try:
+        print("[homebrew api] Shutting down all services")
+        app.text_inference_process.kill()
+        return {
+            "message": "Services shutdown.",
+            "success": True,
+        }
+    except Exception as e:
+        print(f"[homebrew api] Error shutting down services: {e}")
+        return {
+            "message": f"Error shutting down services: {e}",
+            "success": False,
+        }
+
+
 # Pre-process docs into a text format specified by user.
-@app.post("/api/text/v1/embed/pre-process")
+@app.post("/v1/embeddings/pre-process")
 def pre_process_documents():
     return {"message": "pre_process_documents"}
 
 
 # Create vector embeddings from the pre-processed documents, then store in database.
-@app.post("/api/text/v1/embed/create")
+@app.post("/v1/embeddings/create")
 def create_embeddings():
     return {"message": "create_embeddings"}
 
 
 # Use Llama Index to run queries on vector database embeddings.
-@app.post("/api/text/v1/search/similiar")
+@app.post("/v1/search/similiar")
 def search_similiar():
     return {"message": "search_similiar"}
-
-
-# Return chat history messages.
-@app.get("/api/text/v1/threads/get")
-def get_threads():
-    return {"message": "get_threads"}
 
 
 # Methods...
 
 
-def start_api_server():
+def start_homebrew_server():
     try:
         print("Starting API server...")
         # Start the ASGI server
-        uvicorn.run(app, host="0.0.0.0", port=PORT_HOMEBREW_API, log_level="info")
+        uvicorn.run(app, host="0.0.0.0", port=app.PORT_HOMEBREW_API, log_level="info")
         return True
     except:
         print("Failed to start API server")
@@ -235,8 +250,8 @@ def start_text_inference_server(file_path: str):
         #     appInference,
         #     # host=os.getenv("HOST", "localhost"),
         #     host="0.0.0.0",
-        #     # port=int(os.getenv("PORT", str(PORT_TEXT_INFERENCE))),
-        #     port=str(PORT_TEXT_INFERENCE),
+        #     # port=int(os.getenv("PORT", str(app.PORT_TEXT_INFERENCE))),
+        #     port=str(app.PORT_TEXT_INFERENCE),
         #     log_level="info",
         # )
 
@@ -249,16 +264,15 @@ def start_text_inference_server(file_path: str):
             "--host",
             "0.0.0.0",
             "--port",
-            str(PORT_TEXT_INFERENCE),
+            str(app.PORT_TEXT_INFERENCE),
             "--model",
             path,
         ]
         # Execute the command
         # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.
-        inference_process = subprocess.Popen(serve_llama_cpp)
-        process_id = inference_process.pid
-        print(f"Starting Inference server from: {file_path} with pid: {process_id}")
-        # Can use `inference_process.terminate()` later to shutdown manually
+        proc = subprocess.Popen(serve_llama_cpp)
+        app.text_inference_process = proc
+        print(f"Starting Inference server from: {file_path} with pid: {proc.pid}")
         return True
     except:
         print("Failed to start Inference server")
@@ -266,5 +280,10 @@ def start_text_inference_server(file_path: str):
 
 
 if __name__ == "__main__":
-    # Starts the universal API server
-    start_api_server()
+    # Open and read the JSON constants file
+    with open("./shared/constants.json", "r") as json_file:
+        data = json.load(json_file)
+        app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]
+        app.PORT_TEXT_INFERENCE = data["PORT_TEXT_INFERENCE"]
+    # Starts the homebrew API server
+    start_homebrew_server()

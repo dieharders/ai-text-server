@@ -32,7 +32,7 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
         filePath: modelConfig.savePath,
       }
 
-      const response = await fetch(ip + '/api/text/v1/inference/start', {
+      const response = await fetch(ip + '/v1/text/start', {
         method: 'POST',
         cache: 'no-cache',
         headers: {

@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 // Modules
+const axios = require('axios')
+const constants = require('../shared/constants.json')
 const { listenApiEvents } = require('./utils/api')
 const { downloader } = require('./utils/downloader')
 
@@ -15,7 +17,7 @@ const isDev = require('electron-is-dev')
 const prepareNext = require('electron-next')
 
 // https://www.freecodecamp.org/news/node-js-child-processes-everything-you-need-to-know-e69498fe970a/
-const apiProgramPath = isDev ? './backends/main.py' : './includes/api/main-x86_64.py'
+const homebrewAPIProgramPath = isDev ? './backends/main.py' : './includes/api/main-x86_64.py'
 
 let universalAPI
 let mainWindow
@@ -40,9 +42,9 @@ const createWindow = () => {
 
 // Start the frontend
 const start = async () => {
-  // Start the backend process for the universal api
-  universalAPI = spawn('python', [apiProgramPath])
-  // Listen to universal api events
+  // Start the backend process for the homebrew api
+  universalAPI = spawn('python', [homebrewAPIProgramPath])
+  // Listen to homebrew api events
   listenApiEvents(universalAPI)
   // Prepare the renderer for frontend
   await prepareNext('./renderer')
@@ -63,15 +65,27 @@ const start = async () => {
     }
     return { action: 'deny' }
   })
+  // Window just closed event
+  mainWindow.on('close', async () => {
+    // Tell homebrew to shutdown all external services
+    try {
+      await axios({
+        url: `http://0.0.0.0:${constants.PORT_HOMEBREW_API}/v1/services/shutdown`,
+        method: 'GET',
+      })
+    } catch (err) {
+      console.log('[App] Failed to shutdown services', err.code)
+    }
+  })
   // Window closed event
   mainWindow.on('closed', () => {
-    console.log('@@ [App] closed')
+    console.log('[App] Main window closed')
     // Kill all child processes here
     // @TODO Look into npm `tree-kill` to kill all child sub-processes too: https://stackoverflow.com/questions/18694684/spawn-and-kill-a-process-in-node-js
     universalAPI.stdin.pause()
     universalAPI.kill()
     universalAPI = null
-    console.log('@@ [App] Universal API process killed')
+    console.log('[App] homebrew API process killed')
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
@@ -91,16 +105,16 @@ const start = async () => {
 
 // Normal start process
 app.on('ready', async () => {
-  console.log('@@ [App] ready')
+  console.log('[App] Ready')
   await start()
 })
 
 // Quit the app once all windows are closed
 app.on('window-all-closed', () => {
-  console.log('@@ [App] all windows closed')
+  console.log('[App] All windows closed')
   // On MacOs, users expect the app to stay open in bg when the window is closed
   if (process.platform !== 'darwin') {
-    console.log('@@ [App] quit')
+    console.log('[App] Quitting app')
     app.quit()
   }
 })
@@ -109,7 +123,7 @@ app.on('window-all-closed', () => {
 // dock icon is clicked and there are no other windows open.
 app.on('activate', async () => {
   if (mainWindow === null) {
-    console.log('@@ [App] activate')
+    console.log('[App] Activate')
     await start()
   }
 })

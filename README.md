@@ -31,9 +31,9 @@ Project forked here [the Next.js GitHub repository](https://github.com/vercel/ne
 
 - Startup and shutdown of the backend services are done via the front-end.
 
-- The Python/FastAPI server (universal api) operates under `localhost:8008`.
+- The Python/FastAPI server (homebrew api) operates under `localhost:8008`.
 
-- 3rd party client apps will call the universal api to perform all functions needed.
+- 3rd party client apps will call the homebrew api to perform all functions needed.
 
 ---
 
@@ -80,7 +80,7 @@ To run the api backend, right-click over `src/backends/main.py` and choose "run 
 python src/backends/main.py
 ```
 
-The universal api server will be running on [http://localhost:8008](http://localhost:8008)
+The homebrew api server will be running on [http://localhost:8008](http://localhost:8008)
 
 ### Run the app in development mode
 
@@ -119,13 +119,13 @@ pnpm start
 
 This project deploys several different backend apps exposed via the /api endpoint. The idea is to separate all OS level logic and processing from the client facing app. This can make deployment to the cloud and swapping out functionality easier.
 
-Endpoints can be found [here](http://localhost:8008/docs) for the universal api server.
+Endpoints can be found [here](http://localhost:8008/docs) for the homebrew api server.
 
-### /api/connect
+### /v1/connect
 
 Used by client apps to detect when services are ready to be used.
 
-### /api/v1/text
+### /v1/text
 
 This is entry for all text inference functions. Endpoints can be found [here](http://localhost:8000/docs) after server is started.
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import constants from '@/shared/constants.json'
 import textModels from '@/models/models'
 import AppsBrowser from '@/components/AppsBrowser'
 import TextInferenceConfigMenu, {
@@ -12,12 +13,12 @@ import TextModelBrowserMenu, {
 
 export default function Home() {
   // App vars
-  const PORT_HOMEBREW_API = 8008
+  const PORT_HOMEBREW_API = constants.PORT_HOMEBREW_API
   const HOMEBREW_BASE_PATH = `http://localhost:${PORT_HOMEBREW_API}`
   const HOMEBREW_URL = `${HOMEBREW_BASE_PATH}/docs`
   const START_INFERENCE_URL = `http://localhost:${PORT_HOMEBREW_API}`
 
-  const PORT_TEXT_INFERENCE = 8080
+  const PORT_TEXT_INFERENCE = constants.PORT_TEXT_INFERENCE
   const TEXT_INFERENCE_BASE_PATH = `http://localhost:${PORT_TEXT_INFERENCE}`
   const TEXT_INFERENCE_URL = `${TEXT_INFERENCE_BASE_PATH}/docs`
 
