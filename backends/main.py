@@ -2,10 +2,9 @@ import json
 import uvicorn
 import subprocess
 from typing import List
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from inference import redirects
 
 # from llama_cpp.server.app import create_app
 # from pydantic_settings import BaseSettings
@@ -26,6 +25,7 @@ origins = [
 
 
 # Redirect requests to our custom endpoints
+# from fastapi import Request
 # @app.middleware("http")
 # async def redirect_middleware(request: Request, call_next):
 #     return await redirects.text(request, call_next, str(app.PORT_TEXT_INFERENCE))
@@ -221,7 +221,11 @@ class ServicesApiResponse(BaseModel):
                             "port": 8008,
                             "baseUrl": "http://0.0.0.0:",
                             "endpoints": [
-                                {"name": "completions", "urlPath": "/v1/completions"}
+                                {
+                                    "name": "completions",
+                                    "urlPath": "/v1/completions",
+                                    "method": "POST",
+                                }
                             ],
                         }
                     ],
@@ -239,10 +243,14 @@ def get_services_api() -> ServicesApiResponse:
         "port": app.PORT_TEXT_INFERENCE,
         "baseUrl": "http://0.0.0.0:",
         "endpoints": [
-            {"name": "completions", "urlPath": "/v1/completions"},
-            {"name": "embeddings", "urlPath": "/v1/embeddings"},
-            {"name": "chat-completions", "urlPath": "/v1/chat/completions"},
-            {"name": "models", "urlPath": "/v1/models"},
+            {"name": "completions", "urlPath": "/v1/completions", "method": "POST"},
+            {"name": "embeddings", "urlPath": "/v1/embeddings", "method": "POST"},
+            {
+                "name": "chat-completions",
+                "urlPath": "/v1/chat/completions",
+                "method": "POST",
+            },
+            {"name": "models", "urlPath": "/v1/models", "method": "GET"},
         ],
     }
 

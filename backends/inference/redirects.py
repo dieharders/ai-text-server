@@ -15,13 +15,9 @@ direct_routes = [
 async def text(request: Request, call_next, PORT_TEXT_INFERENCE):
     def setRedirect(new_path: str):
         # Replace the port
-        # pattern = r":([^/]+)"
-        # replacement = f":{PORT_TEXT_INFERENCE}"
-        # new_url_str = re.sub(pattern, replacement, str(request.url))
-        scheme = "http://"
-        new_url_str = f"{scheme}{request.url.hostname}:{PORT_TEXT_INFERENCE}{new_path}"
-        # new_url_str = "http://localhost:8080/v1/text/completions"
-        print(new_url_str)
+        pattern = r":([^/]+)"
+        replacement = f":{PORT_TEXT_INFERENCE}"
+        new_url_str = re.sub(pattern, replacement, str(request.url))
         # Make new route with a different port
         request.scope["path"] = new_url_str
         headers = dict(request.scope["headers"])
