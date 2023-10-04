@@ -57,7 +57,7 @@ class ConnectResponse(BaseModel):
                 {
                     "success": True,
                     "message": "Connected to api server on port 8008.",
-                    "data": {"port": 8008, "docs": "http://localhost:8008/docs"},
+                    "data": {"docs": "http://localhost:8008/docs"},
                 }
             ]
         }
@@ -71,7 +71,6 @@ def connect() -> ConnectResponse:
         "success": True,
         "message": f"Connected to api server on port {app.PORT_HOMEBREW_API}. Refer to 'http://localhost:{app.PORT_HOMEBREW_API}/docs' for api docs.",
         "data": {
-            "port": app.PORT_HOMEBREW_API,
             "docs": f"http://localhost:{app.PORT_HOMEBREW_API}/docs",
         },
     }
