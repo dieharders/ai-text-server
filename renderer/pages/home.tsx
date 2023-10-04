@@ -48,7 +48,7 @@ export default function Home() {
           </a>{' '}
           and{' '}
           <a href={TEXT_INFERENCE_URL} target="_blank" className="text-yellow-400" rel="noreferrer">
-            Text Inference api
+            Text Inference
           </a>
         </p>
       </div>

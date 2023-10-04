@@ -1,6 +1,7 @@
 import json
 import uvicorn
 import subprocess
+from typing import List
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -46,15 +47,17 @@ async def startup_event():
 
 
 class ConnectResponse(BaseModel):
-    message: str
     success: bool
+    message: str
+    data: dict
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "message": "Connected to api server on port 8008.",
                     "success": True,
+                    "message": "Connected to api server on port 8008.",
+                    "data": {"port": 8008, "docs": "http://localhost:8008/docs"},
                 }
             ]
         }
@@ -65,8 +68,12 @@ class ConnectResponse(BaseModel):
 @app.get("/v1/connect")
 def connect() -> ConnectResponse:
     return {
-        "message": f"Connected to api server on port {app.PORT_HOMEBREW_API}. Refer to 'http://localhost:{app.PORT_HOMEBREW_API}/docs' for api docs.",
         "success": True,
+        "message": f"Connected to api server on port {app.PORT_HOMEBREW_API}. Refer to 'http://localhost:{app.PORT_HOMEBREW_API}/docs' for api docs.",
+        "data": {
+            "port": app.PORT_HOMEBREW_API,
+            "docs": f"http://localhost:{app.PORT_HOMEBREW_API}/docs",
+        },
     }
 
 
@@ -102,7 +109,7 @@ class LoadInferenceResponse(BaseModel):
 
 
 @app.post("/v1/text/load")
-def load_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
+def load_text_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
     try:
         model_id: str = data.modelId
         # Logic to load the specified ai model here...
@@ -128,19 +135,20 @@ class StartInferenceRequest(BaseModel):
 
 
 class StartInferenceResponse(BaseModel):
-    message: str
-    port: int
-    docs: str
     success: bool
+    message: str
+    data: dict
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "message": "AI text inference started.",
-                    "port": 8080,
-                    "docs": "http://localhost:8080/docs",
                     "success": True,
+                    "message": "AI text inference started.",
+                    "data": {
+                        "port": 8080,
+                        "docs": "http://localhost:8080/docs",
+                    },
                 }
             ]
         }
@@ -149,15 +157,17 @@ class StartInferenceResponse(BaseModel):
 
 # Starts the text inference server
 @app.post("/v1/text/start")
-def start_inference(data: StartInferenceRequest) -> StartInferenceResponse:
+def start_text_inference(data: StartInferenceRequest) -> StartInferenceResponse:
     try:
         model_file_path: str = data.filePath
         isStarted = start_text_inference_server(model_file_path)
         return {
-            "message": "AI inference started.",
-            "port": app.PORT_TEXT_INFERENCE,
-            "docs": f"http://localhost:{app.PORT_TEXT_INFERENCE}/docs",
             "success": isStarted,
+            "message": "AI inference started.",
+            "data": {
+                "port": app.PORT_TEXT_INFERENCE,
+                "docs": f"http://localhost:{app.PORT_TEXT_INFERENCE}/docs",
+            },
         }
     except KeyError:
         raise HTTPException(
@@ -165,21 +175,82 @@ def start_inference(data: StartInferenceRequest) -> StartInferenceResponse:
         )
 
 
+class ShutdownInferenceResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{"message": "Services shutdown.", "success": True}]
+        }
+    }
+
+
+# Shutdown all currently open processes/subprocesses
 @app.get("/v1/services/shutdown")
-async def shutdown_text_inference():
+async def shutdown_text_inference() -> ShutdownInferenceResponse:
     try:
         print("[homebrew api] Shutting down all services")
         app.text_inference_process.kill()
         return {
-            "message": "Services shutdown.",
             "success": True,
+            "message": "Services shutdown successfully.",
         }
     except Exception as e:
         print(f"[homebrew api] Error shutting down services: {e}")
         return {
-            "message": f"Error shutting down services: {e}",
             "success": False,
+            "message": f"Error shutting down services: {e}",
         }
+
+
+class ServicesApiResponse(BaseModel):
+    success: bool
+    message: str
+    data: List[dict]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "message": "These are services.",
+                    "data": [
+                        {
+                            "name": "text-inference",
+                            "port": 8008,
+                            "baseUrl": "http://0.0.0.0:",
+                            "endpoints": [
+                                {"name": "completions", "urlPath": "/v1/completions"}
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+# Return api info for available services
+@app.get("/v1/services/api")
+def get_services_api() -> ServicesApiResponse:
+    text_inference_api = {
+        "name": "text-inference",
+        "port": app.PORT_TEXT_INFERENCE,
+        "baseUrl": "http://0.0.0.0:",
+        "endpoints": [
+            {"name": "completions", "urlPath": "/v1/completions"},
+            {"name": "embeddings", "urlPath": "/v1/embeddings"},
+            {"name": "chat-completions", "urlPath": "/v1/chat/completions"},
+            {"name": "models", "urlPath": "/v1/models"},
+        ],
+    }
+
+    return {
+        "success": True,
+        "message": "These are the available service api's",
+        "data": [text_inference_api],
+    }
 
 
 # Pre-process docs into a text format specified by user.
