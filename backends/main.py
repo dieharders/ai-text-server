@@ -218,7 +218,6 @@ class ServicesApiResponse(BaseModel):
                         {
                             "name": "text-inference",
                             "port": 8008,
-                            "baseUrl": "http://0.0.0.0:",
                             "endpoints": [
                                 {
                                     "name": "completions",
@@ -240,7 +239,6 @@ def get_services_api() -> ServicesApiResponse:
     text_inference_api = {
         "name": "text-inference",
         "port": app.PORT_TEXT_INFERENCE,
-        "baseUrl": "http://0.0.0.0:",
         "endpoints": [
             {"name": "completions", "urlPath": "/v1/completions", "method": "POST"},
             {"name": "embeddings", "urlPath": "/v1/embeddings", "method": "POST"},
