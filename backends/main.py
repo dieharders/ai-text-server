@@ -34,7 +34,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    # allow_credentials=True,
+    allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
@@ -344,20 +344,18 @@ def start_text_inference_server(file_path: str):
             "--model",
             path,
             # "--help",
-            # "--n_ctx",
-            # 512,
-            # "--stream",
-            # True,
+            "--n_ctx",
+            "2048",
             # "--n_gpu_layers",
-            # 1,
-            # "--verbose",
-            # True,
+            # "1",
+            "--verbose",
+            "True",
             # "--cache",
-            # True,
+            # "True",
             # "--cache_type",
             # "disk",
             # "--seed",
-            # -1,
+            # "0",
         ]
         # Execute the command
         # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.
