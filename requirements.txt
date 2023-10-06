@@ -4,4 +4,4 @@ uvicorn[standard]
 sse-starlette==1.6.5
 pyinstaller==5.13.0
 llama-cpp-python==0.1.77
-# llama-cpp-python[server]
+llama-cpp-python[server]
