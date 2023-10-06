@@ -43,9 +43,10 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
 
       const result = await response.json()
       setIsStarted(result?.success)
-      console.log('@@ [onStart] Success:', result)
+      if (result?.success) console.log('[TextInference] "onStart" Success:', result)
+      else console.log('[TextInference] "onStart" Failed:', result)
     } catch (error) {
-      console.log('@@ [Error] Failed to load the model:', error)
+      console.log('[TextInference] Error: Failed to load the model:', error)
     }
   }
 

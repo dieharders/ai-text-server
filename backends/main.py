@@ -343,6 +343,21 @@ def start_text_inference_server(file_path: str):
             str(app.PORT_TEXT_INFERENCE),
             "--model",
             path,
+            # "--help",
+            # "--n_ctx",
+            # 512,
+            # "--stream",
+            # True,
+            # "--n_gpu_layers",
+            # 1,
+            # "--verbose",
+            # True,
+            # "--cache",
+            # True,
+            # "--cache_type",
+            # "disk",
+            # "--seed",
+            # -1,
         ]
         # Execute the command
         # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.
