@@ -2,6 +2,7 @@ fastapi==0.101.1
 pydantic_settings==2.0.3
 uvicorn[standard]
 sse-starlette==1.6.5
+starlette_context==0.3.6
 pyinstaller==5.13.0
-llama-cpp-python==0.1.77
+llama-cpp-python==0.2.11
 llama-cpp-python[server]

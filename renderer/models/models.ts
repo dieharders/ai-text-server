@@ -44,6 +44,7 @@ export interface IModelCard {
   promptTemplate?: string
   tokenizers?: string[]
   tags?: string[]
+  quantTypes?: string[]
 }
 
 export const toGB = (size: number) => {
@@ -67,19 +68,20 @@ const models: Array<IModelCard> = [
     sha256: '9834f27b41ba9dfc8cb3018359fa779330a2f168ac1085d6704fe6b04ce84e1b',
   },
   {
-    id: 'llama-2-13b-chat-ggml',
-    name: 'Llama 2 13B',
+    id: 'llama-2-13b-ensemble',
+    name: 'Llama 2 13B Ensemble',
     provider: Providers.TheBloke,
     licenses: [LicenseType.Other],
     description:
       'Llama 2 is a collection of pretrained and fine-tuned generative text models ranging in scale from 7 billion to 70 billion parameters. Our fine-tuned LLMs, called Llama-2-Chat, are optimized for dialogue use cases. Llama-2-Chat models outperform open-source chat models on most benchmarks we tested, and in our human evaluations for helpfulness and safety, are on par with some popular closed-source models like ChatGPT and PaLM',
-    fileSize: 5.51, // 5508521088 bytes
-    fileName: 'llama-2-13b-chat.ggmlv3.q2_K.bin',
+    fileSize: 7.87,
+    fileName: 'llama-2-13b-ensemble-v6.Q4_K_M.gguf',
     modelType: ModelType.Llama,
-    modelUrl: 'https://huggingface.co/TheBloke/Llama-2-13B-chat-GGML',
+    modelUrl: 'https://huggingface.co/TheBloke/Llama-2-13B-Ensemble-v6-GGUF',
+    quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
     downloadUrl:
-      'https://huggingface.co/TheBloke/Llama-2-13B-chat-GGML/resolve/main/llama-2-13b-chat.ggmlv3.q2_K.bin',
-    sha256: 'de25498144f05fd3ee41cd2250c16f23a8415a4a4c9f4c1df1a3efd9b3c0991d',
+      'https://huggingface.co/TheBloke/Llama-2-13B-Ensemble-v6-GGUF/resolve/main/llama-2-13b-ensemble-v6.Q4_K_M.gguf',
+    sha256: '90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a098ce79d',
   },
   {
     id: 'wizard-vicuna-15b-coder',

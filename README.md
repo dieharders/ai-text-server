@@ -96,8 +96,17 @@ This project is meant to be deployed locally on the client's machine. It is a ne
 
 Bundling Python exe (the -F flag bundles everything into one .exe ). This is handled automatically by npm scripts.
 
-- pip install -U pyinstaller
-- pyinstaller -c -F your_program.py
+To install the pyinstaller tool:
+
+```bash
+pip install -U pyinstaller
+```
+
+Then use it to bundle a python script:
+
+```bash
+pyinstaller -c -F your_program.py
+```
 
 Building app for production:
 

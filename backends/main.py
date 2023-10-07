@@ -6,9 +6,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# from llama_cpp.server.app import create_app
-# from pydantic_settings import BaseSettings
-
 
 app = FastAPI(
     title="🍺 HomeBrew API server",
@@ -292,46 +289,8 @@ def start_homebrew_server():
 
 def start_text_inference_server(file_path: str):
     try:
-        # curr_dir = os.getcwd()
-        # model_filename = "llama-13b.ggmlv3.q3_K_S.bin"
-        # path = os.path.join(curr_dir, f"models/{model_filename}").replace(
-        #     "\\", "/"
-        # )
         path = file_path.replace("\\", "/")
 
-        # class Settings(BaseSettings):
-        #     model: str
-        #     alias_name: str
-        #     n_ctx: int
-        #     n_gpu_layers: int
-        #     seed: int
-        #     cache: bool
-        #     cache_type: str
-        #     verbose: bool
-
-        # @TODO Send these settings to inference engine
-        # settings = Settings(
-        #     model="models/llama-13b.ggmlv3.q3_K_S.bin",
-        #     alias_name="Llama13b",
-        #     n_ctx=512,
-        #     n_gpu_layers=2,
-        #     seed=-1,
-        #     cache=True,
-        #     cache_type="disk",
-        #     verbose=True,
-        # )
-
-        # appInference = create_app(settings)
-        # uvicorn.run(
-        #     appInference,
-        #     # host=os.getenv("HOST", "localhost"),
-        #     host="0.0.0.0",
-        #     # port=int(os.getenv("PORT", str(app.PORT_TEXT_INFERENCE))),
-        #     port=str(app.PORT_TEXT_INFERENCE),
-        #     log_level="info",
-        # )
-
-        # @TODO Pass all inference params to command
         # Command to execute
         serve_llama_cpp = [
             "python",
@@ -347,7 +306,7 @@ def start_text_inference_server(file_path: str):
             "--n_ctx",
             "2048",
             # "--n_gpu_layers",
-            # "1",
+            # "2",
             "--verbose",
             "True",
             # "--cache",
@@ -358,7 +317,6 @@ def start_text_inference_server(file_path: str):
             # "0",
         ]
         # Execute the command
-        # Note, in llama_cpp/server/app.py -> `settings.model_name` needed changing to `settings.alias_name` due to namespace clash with Pydantic.
         proc = subprocess.Popen(serve_llama_cpp)
         app.text_inference_process = proc
         print(f"Starting Inference server from: {file_path} with pid: {proc.pid}")
