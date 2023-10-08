@@ -61,7 +61,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
 
         return true
       } catch (err) {
-        console.log('@@ [Error]:', err)
+        console.log('[Downloader] Error:', err)
         return false
       }
     },
@@ -70,7 +70,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
   // Remove config record
   const deleteConfig = useCallback(() => {
     removeTextModelConfig(modelId)
-    console.log(`@@ [Downloader] File ${modelId} removed successfully!`)
+    console.log(`[Downloader] File ${modelId} removed successfully!`)
   }, [modelId])
   // Delete file
   const deleteFile = useCallback(async () => {
@@ -83,7 +83,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
       return true
     }
 
-    console.log('@@ [Downloader] File removal failed!', success)
+    console.log('[Downloader] File removal failed!', success)
     return false
   }, [apiPayload, deleteConfig])
   /**
@@ -139,7 +139,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
       switch (payload.eventId) {
         case 'download_progress':
           console.log(
-            '@@ [UI] "progress" event:',
+            '[Downloader] "progress" event:',
             payload.eventId,
             'progress:',
             payload.data,
@@ -149,7 +149,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
           setDownloadProgress(payload.data)
           break
         case 'download_progress_state':
-          console.log('@@ [UI] "progress state" event:', payload.eventId)
+          console.log('[Downloader] "progress state" event:', payload.eventId)
           setProgressState(payload.data)
           break
         case 'update-text-model': {
@@ -176,7 +176,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     // This allows UI to display correctly when restoring from previous download.
     if (progressState === EProgressState.None && progress > 0) setProgressState(EProgressState.Idle)
     setDownloadProgress(progress)
-    console.log('@@ [UI] Updating config data', c?.id)
+    console.log('[Downloader] Updating config data', c?.id)
   }, [loadModelConfig, progressState])
 
   return {

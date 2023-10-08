@@ -58,7 +58,7 @@ const start = async () => {
     try {
       await shell.openExternal(url)
     } catch (err) {
-      console.log('@@ [Electron] Failed to open external website')
+      console.log('[Electron] Failed to open external website')
     }
     if (url.startsWith('about_blank')) {
       return { action: 'allow' }
@@ -146,7 +146,7 @@ ipcMain.handle('api', async (event, eventName, options) => {
   if (!dlService) {
     dlService = downloader({ config, modelCard, event, filePath })
     downloaders[id] = dlService
-    console.log('@@ [Electron] New downloader created.')
+    console.log('[Electron] New downloader created.')
   }
 
   switch (eventName) {

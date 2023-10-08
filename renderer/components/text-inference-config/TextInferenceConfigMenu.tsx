@@ -144,16 +144,16 @@ const FilePathChooser = ({ isStarted, savePath, setSavePath }: IPropsFilePath) =
     }
 
     const selected = await dialogOpen()
-    console.log('@@ User opened dialogue box', selected)
+    console.log('[UI] User opened dialogue box', selected)
 
     if (selected.canceled) {
-      console.log('@@ User cancelled the selection.')
+      console.log('[UI] User cancelled the selection.')
       return null
     } else if (selected.filePaths.length > 1) {
-      console.log('@@ Error: user selected multiple files.')
+      console.log('[UI] Error: user selected multiple files.')
       return null
     } else {
-      console.log('@@ User selected a single folder:', selected.filePaths[0])
+      console.log('[UI] User selected a single folder:', selected.filePaths[0])
       return selected.filePaths[0]
     }
   }

@@ -12,7 +12,7 @@ const getTextModelConfig = (id: string) => {
   const config = modelConfigs.find((item: IModelConfig) => item.id === id)
 
   if (!config) {
-    console.log('@@ [UI] Cannot find text model config data')
+    console.log('[localStorage] Cannot find text model config data')
     return undefined
   }
 
@@ -42,7 +42,7 @@ const removeTextModelConfig = (id: string) => {
   const modelConfigs = getTextModelsList()
   const index = modelConfigs.findIndex((item: IModelConfig) => item.id === id)
   if (index === -1) {
-    console.log('@@ [UI] Failed to find model config.')
+    console.log('[localStorage] Failed to find model config.')
     return false
   }
   // Remove config from list

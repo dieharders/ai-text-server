@@ -24,7 +24,7 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
   // Handlers
   const onSelectTextModel = useCallback(
     (id: string) => {
-      console.log('@@ Set current text model:', id)
+      console.log('[UI] Set current text model:', id)
       if (id) {
         setCurrentTextModel(id)
         localStorage.setItem(ITEM_CURRENT_MODEL, id)
@@ -33,7 +33,7 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
     [setCurrentTextModel],
   )
   const onDownloadComplete = useCallback(() => {
-    console.log('@@ [Downloader] File saved successfully!')
+    console.log('[UI] [Downloader] File saved successfully!')
   }, [])
 
   // Create new entry for the installed model and record the install path.
@@ -42,7 +42,7 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
     const config = createConfig(props)
     // Store/Overwrite with new entry
     setUpdateTextModelConfig(config.id, config)
-    console.log('@@ [localStorage] Created new config:', config)
+    console.log('[UI] [localStorage] Created new config:', config)
   }
 
   // Components

@@ -105,7 +105,7 @@ const hashEntireFile = async (filePath, signature) => {
       .pipe(hs)
       .on('finish', () => {
         fileHash = hs.read()
-        console.log(`@@ [Downloader] Filehash calculated: ${fileHash} | ${signature}.`)
+        console.log(`[Downloader] Filehash calculated: ${fileHash} | ${signature}.`)
         // Verified
         if (fileHash === signature) resolve(fileHash)
         else resolve('')
@@ -143,7 +143,7 @@ const downloader = payload => {
    * @returns
    */
   const updateProgress = amount => {
-    console.log('@@ [Downloader] Download progress:', amount)
+    console.log('[Downloader] Download progress:', amount)
     ipcEvent.sender.send('message', {
       eventId: 'download_progress',
       downloadId: id,
@@ -157,7 +157,7 @@ const downloader = payload => {
    * @returns
    */
   const updateProgressState = val => {
-    console.log('@@ [Downloader] updateProgressState:', val)
+    console.log('[Downloader] updateProgressState:', val)
     state = val
     ipcEvent.sender.send('message', {
       eventId: 'download_progress_state',
@@ -179,7 +179,7 @@ const downloader = payload => {
     const writePath = join(filePath, fileName)
     savePath = writePath
     console.log(
-      '@@ [Downloader] Created write stream, startChunk:',
+      '[Downloader] Created write stream, startChunk:',
       startChunk,
       'writePath:',
       writePath,
@@ -209,7 +209,7 @@ const downloader = payload => {
       // Update the hash with chunk content
       if (hash) hash.update(chunk, 'binary')
       // Save chunk to disk
-      console.log('@@ [Downloader] Saving chunk...chunk:', endChunk)
+      console.log('[Downloader] Saving chunk...chunk:', endChunk)
       return fileStream.write(chunk)
     }
     // Download file
@@ -220,15 +220,15 @@ const downloader = payload => {
     return new Promise((resolve, reject) => {
       // Check download result
       if (result && !result?.error) {
-        console.log('@@ [Downloader] File download finished successfully')
+        console.log('[Downloader] File download finished successfully')
       } else {
-        console.log('@@ [Downloader] File failed to download or was cancelled')
+        console.log('[Downloader] File failed to download or was cancelled')
         reject(null)
       }
       // Stream closed event, return config
       fileStream.on('finish', async () => {
         console.log(
-          '@@ [Downloader] Stream finished: File saved to disk successfully. endChunk:',
+          '[Downloader] Stream finished: File saved to disk successfully. endChunk:',
           endChunk,
         )
         // Create a checksum from completed file only
@@ -258,7 +258,7 @@ const downloader = payload => {
       })
       // Error in stream
       fileStream.on('error', err => {
-        console.log('@@ [Downloader] File failed to save:', err)
+        console.log('[Downloader] File failed to save:', err)
         reject(null)
       })
     })
@@ -271,7 +271,7 @@ const downloader = payload => {
     const path = savePath
 
     if (!path) {
-      console.log('@@ [Electron] No path passed')
+      console.log('[Downloader] No path passed')
       return false
     }
 
@@ -280,12 +280,12 @@ const downloader = payload => {
       // Remove double slashes
       const parsePath = path.replace(/\\\\/g, '\\')
       await fsp.unlink(parsePath)
-      console.log('@@ [Electron] Deleted file from:', path)
+      console.log('[Downloader] Deleted file from:', path)
       updateProgress(0)
       updateProgressState(EProgressState.None)
       return true
     } catch (err) {
-      console.log(`@@ [Electron] Failed to delete file from ${path}: ${err}`)
+      console.log(`[Downloader] Failed to delete file from ${path}: ${err}`)
       return false
     }
   }
@@ -301,13 +301,13 @@ const downloader = payload => {
    */
   const onStart = async (isResume = false) => {
     try {
-      console.log('@@ [Downloader] Starting download...')
+      console.log('[Downloader] Starting download...')
       updateProgressState(EProgressState.Downloading)
       // Download large file in chunks and return a checksum for validation
       const streamFileConfig = await writeStreamFile(isResume)
       // In-progress downloads skip validation
       if (progress < 100) {
-        console.log('@@ [Downloader] Halted downloading. Validation skipped.')
+        console.log('[Downloader] Halted downloading. Validation skipped.')
         updateProgressState(EProgressState.Idle)
         validation = EValidationState.None
         return { ...streamFileConfig, validation }
@@ -318,7 +318,7 @@ const downloader = payload => {
       // Error validating, skip validation if no signature supplied
       if (signature && !validated) {
         updateProgressState(EProgressState.Errored)
-        console.log('@@ [Downloader] Failed to verify file integrity.', streamFileConfig)
+        console.log('[Downloader] Failed to verify file integrity.', streamFileConfig)
         validation = EValidationState.Fail
         return { ...streamFileConfig, validation }
       }
@@ -327,11 +327,11 @@ const downloader = payload => {
       const integrityMsg = signature
         ? `File integrity verified [${validated}], ${downloadedFileHash} against ${signature}.`
         : 'File integrity verification skipped.'
-      console.log(`@@ [Downloader] Finished downloading. ${integrityMsg}`)
+      console.log(`[Downloader] Finished downloading. ${integrityMsg}`)
       validation = EValidationState.Success
       return { ...streamFileConfig, validation }
     } catch (err) {
-      console.log('@@ [Downloader] Failed writing file to disk', err)
+      console.log('[Downloader] Failed writing file to disk', err)
       updateProgressState(EProgressState.Errored)
       return false
     }
@@ -349,11 +349,11 @@ const downloader = payload => {
     // If resuming, check if file is out of date by comparing current file modified date to stored data's date.
     if (startChunk > 0) {
       console.log(
-        `@@ [Downloader] Chunk last modified: ${modified}, file last modified: ${lastModified}, size: ${size}`,
+        `[Downloader] Chunk last modified: ${modified}, file last modified: ${lastModified}, size: ${size}`,
       )
       if (modified !== lastModified) {
         console.log(
-          '@@ [Downloader] File out of date, cancel the download, delete the file and restart download.',
+          '[Downloader] File out of date, cancel the download, delete the file and restart download.',
         )
         return { error: true }
       }
@@ -365,7 +365,7 @@ const downloader = payload => {
       // Stop if state changes
       const isHaltState = state !== EProgressState.Downloading
       if (isHaltState) {
-        console.log('@@ [Downloader] Event: Download halted by user:', state)
+        console.log('[Downloader] Event: Download halted by user:', state)
         // If this is a cancel then we dont want to save in-progress info
         if (state === EProgressState.None) error = true
         break

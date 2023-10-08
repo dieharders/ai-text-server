@@ -64,7 +64,7 @@ export default function Home() {
           const basepath = await window.electron.api('getPath', 'desktop')
           return basepath || ''
         } catch (err) {
-          console.log('@@ Error getting cwd:', err)
+          console.log('[UI] Error getting cwd:', err)
           return ''
         }
       }
