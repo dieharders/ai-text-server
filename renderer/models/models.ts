@@ -16,6 +16,7 @@ export enum LicenseType {
   MIT = 'MIT',
   Apache2 = 'Apache-2.0',
   GPL = 'GPL',
+  Llama2 = 'llama2',
   Other = 'Other',
 }
 
@@ -53,25 +54,10 @@ export const toGB = (size: number) => {
 
 const models: Array<IModelCard> = [
   {
-    id: 'llama-13b-ggml',
-    name: 'Llama 13B',
-    provider: Providers.TheBloke,
-    licenses: [LicenseType.Other],
-    modelType: ModelType.Llama,
-    description:
-      "These files are GGML format model files for Meta's LLaMA 13b. GGML files are for CPU + GPU inference using llama.cpp and libraries and UIs which support this format.",
-    fileSize: 5.59,
-    fileName: 'llama-13b.ggmlv3.q3_K_S.bin',
-    modelUrl: 'https://huggingface.co/TheBloke/LLaMa-13B-GGML',
-    downloadUrl:
-      'https://huggingface.co/TheBloke/LLaMa-13B-GGML/resolve/main/llama-13b.ggmlv3.q3_K_S.bin',
-    sha256: '9834f27b41ba9dfc8cb3018359fa779330a2f168ac1085d6704fe6b04ce84e1b',
-  },
-  {
     id: 'llama-2-13b-ensemble',
     name: 'Llama 2 13B Ensemble',
     provider: Providers.TheBloke,
-    licenses: [LicenseType.Other],
+    licenses: [LicenseType.Llama2],
     description:
       'Llama 2 is a collection of pretrained and fine-tuned generative text models ranging in scale from 7 billion to 70 billion parameters. Our fine-tuned LLMs, called Llama-2-Chat, are optimized for dialogue use cases. Llama-2-Chat models outperform open-source chat models on most benchmarks we tested, and in our human evaluations for helpfulness and safety, are on par with some popular closed-source models like ChatGPT and PaLM',
     fileSize: 7.87,
@@ -81,58 +67,99 @@ const models: Array<IModelCard> = [
     quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
     downloadUrl:
       'https://huggingface.co/TheBloke/Llama-2-13B-Ensemble-v6-GGUF/resolve/main/llama-2-13b-ensemble-v6.Q4_K_M.gguf',
-    sha256: '90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a098ce79d',
+    sha256: '90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a098ce79d', // Q4_K_M
   },
   {
-    id: 'wizard-vicuna-15b-coder',
-    name: 'Wizard Vicuna 15B Coder',
+    id: 'llama-2-13b-chat',
+    name: 'Llama 2 13B Chat',
+    provider: Providers.TheBloke,
+    licenses: [LicenseType.Llama2],
+    description:
+      'Llama 2 is a collection of pretrained and fine-tuned generative text models ranging in scale from 7 billion to 70 billion parameters. Our fine-tuned LLMs, called Llama-2-Chat, are optimized for dialogue use cases. Llama-2-Chat models outperform open-source chat models on most benchmarks we tested, and in our human evaluations for helpfulness and safety, are on par with some popular closed-source models like ChatGPT and PaLM',
+    fileSize: 7.87,
+    fileName: 'llama-2-13b-chat.Q4_K_M.gguf',
+    modelType: ModelType.Llama,
+    modelUrl: 'https://huggingface.co/TheBloke/Llama-2-13B-chat-GGUF',
+    quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
+    downloadUrl:
+      'https://huggingface.co/TheBloke/Llama-2-13B-chat-GGUF/resolve/main/llama-2-13b-chat.Q4_K_M.gguf',
+    sha256: '7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f', // Q4_K_M
+  },
+  {
+    id: 'mistral-7b',
+    name: 'Mistral-7B',
+    provider: Providers.TheBloke,
+    licenses: [LicenseType.Apache2],
+    description: 'Mistral Ai',
+    fileSize: 4.37,
+    fileName: 'mistral-7b-v0.1.Q4_K_M.gguf',
+    modelType: ModelType.Llama,
+    modelUrl: 'https://huggingface.co/TheBloke/Mistral-7B-v0.1-GGUF',
+    quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
+    downloadUrl:
+      'https://huggingface.co/TheBloke/Mistral-7B-v0.1-GGUF/resolve/main/mistral-7b-v0.1.Q4_K_M.gguf',
+    sha256: 'ce6253d2e91adea0c35924b38411b0434fa18fcb90c52980ce68187dbcbbe40c', // Q4_K_M
+  },
+  {
+    id: 'wizard-coder-python-13b',
+    name: 'WizardCoder Python 13B',
+    provider: Providers.TheBloke,
+    licenses: [LicenseType.Llama2],
+    description:
+      'Wizardlm: Empowering large language models to follow complex instructions. A StarCoder fine-tuned model using Evol-Instruct method specifically for coding tasks. Use this for code generation, also good at logical reasoning skills.',
+    fileSize: 7.87,
+    ramSize: 8,
+    fileName: 'wizardcoder-python-13b-v1.0.Q4_K_M.gguf',
+    modelType: ModelType.Llama,
+    modelUrl: 'https://huggingface.co/TheBloke/WizardCoder-Python-13B-V1.0-GGUF',
+    downloadUrl:
+      'https://huggingface.co/TheBloke/WizardCoder-Python-13B-V1.0-GGUF/resolve/main/wizardcoder-python-13b-v1.0.Q4_K_M.gguf',
+    sha256: '50ff7a6a33357a063e0d09b6d43d95dbf62dda5450138541478e524e06a4fe2a',
+  },
+  {
+    id: 'wizard-vicuna-13b-uncensored',
+    name: 'Wizard Vicuna 13B Uncensored',
+    provider: Providers.TheBloke,
+    licenses: [LicenseType.Other],
+    description: 'Wizard Vicuna uncensored chat.',
+    fileSize: 7.87,
+    fileName: 'Wizard-Vicuna-13B-Uncensored.Q4_K_M.gguf',
+    modelType: ModelType.Llama,
+    modelUrl: 'https://huggingface.co/TheBloke/Mistral-7B-v0.1-GGUF',
+    quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
+    downloadUrl:
+      'https://huggingface.co/TheBloke/Wizard-Vicuna-13B-Uncensored-GGUF/resolve/main/Wizard-Vicuna-13B-Uncensored.Q4_K_M.gguf',
+    sha256: 'e5ca843fd4a8c0a898b036f5c664a1fac366fb278f20880f1a750f38a950db73', // Q4_K_M
+  },
+  {
+    id: 'orca-mini-7b',
+    name: 'Orca Mini 7B',
     provider: Providers.TheBloke,
     licenses: [LicenseType.Other],
     description:
-      'Wizardlm: Empowering large language models to follow complex instructions. A StarCoder fine-tuned model using Evol-Instruct method specifically for coding tasks. Use this for code generation, also good at logical reasoning skills.',
-    fileSize: 14.3,
-    ramSize: 8,
-    tokenizers: ['WizardLM/WizardCoder-15B-V1.0'],
-    fileName: 'WizardCoder-15B-1.0.ggmlv3.q5_1.bin',
-    modelType: ModelType.Gpt2,
-    modelUrl: 'https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GGML',
-    downloadUrl:
-      'https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GGML/resolve/dbbd1178c703672d16e7785f9685200f5a497c8b/WizardCoder-15B-1.0.ggmlv3.q5_1.bin',
-    sha256: '1219d9fc6d51901d9a1e58e3cb7f03818d02a1d0ab2d070b4cbabdefeb7d0363',
-  },
-  {
-    id: 'redpajama-chat-3b-ggml',
-    name: 'RedPajama Chat 3B',
-    provider: Providers.Together,
-    licenses: [LicenseType.Apache2],
-    description:
-      'RedPajama is fine-tuned for Chat conversation. It was developed by Together and leaders from the open-source AI community. The training was done as part of the INCITE 2023 project on Scalable Foundation Models.',
-    fileSize: 2.09, // 2086120608 bytes
-    ramSize: 16,
-    fileName: 'RedPajama-INCITE-Chat-3B-v1-q5_1-ggjt.bin',
-    modelType: ModelType.NeoX,
-    tokenizers: ['togethercomputer/RedPajama-INCITE-Chat-3B-v1'],
-    modelUrl: 'https://huggingface.co/rustformers/redpajama-3b-ggml',
-    downloadUrl:
-      'https://huggingface.co/rustformers/redpajama-3b-ggml/resolve/ef3021e148238890ceba93c9fe4e17d49d8b279b/RedPajama-INCITE-Chat-3B-v1-q5_1-ggjt.bin',
-    sha256: '5943bc928dcaafb6e0155e5517ce00a4ae75e117b9e4e03e1575a24e883d040a',
-  },
-  // @TODO 404 not found
-  {
-    id: 'orca-mini-7b-ggml',
-    name: 'Orca Mini 7B',
-    provider: Providers.TheBloke,
-    licenses: [LicenseType.MIT],
-    description:
       'An Uncensored LLaMA-7b model trained on explain tuned datasets, created using Instructions and Input from WizardLM, Alpaca & Dolly-V2 datasets and applying Orca Research Paper dataset construction approaches.',
-    fileSize: 4.21,
+    fileSize: 4.08,
     ramSize: 16,
-    fileName: 'orca-mini-v2_7b.ggmlv3.q5_K_M.bin',
+    fileName: 'orca_mini_v3_7b.Q4_K_M.gguf',
     modelType: ModelType.Llama,
-    modelUrl: 'https://huggingface.co/TheBloke/orca_mini_7B-GGML',
+    modelUrl: 'https://huggingface.co/TheBloke/orca_mini_v3_7B-GGUF',
     downloadUrl:
-      'https://huggingface.co/TheBloke/orca_mini_7B-GGML/resolve/main/orca-mini-v2_7b.ggmlv3.q5_K_M.bin',
-    sha256: '978484e4053762b55925f4f82e5d6fad92e85d0602e2e8069871ecb103bc3caf',
+      'https://huggingface.co/TheBloke/orca_mini_v3_7B-GGUF/resolve/main/orca_mini_v3_7b.Q4_K_M.gguf',
+    sha256: '77ea8409d75f2d5fd125afc346d5059a2411e8996a4e998a3643c945330d7baf',
+  },
+  {
+    id: 'falcon-7b',
+    name: 'Falcon 7B',
+    provider: Providers.TheBloke, // NikolayKozloff
+    licenses: [LicenseType.Other],
+    description: 'Quantized version of tiia Falcon model.',
+    fileSize: 4.06,
+    fileName: 'falcon-7b-Q4_0-GGUF.gguf',
+    modelType: ModelType.Llama,
+    modelUrl: 'https://huggingface.co/NikolayKozloff/falcon-7b-GGUF',
+    downloadUrl:
+      'https://huggingface.co/NikolayKozloff/falcon-7b-GGUF/resolve/main/falcon-7b-Q4_0-GGUF.gguf',
+    sha256: '',
   },
   {
     id: 'example-cat-anim',
