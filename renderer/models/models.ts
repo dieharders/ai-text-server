@@ -17,6 +17,7 @@ export enum LicenseType {
   Apache2 = 'Apache-2.0',
   GPL = 'GPL',
   Llama2 = 'llama2',
+  ccBYncnd4 = 'cc-by-nc-nd-4.0',
   Other = 'Other',
 }
 
@@ -117,6 +118,23 @@ const models: Array<IModelCard> = [
     sha256: '50ff7a6a33357a063e0d09b6d43d95dbf62dda5450138541478e524e06a4fe2a',
   },
   {
+    id: 'openbuddy-openllama-7b-v12',
+    name: 'OpenBuddy 7B',
+    provider: Providers.TheBloke,
+    licenses: [LicenseType.Apache2],
+    description:
+      'OpenBuddy.ai - Open Multilingual Chatbot for Everyone. OpenBuddy is a powerful chatbot model with a focus on conversational AI and seamless multilingual capabilities. Built on top of the Falcon model from Tii, and the LLaMA model from Facebook, OpenBuddy offers enhanced performance and capabilities to handle complex conversational tasks.',
+    fileSize: 4.11,
+    ramSize: 7,
+    fileName: 'openbuddy-openllama-7b-v12-bf16.Q4_K_M.gguf',
+    modelType: ModelType.Llama,
+    modelUrl: 'https://huggingface.co/TheBloke/openbuddy-openllama-7B-v12-bf16-GGUF',
+    quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
+    downloadUrl:
+      'https://huggingface.co/TheBloke/openbuddy-openllama-7B-v12-bf16-GGUF/resolve/main/openbuddy-openllama-7b-v12-bf16.Q4_K_M.gguf',
+    sha256: '98d9e5b27fcd70acdeac0fcc4c862356a6106464ac96d88e59c0d3b56ff5c27a', // Q4_K_M
+  },
+  {
     id: 'wizard-vicuna-13b-uncensored',
     name: 'Wizard Vicuna 13B Uncensored',
     provider: Providers.TheBloke,
@@ -130,6 +148,22 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/Wizard-Vicuna-13B-Uncensored-GGUF/resolve/main/Wizard-Vicuna-13B-Uncensored.Q4_K_M.gguf',
     sha256: 'e5ca843fd4a8c0a898b036f5c664a1fac366fb278f20880f1a750f38a950db73', // Q4_K_M
+  },
+  {
+    id: 'law-llm',
+    name: 'Law LLM',
+    provider: Providers.TheBloke,
+    licenses: [LicenseType.Other],
+    description:
+      'Adapting Large Language Models via Reading Comprehension. We explore continued pre-training on domain-specific corpora for large language models. While this approach enriches LLMs with domain knowledge, it significantly hurts their prompting ability for question answering. Inspired by human learning via reading comprehension, we propose a simple method to transform large-scale pre-training corpora into reading comprehension texts, consistently improving prompting performance across tasks in biomedicine, finance, and law domains.',
+    fileSize: 4.08,
+    ramSize: 6.58,
+    fileName: 'law-llm.Q4_K_M.gguf',
+    modelType: ModelType.Llama,
+    modelUrl: 'https://huggingface.co/TheBloke/law-LLM-GGUF',
+    quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
+    downloadUrl: 'https://huggingface.co/TheBloke/law-LLM-GGUF/resolve/main/law-llm.Q4_K_M.gguf',
+    sha256: 'd6b7e8d72c5394c0387bd0bc1742fe38ab8da82f2821778ced088574a8553c2b', // Q4_K_M
   },
   {
     id: 'orca-mini-7b',
@@ -160,6 +194,23 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/NikolayKozloff/falcon-7b-GGUF/resolve/main/falcon-7b-Q4_0-GGUF.gguf',
     sha256: '',
+  },
+  {
+    id: 'uncensored-frank-13b',
+    name: 'Uncensored Frank 13b',
+    provider: Providers.TheBloke,
+    licenses: [LicenseType.ccBYncnd4],
+    description:
+      'The character of Frank Costello in "The Departed" is known for his cunning, boldness, and willingness to talk about anything. Frank is trained on around 150000 set of conversations. Each set having 10~15 conversations. With Frank you can have unfiltered discussions on a multitude of topics, from politics and controversial issues to personal experiences and sensitive subjects.',
+    fileSize: 7.87,
+    ramSize: 10.37,
+    fileName: 'uncensored-frank-13b.Q4_K_M.gguf',
+    modelType: ModelType.Llama,
+    modelUrl: 'https://huggingface.co/TheBloke/Uncensored-Frank-13b-GGUF',
+    quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
+    downloadUrl:
+      'https://huggingface.co/TheBloke/Uncensored-Frank-13b-GGUF/resolve/main/uncensored-frank-13b.Q4_K_M.gguf',
+    sha256: 'e277007372003719f4ca6e6f8299040363bb67654fcda495a79790004fca82a2', // Q4_K_M
   },
   {
     id: 'example-cat-anim',
