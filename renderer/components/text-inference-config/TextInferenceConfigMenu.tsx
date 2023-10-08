@@ -20,7 +20,28 @@ interface IPropsStart {
  */
 const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IPropsStart) => {
   const onStart = async () => {
-    console.log('@@ Starting inference...')
+    // Shutdown
+    if (isStarted) {
+      try {
+        const response = await fetch(ip + '/v1/services/shutdown', {
+          method: 'GET',
+          cache: 'no-cache',
+        })
+
+        const result = await response.json()
+        if (result?.success) {
+          setIsStarted(false)
+          console.log('[TextInference] Shutdown successful:', result)
+        } else throw new Error('Shutdown failed unnexpectatedly.')
+      } catch (error) {
+        console.log('[TextInference] Error: Failed to shutdown inference:', error)
+      }
+
+      return
+    }
+
+    // Start
+    console.log('[TextInference] Starting inference...')
 
     try {
       // Get installed model configs list
@@ -50,14 +71,9 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
     }
   }
 
-  // @TODO Support shutdown of inference server and remove "disabled"
   return (
     <p className={`mr-4 rounded-lg border ${cStyles} text-md lg:text-lg`}>
-      <button
-        onClick={onStart}
-        disabled={isStarted}
-        className="p-2 hover:bg-zinc-700/30 hover:text-yellow-300 lg:p-4"
-      >
+      <button onClick={onStart} className="p-2 hover:bg-zinc-700/30 hover:text-yellow-300 lg:p-4">
         <code className={`font-mono font-bold ${isStarted ? 'text-red-600' : 'text-yellow-300'}`}>
           {isStarted ? '[ON]' : '[OFF]'}&nbsp;
         </code>

@@ -81,7 +81,7 @@ const start = async () => {
   mainWindow.on('closed', () => {
     console.log('[App] Main window closed')
     // Kill all child processes here
-    // @TODO Look into npm `tree-kill` to kill all child sub-processes too: https://stackoverflow.com/questions/18694684/spawn-and-kill-a-process-in-node-js
+    // Look into npm `tree-kill` to kill all child sub-processes too: https://stackoverflow.com/questions/18694684/spawn-and-kill-a-process-in-node-js
     universalAPI.stdin.pause()
     universalAPI.kill()
     universalAPI = null

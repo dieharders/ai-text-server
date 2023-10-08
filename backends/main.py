@@ -182,7 +182,7 @@ class ShutdownInferenceResponse(BaseModel):
     }
 
 
-# Shutdown all currently open processes/subprocesses
+# Shutdown all currently open processes/subprocesses for text inferencing.
 @app.get("/v1/services/shutdown")
 async def shutdown_text_inference() -> ShutdownInferenceResponse:
     try:
