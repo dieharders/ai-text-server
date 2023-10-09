@@ -1,16 +1,33 @@
 import json
 import uvicorn
 import subprocess
+import asyncio
 from typing import List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
+
+# Initialize timer variables for "ping" check
+shutdown_text_timer = None
+ping_timeout = 60
 
 
-app = FastAPI(
-    title="🍺 HomeBrew API server",
-    version="0.0.1",
-)
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    print("[homebrew api] Lifespan startup")
+
+    # Store some state here if you want...
+    # application.state.super_secret = secrets.token_hex(16)
+
+    yield
+
+    print("[homebrew api] Lifespan shutdown")
+    # app.text_inference_process.kill()
+
+
+app = FastAPI(title="🍺 HomeBrew API server", version="0.0.1", lifespan=lifespan)
+
 
 # Configure CORS settings
 origins = [
@@ -37,10 +54,29 @@ app.add_middleware(
 )
 
 
-# Also works with "shutdown"
-@app.on_event("startup")
-async def startup_event():
-    print("[homebrew api] Server started up.")
+async def timeout_text_inference():
+    # Shutdown Subprocess
+    app.text_inference_process.kill()
+
+
+async def start_text_shutdown_timer():
+    await asyncio.sleep(ping_timeout)
+
+
+@app.get("/ping")
+async def ping(request: Request):
+    # Can get state from app lifecycle here
+    # request.app.state.super_secret
+
+    # If a "ping" request is received, cancel the shutdown timer
+    global shutdown_text_timer
+    if shutdown_text_timer:
+        shutdown_text_timer.cancel()
+    # Restart "ping" timer
+    if app.text_inference_process:
+        await startPingTimer()
+
+    return {"message": "pong"}
 
 
 class ConnectResponse(BaseModel):
@@ -151,12 +187,22 @@ class StartInferenceResponse(BaseModel):
     }
 
 
+async def startPingTimer():
+    print("[homebrew api] Start ping timer")
+    global shutdown_text_timer
+    shutdown_text_timer = asyncio.create_task(start_text_shutdown_timer())  # seconds
+    shutdown_text_timer.add_done_callback(
+        lambda _: asyncio.create_task(timeout_text_inference())
+    )
+
+
 # Starts the text inference server
 @app.post("/v1/text/start")
 async def start_text_inference(data: StartInferenceRequest) -> StartInferenceResponse:
     try:
         model_file_path: str = data.filePath
         isStarted = await start_text_inference_server(model_file_path)
+
         return {
             "success": isStarted,
             "message": "AI inference started.",
