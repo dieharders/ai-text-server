@@ -153,10 +153,10 @@ class StartInferenceResponse(BaseModel):
 
 # Starts the text inference server
 @app.post("/v1/text/start")
-def start_text_inference(data: StartInferenceRequest) -> StartInferenceResponse:
+async def start_text_inference(data: StartInferenceRequest) -> StartInferenceResponse:
     try:
         model_file_path: str = data.filePath
-        isStarted = start_text_inference_server(model_file_path)
+        isStarted = await start_text_inference_server(model_file_path)
         return {
             "success": isStarted,
             "message": "AI inference started.",
@@ -287,7 +287,7 @@ def start_homebrew_server():
         return False
 
 
-def start_text_inference_server(file_path: str):
+async def start_text_inference_server(file_path: str):
     try:
         path = file_path.replace("\\", "/")
 
@@ -307,8 +307,8 @@ def start_text_inference_server(file_path: str):
             "2048",
             # "--n_gpu_layers",
             # "2",
-            "--verbose",
-            "True",
+            # "--verbose",
+            # "True",
             # "--cache",
             # "True",
             # "--cache_type",
