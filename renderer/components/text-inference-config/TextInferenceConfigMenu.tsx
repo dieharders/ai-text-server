@@ -1,6 +1,6 @@
 'use client'
 
-import { Dispatch, SetStateAction } from 'react'
+import { Dispatch, SetStateAction, useEffect, useRef } from 'react'
 import textModels from '@/models/models'
 import { getTextModelConfig } from '@/utils/localStorage'
 
@@ -19,25 +19,70 @@ interface IPropsStart {
  * Start Inference Engine
  */
 const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IPropsStart) => {
-  const onStart = async () => {
+  const textInferenceTimer = useRef<NodeJS.Timeout | null>(null)
+  const textInferenceTimeout = 30 * 1000
+  const resetTimers = () => {
+    if (textInferenceTimer.current) clearTimeout(textInferenceTimer.current)
+  }
+  const startPingTimer = () => {
+    // Restart timer
+    textInferenceTimer.current = setTimeout(() => {
+      pingTextInferenceServer()
+    }, textInferenceTimeout)
+  }
+  const pingTextInferenceServer = async (): Promise<boolean> => {
+    console.log('[TextInference] Pinging text inference')
+
+    try {
+      const endpoint = '/ping'
+      const res = await fetch(`${ip}${endpoint}`, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-cache',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      if (!res.ok) throw new Error(`[TextInference] HTTP error! Status: ${res.status}`)
+      if (!res) throw new Error(`[TextInference] No response from ${endpoint}`)
+      const json = await res.json()
+      const success = json?.success
+
+      if (success) startPingTimer()
+      else {
+        // Reset
+        resetTimers()
+        setIsStarted(false)
+      }
+
+      return success
+    } catch (err) {
+      console.log('[TextInference] Ping error:', err)
+      resetTimers()
+      setIsStarted(false)
+      return false
+    }
+  }
+  const onStart = async (): Promise<boolean> => {
     // Shutdown
     if (isStarted) {
       try {
-        const response = await fetch(ip + '/v1/services/shutdown', {
+        const response = await fetch(`${ip}/v1/services/shutdown`, {
           method: 'GET',
           cache: 'no-cache',
         })
 
         const result = await response.json()
         if (result?.success) {
-          setIsStarted(false)
           console.log('[TextInference] Shutdown successful:', result)
-        } else throw new Error('Shutdown failed unnexpectatedly.')
+          setIsStarted(false)
+          resetTimers()
+          return true
+        } else throw new Error('Shutdown action failed unexpectedly.')
       } catch (error) {
         console.log('[TextInference] Error: Failed to shutdown inference:', error)
+        return false
       }
-
-      return
     }
 
     // Start
@@ -53,7 +98,7 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
         filePath: modelConfig.savePath,
       }
 
-      const response = await fetch(ip + '/v1/text/start', {
+      const response = await fetch(`${ip}/v1/text/start`, {
         method: 'POST',
         cache: 'no-cache',
         headers: {
@@ -64,12 +109,28 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
 
       const result = await response.json()
       setIsStarted(result?.success)
-      if (result?.success) console.log('[TextInference] "onStart" Success:', result)
-      else console.log('[TextInference] "onStart" Failed:', result)
+      if (result?.success) {
+        console.log('[TextInference] "onStart" Success:', result)
+        // Start ping timer here
+        startPingTimer()
+        return true
+      } else {
+        console.log('[TextInference] "onStart" Failed:', result)
+        resetTimers()
+        return false
+      }
     } catch (error) {
       console.log('[TextInference] Error: Failed to load the model:', error)
+      return false
     }
   }
+
+  // Clear timers on dismount
+  useEffect(() => {
+    return () => {
+      resetTimers()
+    }
+  }, [])
 
   return (
     <p className={`mr-4 rounded-lg border ${cStyles} text-md lg:text-lg`}>
