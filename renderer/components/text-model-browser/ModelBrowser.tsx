@@ -3,7 +3,7 @@
 import { Dispatch, SetStateAction, useCallback, useMemo } from 'react'
 import ModelCard from './ModelCard'
 import { IModelCard } from '@/models/models'
-import createConfig from './configs'
+import createConfig, { IModelConfig } from './configs'
 import { getTextModelConfig, setUpdateTextModelConfig } from '@/utils/localStorage'
 
 interface IProps {
@@ -37,7 +37,7 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
   }, [])
 
   // Create new entry for the installed model and record the install path.
-  const setModelConfig = (props: any) => {
+  const setModelConfig = (props: IModelConfig) => {
     // Create new config
     const config = createConfig(props)
     // Store/Overwrite with new entry

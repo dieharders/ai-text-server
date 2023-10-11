@@ -92,7 +92,23 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
       // Get installed/stored model configs list and combine
       const storedConfig = getTextModelConfig(currentTextModelId)
       const config = textModels.find(model => model.id === currentTextModelId)
-      const modelConfig = { ...config, ...storedConfig }
+      const modelConfig = {
+        id: config?.id,
+        name: config?.name,
+        checksum: storedConfig?.checksum,
+        isFavorited: storedConfig?.isFavorited,
+        modified: storedConfig?.modified,
+        numTimesRun: storedConfig?.numTimesRun,
+        savePath: storedConfig?.savePath,
+        size: storedConfig?.size,
+        description: config?.description,
+        licenses: config?.licenses,
+        modelType: config?.modelType,
+        provider: config?.provider,
+        ramSize: config?.ramSize,
+        tags: config?.tags,
+        promptTemplate: config?.promptTemplate || '{{PROMPT}}',
+      }
 
       if (!storedConfig || !config) throw Error('Cannot find text model config data')
 

@@ -20,7 +20,7 @@ interface IProps {
   onSelectModel: (modelId: string) => void
   onDownloadComplete: () => void
   loadModelConfig: () => IModelConfig | undefined
-  saveModelConfig: (props: any) => void
+  saveModelConfig: (props: IModelConfig) => void
 }
 
 const ModelCard = ({

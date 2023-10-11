@@ -16,7 +16,7 @@ interface IProps {
   saveToPath: string
   modelCard: IModelCard
   loadModelConfig: () => IModelConfig | undefined
-  saveModelConfig: (props: any) => void
+  saveModelConfig: (props: IModelConfig) => void
 }
 
 const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig }: IProps) => {
