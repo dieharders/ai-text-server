@@ -130,11 +130,29 @@ This project deploys several different backend apps exposed via the /api endpoin
 
 Endpoints can be found [here](http://localhost:8008/docs) for the homebrew api server.
 
+### /v1/ping
+
+Used to keep the inference server alive.
+
 ### /v1/connect
 
 Used by client apps to detect when services are ready to be used.
 
-### /v1/text
+### /v1/services/shutdown
+
+Terminates all running services.
+
+### /v1/services/api
+
+Gets all parameters for making calls to the homebrew api.
+
+### /v1/models
+
+Gets all inference model configuration.
+
+### /v1/text/load
+
+### /v1/text/start
 
 This is entry for all text inference functions. Endpoints can be found [here](http://localhost:8000/docs) after server is started.
 
