@@ -89,14 +89,14 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
     console.log('[TextInference] Starting inference...')
 
     try {
-      // Get installed model configs list
-      const modelConfig = getTextModelConfig(currentTextModelId)
+      // Get installed/stored model configs list and combine
+      const storedConfig = getTextModelConfig(currentTextModelId)
+      const config = textModels.find(model => model.id === currentTextModelId)
+      const modelConfig = { ...config, ...storedConfig }
 
-      if (!modelConfig) throw Error('Cannot find text model config data')
+      if (!storedConfig || !config) throw Error('Cannot find text model config data')
 
-      const options = {
-        filePath: modelConfig.savePath,
-      }
+      const options = { modelConfig }
 
       const response = await fetch(`${ip}/v1/text/start`, {
         method: 'POST',

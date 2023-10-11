@@ -16,6 +16,7 @@ export interface IModelConfig {
   progress?: number
   tokenizerPath?: string
   checksum: string
+  promptTemplate: string
 }
 
 // This is the model info saved to persistent memory
@@ -29,6 +30,7 @@ const createConfig = ({
   progress,
   tokenizerPath,
   checksum,
+  promptTemplate,
 }: any): IModelConfig => {
   const defaultConfig: IModelConfig = {
     id: modelId,
@@ -42,6 +44,7 @@ const createConfig = ({
     progress: progress || 0,
     tokenizerPath: tokenizerPath || '',
     checksum: checksum || '',
+    promptTemplate: promptTemplate || '{{PROMPT}}',
   }
 
   return defaultConfig

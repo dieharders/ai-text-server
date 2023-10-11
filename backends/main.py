@@ -17,6 +17,7 @@ ping_timeout = 60  # seconds
 async def lifespan(application: FastAPI):
     print("[homebrew api] Lifespan startup")
     app.requests_client = httpx.AsyncClient()
+    app.text_model_config = {}
     # Store some state here if you want...
     # application.state.super_secret = secrets.token_hex(16)
 
@@ -161,13 +162,26 @@ def load_text_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
 
 
 class StartInferenceRequest(BaseModel):
-    filePath: str
+    modelConfig: dict
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "filePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
+                    "modelConfig": {
+                        "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
+                        "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
+                        "id": "llama2-13b",
+                        "numTimesRun": 0,
+                        "isFavorited": False,
+                        "validation": "success",
+                        "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
+                        "size": 1200000,
+                        "endChunk": 13,
+                        "progress": 67,
+                        "tokenizerPath": "/some/path/to/tokenizer",
+                        "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
+                    },
                 }
             ]
         }
@@ -188,6 +202,20 @@ class StartInferenceResponse(BaseModel):
                     "data": {
                         "port": 8080,
                         "docs": "http://localhost:8080/docs",
+                        "textModelConfig": {
+                            "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
+                            "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
+                            "id": "llama2-13b",
+                            "numTimesRun": 0,
+                            "isFavorited": False,
+                            "validation": "success",
+                            "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
+                            "size": 1200000,
+                            "endChunk": 13,
+                            "progress": 67,
+                            "tokenizerPath": "/some/path/to/tokenizer",
+                            "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
+                        },
                     },
                 }
             ]
@@ -199,7 +227,10 @@ class StartInferenceResponse(BaseModel):
 @app.post("/v1/text/start")
 async def start_text_inference(data: StartInferenceRequest) -> StartInferenceResponse:
     try:
-        model_file_path: str = data.filePath
+        # Store the current model's configuration for later reference
+        app.text_model_config = data.modelConfig
+        # Send signal to start server
+        model_file_path: str = data.modelConfig["savePath"]
         isStarted = await start_text_inference_server(model_file_path)
 
         return {
@@ -208,11 +239,13 @@ async def start_text_inference(data: StartInferenceRequest) -> StartInferenceRes
             "data": {
                 "port": app.PORT_TEXT_INFERENCE,
                 "docs": f"http://localhost:{app.PORT_TEXT_INFERENCE}/docs",
+                "text_model_config": data.modelConfig,
             },
         }
     except KeyError:
         raise HTTPException(
-            status_code=400, detail="Invalid JSON format: 'filePath' key not found"
+            status_code=400,
+            detail="Invalid JSON format: 'modelConfig' key not found",
         )
 
 
@@ -259,10 +292,10 @@ class ServicesApiResponse(BaseModel):
             "examples": [
                 {
                     "success": True,
-                    "message": "These are services.",
+                    "message": "These are api params for accessing services endpoints.",
                     "data": [
                         {
-                            "name": "text-inference",
+                            "name": "textInference",
                             "port": 8008,
                             "endpoints": [
                                 {
@@ -283,13 +316,23 @@ class ServicesApiResponse(BaseModel):
 @app.get("/v1/services/api")
 def get_services_api() -> ServicesApiResponse:
     text_inference_api = {
-        "name": "text-inference",
+        "name": "textInference",
         "port": app.PORT_TEXT_INFERENCE,
         "endpoints": [
-            {"name": "completions", "urlPath": "/v1/completions", "method": "POST"},
+            {
+                "name": "copilot",
+                "urlPath": "/v1/engines/copilot-codex/completions",
+                "method": "POST",
+            },
+            {
+                "name": "completions",
+                "urlPath": "/v1/completions",
+                "method": "POST",
+                "promptTemplate": app.text_model_config["promptTemplate"],
+            },
             {"name": "embeddings", "urlPath": "/v1/embeddings", "method": "POST"},
             {
-                "name": "chat-completions",
+                "name": "chatCompletions",
                 "urlPath": "/v1/chat/completions",
                 "method": "POST",
             },

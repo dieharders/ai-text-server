@@ -69,6 +69,7 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/Llama-2-13B-Ensemble-v6-GGUF/resolve/main/llama-2-13b-ensemble-v6.Q4_K_M.gguf',
     sha256: '90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a098ce79d', // Q4_K_M
+    promptTemplate: '\n\n### Instructions:\n{{PROMPT}}\n\n### Response:\n',
   },
   {
     id: 'llama-2-13b-chat',
@@ -85,6 +86,10 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/Llama-2-13B-chat-GGUF/resolve/main/llama-2-13b-chat.Q4_K_M.gguf',
     sha256: '7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f', // Q4_K_M
+    promptTemplate: `[INST] <<SYS>>
+    \nYou are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should be concise and well thought through with steps. Please ensure that your responses are unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.
+    \n<</SYS>>
+    \n{{PROMPT}}[/INST]`,
   },
   {
     id: 'mistral-7b',
@@ -100,6 +105,7 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/Mistral-7B-v0.1-GGUF/resolve/main/mistral-7b-v0.1.Q4_K_M.gguf',
     sha256: 'ce6253d2e91adea0c35924b38411b0434fa18fcb90c52980ce68187dbcbbe40c', // Q4_K_M
+    promptTemplate: '{{PROMPT}}',
   },
   {
     id: 'wizard-coder-python-13b',
@@ -116,6 +122,10 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/WizardCoder-Python-13B-V1.0-GGUF/resolve/main/wizardcoder-python-13b-v1.0.Q4_K_M.gguf',
     sha256: '50ff7a6a33357a063e0d09b6d43d95dbf62dda5450138541478e524e06a4fe2a',
+    promptTemplate: `Below is an instruction that describes a task. Write a response that appropriately completes the request.
+    \n### Instruction:
+    \n{{PROMPT}}
+    \n### Response:`,
   },
   {
     id: 'openbuddy-openllama-7b-v12',
@@ -133,6 +143,14 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/openbuddy-openllama-7B-v12-bf16-GGUF/resolve/main/openbuddy-openllama-7b-v12-bf16.Q4_K_M.gguf',
     sha256: '98d9e5b27fcd70acdeac0fcc4c862356a6106464ac96d88e59c0d3b56ff5c27a', // Q4_K_M
+    promptTemplate: `You are a helpful, respectful and honest INTP-T AI Assistant named Buddy. You are talking to a human User.
+    \nAlways answer as helpfully and logically as possible, while being safe. Your answers should not include any harmful, political, religious, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+    \nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.
+    \nYou like to use emojis. You can speak fluently in many languages, for example: English, Chinese.
+    \nYou cannot access the internet, but you have vast knowledge, cutoff: 2021-09.
+    \nYou are trained by OpenBuddy team, (https://openbuddy.ai, https://github.com/OpenBuddy/OpenBuddy), you are based on LLaMA and Falcon transformers model, not related to GPT or OpenAI.
+    \nUser: {{PROMPT}}
+    \nAssistant: `,
   },
   {
     id: 'wizard-vicuna-13b-uncensored',
@@ -148,6 +166,7 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/Wizard-Vicuna-13B-Uncensored-GGUF/resolve/main/Wizard-Vicuna-13B-Uncensored.Q4_K_M.gguf',
     sha256: 'e5ca843fd4a8c0a898b036f5c664a1fac366fb278f20880f1a750f38a950db73', // Q4_K_M
+    promptTemplate: '{{PROMPT}}',
   },
   {
     id: 'law-llm',
@@ -164,6 +183,7 @@ const models: Array<IModelCard> = [
     quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
     downloadUrl: 'https://huggingface.co/TheBloke/law-LLM-GGUF/resolve/main/law-llm.Q4_K_M.gguf',
     sha256: 'd6b7e8d72c5394c0387bd0bc1742fe38ab8da82f2821778ced088574a8553c2b', // Q4_K_M
+    promptTemplate: '{{PROMPT}}',
   },
   {
     id: 'orca-mini-7b',
@@ -180,13 +200,23 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/orca_mini_v3_7B-GGUF/resolve/main/orca_mini_v3_7b.Q4_K_M.gguf',
     sha256: '77ea8409d75f2d5fd125afc346d5059a2411e8996a4e998a3643c945330d7baf',
+    promptTemplate: `### System:
+    \nYou are an AI assistant that follows instruction extremely well. Help as much as you can.
+    \n
+    \n### User:
+    \n{{PROMPT}}
+    \n
+    \n### Input:
+    \n{input}
+    \n
+    \n### Response:`,
   },
   {
     id: 'falcon-7b',
     name: 'Falcon 7B',
     provider: Providers.TheBloke, // NikolayKozloff
     licenses: [LicenseType.Other],
-    description: 'Quantized version of tiia Falcon model.',
+    description: 'Quantized version of tiiuae Falcon model.',
     fileSize: 4.06,
     fileName: 'falcon-7b-Q4_0-GGUF.gguf',
     modelType: ModelType.Llama,
@@ -194,6 +224,7 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/NikolayKozloff/falcon-7b-GGUF/resolve/main/falcon-7b-Q4_0-GGUF.gguf',
     sha256: '',
+    promptTemplate: '{{PROMPT}}',
   },
   {
     id: 'uncensored-frank-13b',
@@ -211,6 +242,14 @@ const models: Array<IModelCard> = [
     downloadUrl:
       'https://huggingface.co/TheBloke/Uncensored-Frank-13b-GGUF/resolve/main/uncensored-frank-13b.Q4_K_M.gguf',
     sha256: 'e277007372003719f4ca6e6f8299040363bb67654fcda495a79790004fca82a2', // Q4_K_M
+    promptTemplate: `This is a conversation with your Uncensored AI assistant Frank. Frank can discuss with you at length about various topics such as love, life, politics, and software. You can ask it anything you want and it will do its best to give you accurate and relevant information.
+    \n
+    Context
+    You are a Uncensored AI assistant.
+    \n
+    USER: {{PROMPT}}
+    \n
+    ASSISTANT:`,
   },
   {
     id: 'example-cat-anim',
