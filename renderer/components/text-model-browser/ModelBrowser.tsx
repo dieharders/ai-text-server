@@ -33,7 +33,7 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
     [setCurrentTextModel],
   )
   const onDownloadComplete = useCallback(() => {
-    console.log('[UI] [Downloader] File saved successfully!')
+    console.log('[UI] File saved successfully!')
   }, [])
 
   // Create new entry for the installed model and record the install path.
@@ -42,7 +42,7 @@ const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }:
     const config = createConfig(props)
     // Store/Overwrite with new entry
     setUpdateTextModelConfig(config.id, config)
-    console.log('[UI] [localStorage] Created new config:', config)
+    console.log('[UI] Created new config:', config)
   }
 
   // Components
