@@ -1,19 +1,32 @@
 {
   "name": "ai-knowledgebase-backend",
   "version": "0.1.0",
+  "author": "Spread Shot Studios",
+  "license": "MIT",
+  "productName": "HomeBrewAi",
+  "description": "A local & private ai inference engine.",
+  "main": "main/electron.js",
   "private": true,
   "scripts": {
+    "clean": "rimraf dist renderer/.next renderer/out",
     "dev": "next dev",
-    "build": "npm run python-deps && npm run build:api && next build",
-    "tauri": "tauri",
+    "build": "npm run python-deps && npm run build:api && next build renderer",
+    "pack-app": "npm run build && electron-builder --dir",
     "export": "next export",
-    "start": "next start",
+    "dist": "npm run build && electron-builder",
+    "start": "electron .",
     "lint": "next lint",
     "python-deps": "pip install -r requirements.txt",
-    "build:api": "pyinstaller -c -F --clean --name main-x86_64-pc-windows-msvc --distpath src-tauri/bin/api src/backends/main.py"
+    "build:api": "pyinstaller -c -F --clean --name main-x86_64 --distpath includes/api backends/main.py"
+  },
+  "build": {
+    "asar": true,
+    "files": [
+      "main",
+      "renderer/out"
+    ]
   },
   "dependencies": {
-    "@tauri-apps/api": "^1.4.0",
     "@types/node": "20.2.4",
     "@types/react": "18.2.7",
     "@types/react-dom": "18.2.4",
@@ -21,6 +34,8 @@
     "axios": "^1.4.0",
     "concurrently": "^8.0.1",
     "cors": "^2.8.5",
+    "electron-is-dev": "^2.0.0",
+    "electron-next": "^3.1.5",
     "eslint": "8.41.0",
     "eslint-config-next": "13.4.4",
     "next": "13.4.4",
@@ -31,14 +46,16 @@
     "typescript": "5.0.4"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.4.0",
     "@types/cors": "^2.8.13",
+    "@types/electron": "^1.6.10",
     "@typescript-eslint/eslint-plugin": "^6.4.0",
     "@typescript-eslint/parser": "^6.4.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^5.0.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-tailwindcss": "^3.12.0",
-    "prettier": "^3.0.2"
+    "prettier": "^3.0.2",
+    "electron": "^26.2.0",
+    "electron-builder": "^24.6.4"
   }
 }

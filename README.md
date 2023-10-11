@@ -31,9 +31,9 @@ Project forked here [the Next.js GitHub repository](https://github.com/vercel/ne
 
 - Startup and shutdown of the backend services are done via the front-end.
 
-- The Python/FastAPI server (universal api) operates under `localhost:8008`.
+- The Python/FastAPI server (homebrew api) operates under `localhost:8008`.
 
-- 3rd party client apps will call the universal api to perform all functions needed.
+- 3rd party client apps will call the homebrew api to perform all functions needed.
 
 ---
 
@@ -56,10 +56,6 @@ pip install -r requirements.txt
 # or
 pnpm python-deps
 ```
-
-### Rust Dependencies
-
-For Rust "crates" and other deps, build the project in dev or release mode to trigger the package manager to download all dependencies. Make sure your deps have been defined in `Cargo.toml`
 
 ---
 
@@ -84,12 +80,12 @@ To run the api backend, right-click over `src/backends/main.py` and choose "run 
 python src/backends/main.py
 ```
 
-The universal api server will be running on [http://localhost:8008](http://localhost:8008)
+The homebrew api server will be running on [http://localhost:8008](http://localhost:8008)
 
-### Run the Tauri app in development mode
+### Run the app in development mode
 
 ```bash
-pnpm tauri dev
+pnpm dev
 ```
 
 ---
@@ -100,22 +96,31 @@ This project is meant to be deployed locally on the client's machine. It is a ne
 
 Bundling Python exe (the -F flag bundles everything into one .exe ). This is handled automatically by npm scripts.
 
-- pip install -U pyinstaller
-- pyinstaller -c -F your_program.py
+To install the pyinstaller tool:
+
+```bash
+pip install -U pyinstaller
+```
+
+Then use it to bundle a python script:
+
+```bash
+pyinstaller -c -F your_program.py
+```
 
 Building app for production:
 
 ```bash
-pnpm tauri build
+pnpm build
 ```
 
-The production installer is located here:
+### Building with Electron
 
-`<project-dir>/src-tauri/target/release/bundle/nsis`
+Using this vercel project as starting point: https://github.com/vercel/next.js/tree/canary/examples/with-electron
 
-The development (--debug) installer is located here:
-
-`<project-dir>/src-tauri/target/debug/bundle/nsis`
+```bash
+pnpm start
+```
 
 ---
 
@@ -123,13 +128,31 @@ The development (--debug) installer is located here:
 
 This project deploys several different backend apps exposed via the /api endpoint. The idea is to separate all OS level logic and processing from the client facing app. This can make deployment to the cloud and swapping out functionality easier.
 
-Endpoints can be found [here](http://localhost:8008/docs) for the universal api server.
+Endpoints can be found [here](http://localhost:8008/docs) for the homebrew api server.
 
-### /api/connect
+### /v1/ping
+
+Used to keep the inference server alive.
+
+### /v1/connect
 
 Used by client apps to detect when services are ready to be used.
 
-### /api/v1/text
+### /v1/services/shutdown
+
+Terminates all running services.
+
+### /v1/services/api
+
+Gets all parameters for making calls to the homebrew api.
+
+### /v1/models
+
+Gets all inference model configuration.
+
+### /v1/text/load
+
+### /v1/text/start
 
 This is entry for all text inference functions. Endpoints can be found [here](http://localhost:8000/docs) after server is started.
 
