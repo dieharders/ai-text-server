@@ -1,23 +1,19 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 // Modules
-const axios = require('axios')
+const { join } = require('path')
 const constants = require('../shared/constants.json')
 const { listenApiEvents } = require('./utils/api')
 const { downloader } = require('./utils/downloader')
 
 // Native Modules
 const { spawn } = require('child_process')
-const { join } = require('path')
 const { format } = require('url')
 
 // Packages
 const { BrowserWindow, app, dialog, ipcMain, shell } = require('electron')
 const isDev = require('electron-is-dev')
 const prepareNext = require('electron-next')
-
-// https://www.freecodecamp.org/news/node-js-child-processes-everything-you-need-to-know-e69498fe970a/
-const homebrewAPIProgramPath = isDev ? './backends/main.py' : './includes/api/main-x86_64.py'
 
 let universalAPI
 let mainWindow
@@ -43,7 +39,13 @@ const createWindow = () => {
 // Start the frontend
 const start = async () => {
   // Start the backend process for the homebrew api
-  universalAPI = spawn('python', [homebrewAPIProgramPath])
+  // https://www.freecodecamp.org/news/node-js-child-processes-everything-you-need-to-know-e69498fe970a/
+  const closeAfterExec = '/c'
+  const pathToProcess = join(__dirname, '..', 'backends')
+
+  universalAPI = isDev
+    ? spawn('python', ['./backends/main.py'])
+    : spawn('cmd', [closeAfterExec, 'main-x86_64.exe'], { cwd: pathToProcess })
   // Listen to homebrew api events
   listenApiEvents(universalAPI)
   // Prepare the renderer for frontend
@@ -69,27 +71,30 @@ const start = async () => {
   mainWindow.on('close', async () => {
     // Tell homebrew to shutdown all external services
     try {
-      await axios({
+      await fetch({
         url: `http://0.0.0.0:${constants.PORT_HOMEBREW_API}/v1/services/shutdown`,
         method: 'GET',
       })
     } catch (err) {
-      console.log('[App] Failed to shutdown services', err.code)
+      console.log('[App] Failed to shutdown services:', err.code)
     }
   })
   // Window closed event
   mainWindow.on('closed', () => {
-    console.log('[App] Main window closed')
+    console.log('[App] Main window closed, killing homebrew API process')
     // Kill all child processes here
     // Look into npm `tree-kill` to kill all child sub-processes too: https://stackoverflow.com/questions/18694684/spawn-and-kill-a-process-in-node-js
-    universalAPI.stdin.pause()
-    universalAPI.kill()
+    // universalAPI.stdin.pause()
+    // universalAPI.kill()
+    spawn('cmd', [`/C TASKKILL /F /PID ${universalAPI.pid} /T`])
     universalAPI = null
-    console.log('[App] homebrew API process killed')
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
     mainWindow = null
+    // Kill this main script
+    console.log('[App] Ending main process')
+    process.exit()
   })
   // Load the html for frontend
   const url = isDev
@@ -105,8 +110,8 @@ const start = async () => {
 
 // Normal start process
 app.on('ready', async () => {
-  console.log('[App] Ready')
   await start()
+  console.log('[App] Ready')
 })
 
 // Quit the app once all windows are closed

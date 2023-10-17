@@ -1,3 +1,4 @@
+import os
 import json
 import uvicorn
 import subprocess
@@ -440,8 +441,16 @@ async def start_text_inference_server(file_path: str):
 
 
 if __name__ == "__main__":
+    # Determine path to file based on prod or dev
+    current_directory = os.getcwd()
+    substrings = current_directory.split("\\")
+    last_substring = substrings[-1]
+    if last_substring == "backends":
+        path = "../shared/constants.json"
+    else:
+        path = "./shared/constants.json"
     # Open and read the JSON constants file
-    with open("./shared/constants.json", "r") as json_file:
+    with open(path, "r") as json_file:
         data = json.load(json_file)
         app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]
         app.PORT_TEXT_INFERENCE = data["PORT_TEXT_INFERENCE"]

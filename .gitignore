@@ -12,8 +12,11 @@
 **/.next/
 /out/
 
-# production
+# deployment
 /build
+/dist
+/renderer/out
+/release
 
 # misc
 .DS_Store
@@ -42,4 +45,4 @@ next-env.d.ts
 # python
 **/__pycache__
 *.spec
-/includes/*
+/includes

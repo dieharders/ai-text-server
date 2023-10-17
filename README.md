@@ -9,6 +9,7 @@ This project handles all requests from client chat apps using a single api. The 
 This is a hybrid Next.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
 Project forked here [the Next.js GitHub repository](https://github.com/vercel/next.js/)
+Using this vercel project as starting point: https://github.com/vercel/next.js/tree/canary/examples/with-electron
 
 ---
 
@@ -44,17 +45,17 @@ Project forked here [the Next.js GitHub repository](https://github.com/vercel/ne
 First, install the dependencies for javascript:
 
 ```bash
-pnpm install
+yarn install
 ```
 
 Install dependencies for python listed in your requirements.txt file:
 
-Be sure to run this command with admin privileges. This command is optional and is also run on each `pnpm build`.
+Be sure to run this command with admin privileges. This command is optional and is also run on each `yarn build`.
 
 ```bash
 pip install -r requirements.txt
 # or
-pnpm python-deps
+yarn python-deps
 ```
 
 ---
@@ -66,7 +67,7 @@ pnpm python-deps
 Run development front-end webserver:
 
 ```bash
-pnpm dev
+yarn dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -85,7 +86,7 @@ The homebrew api server will be running on [http://localhost:8008](http://localh
 ### Run the app in development mode
 
 ```bash
-pnpm dev
+yarn dev
 ```
 
 ---
@@ -111,15 +112,25 @@ pyinstaller -c -F your_program.py
 Building app for production:
 
 ```bash
-pnpm build
+yarn build
 ```
 
-### Building with Electron
+### Package application with Electron for release
 
-Using this vercel project as starting point: https://github.com/vercel/next.js/tree/canary/examples/with-electron
+This will build the production deps and then bundle them with pre-built Electron binaries into an installer/distributable.
+Please note, "yarn" should be used as the package manager as npm/pnpm will not work for packaging node_modules for some reason.
+Electron Builder commands: https://www.electron.build/cli.html
+
+This will create an installer.
 
 ```bash
-pnpm start
+yarn release
+```
+
+This will create a folder with all the raw files in `/release/win-unpacked`.
+
+```bash
+yarn unpacked
 ```
 
 ---

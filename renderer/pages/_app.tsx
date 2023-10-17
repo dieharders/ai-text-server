@@ -7,6 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 /**
  * Used to setup layouts for each page.
  * You can also inject any relevant code per page.
+ * Adding "resolutions" in package.json removed the linting error for "Component"
  */
 export default function MyApp({ Component, pageProps }: AppProps) {
   return (
