@@ -10,52 +10,80 @@
   "scripts": {
     "clean": "rimraf dist renderer/.next renderer/out",
     "dev": "next dev",
-    "build": "npm run python-deps && npm run build:api && next build renderer",
-    "pack-app": "npm run build && electron-builder --dir",
+    "build": "yarn run python-deps && yarn run build:api && next build renderer",
+    "release": "yarn run build && electron-builder",
+    "release:win": "yarn run build && electron-builder --win --x64",
+    "unpacked": "yarn run build && electron-builder --dir",
     "export": "next export",
-    "dist": "npm run build && electron-builder",
     "start": "electron .",
     "lint": "next lint",
     "python-deps": "pip install -r requirements.txt",
-    "build:api": "pyinstaller -c -F --clean --name main-x86_64 --distpath includes/api backends/main.py"
+    "build:api": "pyinstaller -c -F --clean --name main --distpath includes backends/main.py"
   },
+  "postinstall": "electron-builder install-app-deps",
   "build": {
-    "asar": true,
+    "appId": "com.spreadshotstudios.homebrewai",
+    "directories": {
+      "buildResources": "resources",
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "runAfterFinish": false
+    },
+    "asar": false,
     "files": [
-      "main",
-      "renderer/out"
+      "main/",
+      "renderer/out/",
+      "shared/"
+    ],
+    "extraResources": [
+      {
+        "from": "includes/main.exe",
+        "to": "app/backends/main.exe",
+        "filter": [
+          "**/*"
+        ]
+      }
     ]
   },
-  "dependencies": {
-    "@types/node": "20.2.4",
+  "resolutions": {
     "@types/react": "18.2.7",
-    "@types/react-dom": "18.2.4",
-    "autoprefixer": "10.4.14",
+    "@types/react-dom": "18.2.4"
+  },
+  "dependencies": {
     "axios": "^1.4.0",
-    "concurrently": "^8.0.1",
     "cors": "^2.8.5",
     "electron-is-dev": "^2.0.0",
     "electron-next": "^3.1.5",
-    "eslint": "8.41.0",
-    "eslint-config-next": "13.4.4",
-    "next": "13.4.4",
-    "postcss": "8.4.23",
     "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "tailwindcss": "3.3.2",
-    "typescript": "5.0.4"
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
+    "@types/node": "20.2.4",
+    "@types/react": "18.2.7",
+    "@types/react-dom": "18.2.4",
     "@types/cors": "^2.8.13",
     "@types/electron": "^1.6.10",
     "@typescript-eslint/eslint-plugin": "^6.4.0",
     "@typescript-eslint/parser": "^6.4.0",
+    "@electron-forge/cli": "^6.4.2",
+    "autoprefixer": "10.4.14",
+    "concurrently": "^8.0.1",
+    "electron": "^26.2.0",
+    "electron-builder": "^24.6.4",
+    "eslint": "8.41.0",
+    "eslint-config-next": "13.4.4",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^5.0.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-tailwindcss": "^3.12.0",
+    "next": "13.4.4",
+    "postcss": "8.4.23",
     "prettier": "^3.0.2",
-    "electron": "^26.2.0",
-    "electron-builder": "^24.6.4"
+    "tailwindcss": "3.3.2",
+    "typescript": "5.0.4"
   }
 }
