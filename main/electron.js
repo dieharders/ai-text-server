@@ -45,7 +45,7 @@ const start = async () => {
 
   universalAPI = isDev
     ? spawn('python', ['./backends/main.py'])
-    : spawn('cmd', [closeAfterExec, 'main-x86_64.exe'], { cwd: pathToProcess })
+    : spawn('cmd', [closeAfterExec, 'main.exe'], { cwd: pathToProcess })
   // Listen to homebrew api events
   listenApiEvents(universalAPI)
   // Prepare the renderer for frontend

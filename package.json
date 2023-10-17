@@ -18,7 +18,7 @@
     "start": "electron .",
     "lint": "next lint",
     "python-deps": "pip install -r requirements.txt",
-    "build:api": "pyinstaller -c -F --clean --name main-x86_64 --distpath includes backends/main.py"
+    "build:api": "pyinstaller -c -F --clean --name main --distpath includes backends/main.py"
   },
   "postinstall": "electron-builder install-app-deps",
   "build": {
@@ -41,8 +41,8 @@
     ],
     "extraResources": [
       {
-        "from": "includes/main-x86_64.exe",
-        "to": "app/backends/main-x86_64.exe",
+        "from": "includes/main.exe",
+        "to": "app/backends/main.exe",
         "filter": [
           "**/*"
         ]
