@@ -10,9 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 
-# Initialize timer variables for "ping" check
-ping_timeout = 60  # seconds
-
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -58,11 +55,11 @@ app.add_middleware(
 
 @app.get("/ping")
 async def ping(request: Request):
+    success = False
+
     # Can get state from app lifecycle here
     # request.app.state.super_secret
 
-    # Restart "ping" timer
-    success = False
     # Request /v1/models endpoint on inference server to determine if alive
     client = request.app.requests_client
     result = None
@@ -77,13 +74,11 @@ async def ping(request: Request):
     # Process exists
     # if hasattr(app, "text_inference_process"):
     #     if app.text_inference_process.poll() is None:
-    #         startPingTimer()
     #         success = True
 
     # Server exists
     if result:
         if "data" in result:
-            startPingTimer()
             success = True
 
     return {"success": success, "message": "pong"}
@@ -266,10 +261,8 @@ class ShutdownInferenceResponse(BaseModel):
 async def shutdown_text_inference() -> ShutdownInferenceResponse:
     try:
         print("[homebrew api] Shutting down all services")
-        # Reset, kill processes, timers
+        # Reset, kill processes
         killTextInference()
-        if hasattr(app, "shutdown_text_timer"):
-            app.shutdown_text_timer.cancel()
 
         return {
             "success": True,
@@ -376,19 +369,6 @@ def killTextInference():
             app.text_inference_process = None
 
 
-def startPingTimer():
-    print("[homebrew api] Start ping timer")
-    if hasattr(app, "shutdown_text_timer"):
-        app.shutdown_text_timer.cancel()
-    app.shutdown_text_timer = asyncio.create_task(start_text_shutdown_timer())
-
-
-async def start_text_shutdown_timer():
-    await asyncio.sleep(ping_timeout)
-    # Shutdown Subprocess
-    killTextInference()
-
-
 def start_homebrew_server():
     try:
         print("Starting API server...")
@@ -432,7 +412,6 @@ async def start_text_inference_server(file_path: str):
         # Execute the command
         proc = subprocess.Popen(serve_llama_cpp)
         app.text_inference_process = proc
-        startPingTimer()
         print(f"Starting Inference server from: {file_path} with pid: {proc.pid}")
         return True
     except:

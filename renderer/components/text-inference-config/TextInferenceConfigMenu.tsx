@@ -1,6 +1,6 @@
 'use client'
 
-import { Dispatch, SetStateAction, useEffect, useRef } from 'react'
+import { Dispatch, SetStateAction } from 'react'
 import textModels from '@/models/models'
 import { getTextModelConfig } from '@/utils/localStorage'
 
@@ -19,50 +19,6 @@ interface IPropsStart {
  * Start Inference Engine
  */
 const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IPropsStart) => {
-  const textInferenceTimer = useRef<NodeJS.Timeout | null>(null)
-  const textInferenceTimeout = 30 * 1000
-  const resetTimers = () => {
-    if (textInferenceTimer.current) clearTimeout(textInferenceTimer.current)
-  }
-  const startPingTimer = () => {
-    // Restart timer
-    textInferenceTimer.current = setTimeout(() => {
-      pingTextInferenceServer()
-    }, textInferenceTimeout)
-  }
-  const pingTextInferenceServer = async (): Promise<boolean> => {
-    console.log('[TextInference] Pinging text inference')
-
-    try {
-      const endpoint = '/ping'
-      const res = await fetch(`${ip}${endpoint}`, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-cache',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      if (!res.ok) throw new Error(`[TextInference] HTTP error! Status: ${res.status}`)
-      if (!res) throw new Error(`[TextInference] No response from ${endpoint}`)
-      const json = await res.json()
-      const success = json?.success
-
-      if (success) startPingTimer()
-      else {
-        // Reset
-        resetTimers()
-        setIsStarted(false)
-      }
-
-      return success
-    } catch (err) {
-      console.log('[TextInference] Ping error:', err)
-      resetTimers()
-      setIsStarted(false)
-      return false
-    }
-  }
   const onStart = async (): Promise<boolean> => {
     // Shutdown
     if (isStarted) {
@@ -76,7 +32,6 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
         if (result?.success) {
           console.log('[TextInference] Shutdown successful:', result)
           setIsStarted(false)
-          resetTimers()
           return true
         } else throw new Error('Shutdown action failed unexpectedly.')
       } catch (error) {
@@ -127,12 +82,9 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
       setIsStarted(result?.success)
       if (result?.success) {
         console.log('[TextInference] "onStart" Success:', result)
-        // Start ping timer here
-        startPingTimer()
         return true
       } else {
         console.log('[TextInference] "onStart" Failed:', result)
-        resetTimers()
         return false
       }
     } catch (error) {
@@ -140,13 +92,6 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
       return false
     }
   }
-
-  // Clear timers on dismount
-  useEffect(() => {
-    return () => {
-      resetTimers()
-    }
-  }, [])
 
   return (
     <p className={`mr-4 rounded-lg border ${cStyles} text-md lg:text-lg`}>
@@ -242,9 +187,7 @@ const FilePathChooser = ({ isStarted, savePath, setSavePath }: IPropsFilePath) =
   return (
     <>
       {/* Path string */}
-      <span
-        className={`text-md lg:text-lg overflow-hidden text-ellipsis whitespace-nowrap p-2 lg:p-4 ${textColor} ${cStyles} border`}
-      >
+      <span className={`text-md lg:text-lg truncate p-2 lg:p-4 ${textColor} ${cStyles} border`}>
         {savePath}
       </span>
       {/* Button */}
