@@ -25,7 +25,7 @@ async def lifespan(application: FastAPI):
     killTextInference()
 
 
-app = FastAPI(title="🍺 HomeBrew API server", version="0.0.1", lifespan=lifespan)
+app = FastAPI(title="🍺 HomeBrew API server", version="0.1.0", lifespan=lifespan)
 
 
 # Configure CORS settings
@@ -33,7 +33,8 @@ origins = [
     "http://localhost:3000",  # (optional) for testing client apps
     "https://hoppscotch.io",  # (optional) for testing endpoints
     "http://localhost:8000",  # (required) Homebrew front-end
-    "https://brain-dump-dieharders.vercel.app/",  # (required) client app origin
+    "https://brain-dump-dieharders.vercel.app",  # (required) client app origin (preview)
+    "https://homebrew-ai-discover.vercel.app",  # (required) client app origin (production)
 ]
 
 
@@ -48,7 +49,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

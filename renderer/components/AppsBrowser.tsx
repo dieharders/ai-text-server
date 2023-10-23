@@ -4,7 +4,7 @@
  * Browse Apps menu
  */
 const AppsBrowser = () => {
-  const appLink = 'https://brain-dump-dieharders.vercel.app/'
+  const appLink = 'https://homebrew-ai-discover.vercel.app/'
 
   return (
     <div className="z-5 mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">

@@ -64,7 +64,7 @@ yarn python-deps
 
 ### Run Front-End
 
-Run development front-end webserver:
+Run development front-end webserver (unstable):
 
 ```bash
 yarn dev
@@ -74,7 +74,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### Run Backend API
 
-To run the api backend, right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
+If you wish to run the backend server seperately, right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
 
 ```bash
 # from working dir
@@ -83,10 +83,12 @@ python src/backends/main.py
 
 The homebrew api server will be running on [http://localhost:8008](http://localhost:8008)
 
-### Run the app in development mode
+### Run the app in development
+
+This is the perferred method of running the app:
 
 ```bash
-yarn dev
+yarn start
 ```
 
 ---
@@ -95,7 +97,9 @@ yarn dev
 
 This project is meant to be deployed locally on the client's machine. It is a next.js app using serverless runtimes all wrapped by Electron to create a native app. We do this to package up dependencies to make installation easier on the user and to provide the app access to the local OS disk space.
 
-Bundling Python exe (the -F flag bundles everything into one .exe ). This is handled automatically by npm scripts.
+### Explanation of build scripts
+
+Bundling Python exe (the -F flag bundles everything into one .exe ). This is handled automatically by npm scripts and you do not need to execute these manually.
 
 To install the pyinstaller tool:
 
@@ -121,13 +125,13 @@ This will build the production deps and then bundle them with pre-built Electron
 Please note, "yarn" should be used as the package manager as npm/pnpm will not work for packaging node_modules for some reason.
 Electron Builder commands: https://www.electron.build/cli.html
 
-This will create an installer.
+This will create an installer (perferred). Copy the file from `/release/[app-name][version].exe` and put into your Github releases.
 
 ```bash
 yarn release
 ```
 
-This will create a folder with all the raw files in `/release/win-unpacked`.
+This will create a folder with all the raw files in `/release/win-unpacked` (when built for windows). Useful for dev since you can inspect the loose files in folder.
 
 ```bash
 yarn unpacked
