@@ -1,4 +1,4 @@
-# 🍺 HomebrewAi - Ai Inference Engine
+# 🍺 HomeBrewAi - Inference Engine
 
 This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
 
@@ -8,18 +8,17 @@ This project handles all requests from client chat apps using a single api. The 
 
 This is a hybrid Next.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
-Project forked here [the Next.js GitHub repository](https://github.com/vercel/next.js/)
-Using this vercel project as starting point: https://github.com/vercel/next.js/tree/canary/examples/with-electron
+Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examples/with-electron)
 
 ---
 
 ## Features (goals)
 
-- Inference: Run open-source AI text models.
-- Embeddings: Create vector embeddings from a string or document.
-- Search: Using a vector database and Llama Index to make semantic or similarity queries.
-- Threads: Save/Retrieve chat message history to memory, disk or cloud db.
-- Desktop app binaries (free, use our infra locally)
+- Inference: Run open-source AI models for free
+- Embeddings: Create vector embeddings from a string or document
+- Search: Using a vector database and Llama Index to make semantic or similarity queries
+- Threads: Save/Retrieve chat message history to memory, disk or cloud db
+- Provide easy to setup desktop installers
 
 ## Features (upcoming)
 
@@ -30,7 +29,7 @@ Using this vercel project as starting point: https://github.com/vercel/next.js/t
 
 ## How It Works
 
-- Startup and shutdown of the backend services are done via the front-end.
+- Startup and shutdown of the backend services are done via the front-end UI or REST api.
 
 - The Python/FastAPI server (homebrew api) operates under `localhost:8008`.
 
@@ -141,13 +140,13 @@ yarn unpacked
 
 ## API
 
-This project deploys several different backend apps exposed via the /api endpoint. The idea is to separate all OS level logic and processing from the client facing app. This can make deployment to the cloud and swapping out functionality easier.
+This project deploys several backend servers exposed using the `/v1` endpoint. The goal is to separate all OS level logic and processing from the client apps. This can make deploying new apps and swapping out engine functionality easier.
 
-Endpoints can be found [here](http://localhost:8008/docs) for the homebrew api server.
+Endpoints can be found [here](http://localhost:8000/docs) after HomeBrewAi is started.
 
 ### /v1/ping
 
-Used to keep the inference server alive.
+Used to check if the inference server is alive.
 
 ### /v1/connect
 
@@ -167,20 +166,21 @@ Gets all inference model configuration.
 
 ### /v1/text/load
 
+Load a model into the text inference service.
+
 ### /v1/text/start
 
-This is entry for all text inference functions. Endpoints can be found [here](http://localhost:8000/docs) after server is started.
+Start the text inference server.
 
 ---
 
-## Models
+## Model Configs
 
 To get the sha256 of each file, click on the model you want from the "Files" page and copy from the page or raw pointer.
 
-## Inference
+## Text Inference
 
-- [Project used for ai inference](https://github.com/abetlen/llama-cpp-python)
-- [TODO-Use vLLM](https://github.com/vllm-project/vllm)
+Using [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for ai text inference.
 
 ## Learn More
 
