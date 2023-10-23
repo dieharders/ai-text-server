@@ -5,7 +5,8 @@ const Layout = () => {
   return (
     <>
       <Head>
-        <title>HomebrewAi</title>
+        <title>HomeBrewAi</title>
+        <description>Ai inference engine</description>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
