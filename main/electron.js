@@ -19,7 +19,7 @@ let universalAPI
 let mainWindow
 
 // Create the browser window
-const createWindow = () => {
+const createWindow = (devmode = false) => {
   mainWindow = new BrowserWindow({
     title: 'HomebrewAi',
     width: isDev ? 1280 : 960,
@@ -28,6 +28,7 @@ const createWindow = () => {
     // icon: `file://${__dirname}/dist/assets/logo.png`,
     autoHideMenuBar: true,
     webPreferences: {
+      devTools: devmode,
       nodeIntegration: false,
       contextIsolation: true,
       preload: join(__dirname, 'preload.js'),
@@ -51,9 +52,13 @@ const start = async () => {
   // Prepare the renderer for frontend
   await prepareNext('./renderer')
   // Start frontend browser window
-  createWindow()
+  createWindow(isDev)
   // Open dev tools if in dev env
   if (isDev) mainWindow.webContents.openDevTools()
+  // Hide menu bar
+  // if (!isDev) {
+  //   mainWindow.removeMenu() // Only Windows and Linux
+  // }
   // Configure opening new windows from links
   mainWindow.webContents.setWindowOpenHandler(async ({ url }) => {
     // open url in a browser and prevent default
@@ -111,6 +116,7 @@ const start = async () => {
 // Normal start process
 app.on('ready', async () => {
   await start()
+  // app.getGPUInfo() // Get info
   console.log('[App] Ready')
 })
 
