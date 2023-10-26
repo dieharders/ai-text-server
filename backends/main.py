@@ -15,7 +15,6 @@ from contextlib import asynccontextmanager
 async def lifespan(application: FastAPI):
     print("[homebrew api] Lifespan startup")
     app.requests_client = httpx.AsyncClient()
-    app.text_model_config = {}
     # Store some state here if you want...
     # application.state.super_secret = secrets.token_hex(16)
 
@@ -264,6 +263,7 @@ async def shutdown_text_inference() -> ShutdownInferenceResponse:
         print("[homebrew api] Shutting down all services")
         # Reset, kill processes
         killTextInference()
+        delattr(app, "text_model_config")
 
         return {
             "success": True,
@@ -310,35 +310,40 @@ class ServicesApiResponse(BaseModel):
 # Return api info for available services
 @app.get("/v1/services/api")
 def get_services_api() -> ServicesApiResponse:
-    text_inference_api = {
-        "name": "textInference",
-        "port": app.PORT_TEXT_INFERENCE,
-        "endpoints": [
-            {
-                "name": "copilot",
-                "urlPath": "/v1/engines/copilot-codex/completions",
-                "method": "POST",
-            },
-            {
-                "name": "completions",
-                "urlPath": "/v1/completions",
-                "method": "POST",
-                "promptTemplate": app.text_model_config["promptTemplate"],
-            },
-            {"name": "embeddings", "urlPath": "/v1/embeddings", "method": "POST"},
-            {
-                "name": "chatCompletions",
-                "urlPath": "/v1/chat/completions",
-                "method": "POST",
-            },
-            {"name": "models", "urlPath": "/v1/models", "method": "GET"},
-        ],
-    }
+    data = []
+
+    # Only return api configs for servers that are actually running
+    if hasattr(app, "text_model_config"):
+        text_inference_api = {
+            "name": "textInference",
+            "port": app.PORT_TEXT_INFERENCE,
+            "endpoints": [
+                {
+                    "name": "copilot",
+                    "urlPath": "/v1/engines/copilot-codex/completions",
+                    "method": "POST",
+                },
+                {
+                    "name": "completions",
+                    "urlPath": "/v1/completions",
+                    "method": "POST",
+                    "promptTemplate": app.text_model_config["promptTemplate"],
+                },
+                {"name": "embeddings", "urlPath": "/v1/embeddings", "method": "POST"},
+                {
+                    "name": "chatCompletions",
+                    "urlPath": "/v1/chat/completions",
+                    "method": "POST",
+                },
+                {"name": "models", "urlPath": "/v1/models", "method": "GET"},
+            ],
+        }
+        data.append(text_inference_api)
 
     return {
         "success": True,
-        "message": "These are the available service api's",
-        "data": [text_inference_api],
+        "message": "These are the currently available service api's",
+        "data": data,
     }
 
 
