@@ -2,10 +2,9 @@ import os
 import json
 import uvicorn
 import subprocess
-import asyncio
 import httpx
-from typing import List
-from fastapi import FastAPI, HTTPException, Request
+from typing import List, Optional
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
@@ -347,10 +346,40 @@ def get_services_api() -> ServicesApiResponse:
     }
 
 
+class PreProcessRequest(BaseModel):
+    title: Optional[str]
+    description: Optional[str]
+    tags: Optional[str]
+
+
 # Pre-process docs into a text format specified by user.
 @app.post("/v1/embeddings/pre-process")
-def pre_process_documents():
-    return {"message": "pre_process_documents"}
+def pre_process_documents(
+    form: PreProcessRequest = Depends(), file: UploadFile = File(...)
+):
+    try:
+        # Read the form inputs
+        title = form.title
+        description = form.description
+        tags = form.tags
+        # Read the file in chunks of 1mb
+        with open(file.filename, "wb") as f:
+            while contents := file.file.read(1024 * 1024):
+                # @TODO How to write file to specific location? cwd is this project root, path/file.filename
+                f.write(contents)
+    except:
+        return {
+            "success": False,
+            "message": "There was an internal server error uploading the file",
+        }
+    finally:
+        # @TODO Write a temp file same as original, extract all the text contents, write contents and input texts to new .md file.
+        file.file.close()
+
+    return {
+        "success": True,
+        "message": f"Successfully uploaded {file.filename}",
+    }
 
 
 # Create vector embeddings from the pre-processed documents, then store in database.

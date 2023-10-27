@@ -6,3 +6,4 @@ starlette_context==0.3.6
 pyinstaller==5.13.0
 llama-cpp-python==0.2.11
 llama-cpp-python[server]
+python-multipart==0.0.6
