@@ -3,6 +3,7 @@ import json
 import uvicorn
 import subprocess
 import httpx
+import re
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -347,7 +348,7 @@ def get_services_api() -> ServicesApiResponse:
 
 
 class PreProcessRequest(BaseModel):
-    title: Optional[str]
+    title: str
     description: Optional[str]
     tags: Optional[str]
 
@@ -362,10 +363,16 @@ def pre_process_documents(
         title = form.title
         description = form.description
         tags = form.tags
+        filename = file.filename
+        target_input_path = filename
+        new_filename = f"{os.path.splitext(filename)[0]}.md"
+        target_output_path = new_filename
+        # Format tags
+        comma_sep_tags = re.sub("\s+", ", ", tags.strip())
         # Read the file in chunks of 1mb
-        with open(file.filename, "wb") as f:
+        with open(target_input_path, "wb") as f:
             while contents := file.file.read(1024 * 1024):
-                # @TODO How to write file to specific location? cwd is this project root, path/file.filename
+                # @TODO How to write file to specific location? cwd is this project root, path/filename
                 f.write(contents)
     except:
         return {
@@ -373,12 +380,36 @@ def pre_process_documents(
             "message": "There was an internal server error uploading the file",
         }
     finally:
-        # @TODO Write a temp file same as original, extract all the text contents, write contents and input texts to new .md file.
+        # Finalize uploaded file
         file.file.close()
+        # @TODO If the file is not text, then create a text description of the contents (via VisionAi, Human, OCR)
+        # Copy text contents of original file into a new file, parsed for embedding
+        with open(target_output_path, "w") as output_file, open(
+            target_input_path, "r"
+        ) as input_file:
+            # Add a header to file
+            output_file.write("---\n")
+            output_file.write(f"title: {title}\n")
+            output_file.write(f"description: {description}\n")
+            output_file.write(f"tags: {comma_sep_tags}\n")
+            output_file.write("---\n\n")
+            # Copy each line from source file
+            output_file.writelines(line for line in input_file)
+            # @TODO Copied text should be parsed and edited to include markdown syntax to describe important bits (headings, attribution, links)
+            # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
+            # parsed_text = markdown.parse(copied_text)
+        # Delete uploaded file
+        if os.path.exists(target_input_path):
+            os.remove(target_input_path)
+        else:
+            print("Failed to delete temp file upload. The file does not exist.")
 
     return {
         "success": True,
-        "message": f"Successfully uploaded {file.filename}",
+        "message": f"Successfully uploaded {filename}",
+        "data": {
+            "filename": new_filename,
+        },
     }
 
 
