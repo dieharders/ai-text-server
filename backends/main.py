@@ -359,11 +359,17 @@ def pre_process_documents(
     form: PreProcessRequest = Depends(), file: UploadFile = File(...)
 ):
     try:
+        # Check supported file types
+        filename = file.filename
+        file_extension = filename.rsplit(".", 1)[1]
+        supported_ext = (".txt", ".md", ".mdx", ".doc", ".docx", ".pdf", ".rtf")
+        is_supported = file_extension.lower().endswith(supported_ext)
+        if not is_supported:
+            raise Exception(f"Unsupported file format {file_extension}")
         # Read the form inputs
         title = form.title
         description = form.description
         tags = form.tags
-        filename = file.filename
         target_input_path = filename
         new_filename = f"{os.path.splitext(filename)[0]}.md"
         target_output_path = new_filename
@@ -374,10 +380,10 @@ def pre_process_documents(
             while contents := file.file.read(1024 * 1024):
                 # @TODO How to write file to specific location? cwd is this project root, path/filename
                 f.write(contents)
-    except:
+    except Exception as error:
         return {
             "success": False,
-            "message": "There was an internal server error uploading the file",
+            "message": f"There was an internal server error uploading the file: {error}",
         }
     finally:
         # Finalize uploaded file
