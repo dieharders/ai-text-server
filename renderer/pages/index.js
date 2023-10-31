@@ -1,18 +1,7 @@
 import Home from './home'
-import Head from 'next/head'
 
 const Layout = () => {
-  return (
-    <>
-      <Head>
-        <title>HomeBrewAi</title>
-        <description>Ai inference engine</description>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <Home />
-    </>
-  )
+  return <Home />
 }
 
 export default Layout

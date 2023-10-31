@@ -4,7 +4,7 @@
   "author": "Spread Shot Studios",
   "license": "MIT",
   "productName": "HomeBrewAi",
-  "description": "A local & private ai inference engine.",
+  "description": "Local & private Ai engine.",
   "main": "main/electron.js",
   "private": true,
   "scripts": {
