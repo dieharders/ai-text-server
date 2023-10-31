@@ -8,7 +8,7 @@
   "main": "main/electron.js",
   "private": true,
   "scripts": {
-    "clean": "rimraf dist renderer/.next renderer/out",
+    "clean": "rimraf includes renderer/.next renderer/out build release main.spec",
     "dev": "next dev",
     "build": "yarn run python-deps && yarn run build:api && next build renderer",
     "release": "yarn run build && electron-builder",

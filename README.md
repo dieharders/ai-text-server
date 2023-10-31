@@ -14,16 +14,18 @@ Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examp
 
 ## Features (goals)
 
-- Inference: Run open-source AI models for free
-- Embeddings: Create vector embeddings from a string or document
-- Search: Using a vector database and Llama Index to make semantic or similarity queries
-- Threads: Save/Retrieve chat message history to memory, disk or cloud db
-- Provide easy to setup desktop installers
+- Inference: Run open-source AI models for free ✅
+- Provide easy to setup desktop installers ✅
+- Embeddings: Create vector embeddings from a text or document files ❌
+- Search: Using a vector database and Llama Index to make semantic or similarity queries ❌
+- Threads: Save/Retrieve chat message history to memory, disk or cloud db ❌
 
 ## Features (upcoming)
 
 - Cloud platform (subscription, host your infra with us)
 - Enterprise service (subscription & paid support, bring your own infra)
+- Auto Agents
+- Multi-Chat
 
 ---
 
@@ -118,6 +120,8 @@ Building app for production:
 yarn build
 ```
 
+## Release the app for distribution
+
 ### Package application with Electron for release
 
 This will build the production deps and then bundle them with pre-built Electron binaries into an installer/distributable.
@@ -136,9 +140,41 @@ This will create a folder with all the raw files in `/release/win-unpacked` (whe
 yarn unpacked
 ```
 
+### Create a release on Github with link to installer
+
+Electron-builder provides a way to automate the release process by creating a release w/ binary for you. You must first setup an auth token and yada yada I cant be bothered...so here is the manual procedure.
+
+1. Create a tag with:
+
+Increase the patch version by 1 (x.x.1 to x.x.2)
+
+```bash
+yarn version --patch
+```
+
+Will increase the minor version by 1 (x.1.x to x.2.x)
+
+```bash
+yarn version --minor
+```
+
+Will increase the major version by 1 (1.x.x to 2.x.x)
+
+```bash
+yarn version --major
+```
+
+2. Create a new release in Github and choose the tag just created or enter a new tag name for Github to make.
+
+3. Drag & Drop the binary file you wish to bundle with the release. Then hit done.
+
+4. If the project is public then the latest release's binary should be available on the web to anyone with the link:
+
+https://github.com/[github-user]/[project-name]/releases/latest/download/[installer-file-name]
+
 ---
 
-## API
+## API Overview
 
 This project deploys several backend servers exposed using the `/v1` endpoint. The goal is to separate all OS level logic and processing from the client apps. This can make deploying new apps and swapping out engine functionality easier.
 
