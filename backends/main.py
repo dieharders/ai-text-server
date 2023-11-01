@@ -361,49 +361,72 @@ def pre_process_documents(
     try:
         # Check supported file types
         filename = file.filename
+        target_input_path = filename
         file_extension = filename.rsplit(".", 1)[1]
-        supported_ext = (".txt", ".md", ".mdx", ".doc", ".docx", ".pdf", ".rtf")
+        supported_ext = (
+            "txt",
+            "md",
+            "mdx",
+            "doc",
+            "docx",
+            "pdf",
+            "rtf",
+            "csv",
+            "json",
+            "xml",
+            "xls",
+            "orc",
+        )
         is_supported = file_extension.lower().endswith(supported_ext)
         if not is_supported:
             raise Exception(f"Unsupported file format {file_extension}")
-        # Read the form inputs
-        title = form.title
-        description = form.description
-        tags = form.tags
-        target_input_path = filename
-        new_filename = f"{os.path.splitext(filename)[0]}.md"
-        target_output_path = new_filename
-        # Format tags
-        comma_sep_tags = re.sub("\s+", ", ", tags.strip())
-        # Read the file in chunks of 1mb
-        with open(target_input_path, "wb") as f:
-            while contents := file.file.read(1024 * 1024):
-                # @TODO How to write file to specific location? cwd is this project root, path/filename
-                f.write(contents)
     except Exception as error:
         return {
             "success": False,
             "message": f"There was an internal server error uploading the file: {error}",
         }
-    finally:
-        # Finalize uploaded file
+    else:
+        # Read the form inputs
+        title = form.title
+        description = form.description
+        tags = form.tags
+        rootFileName = os.path.splitext(filename)[0]
+        new_file_path = os.getcwd()  # path to app storage
+        new_filename = f"{rootFileName}.md"
+        # Create new output folder
+        new_output_path = os.path.join(new_file_path, "memory")
+        if not os.path.exists(new_output_path):
+            os.makedirs(new_output_path)
+        target_output_path = os.path.join(new_output_path, new_filename)
+        # Format tags
+        comma_sep_tags = re.sub("\s+", ", ", tags.strip())
+        # Read the file in chunks of 1mb
+        with open(target_input_path, "wb") as f:
+            while contents := file.file.read(1024 * 1024):
+                f.write(contents)
         file.file.close()
+        # Finalize uploaded file
         # @TODO If the file is not text, then create a text description of the contents (via VisionAi, Human, OCR)
         # Copy text contents of original file into a new file, parsed for embedding
         with open(target_output_path, "w") as output_file, open(
             target_input_path, "r"
         ) as input_file:
-            # Add a header to file
-            output_file.write("---\n")
-            output_file.write(f"title: {title}\n")
-            output_file.write(f"description: {description}\n")
-            output_file.write(f"tags: {comma_sep_tags}\n")
-            output_file.write("---\n\n")
+            # Check if header exists
+            first_line = input_file.readline()
+            if first_line != "---\n":
+                # Add a header to file
+                output_file.write("---\n")
+                output_file.write(f"title: {title}\n")
+                output_file.write(f"description: {description}\n")
+                output_file.write(f"tags: {comma_sep_tags}\n")
+                output_file.write("---\n\n")
+            input_file.seek(0)  # set back to start of file
             # Copy each line from source file
             output_file.writelines(line for line in input_file)
             # @TODO Copied text should be parsed and edited to include markdown syntax to describe important bits (headings, attribution, links)
             # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
             # parsed_text = markdown.parse(copied_text)
+    finally:
         # Delete uploaded file
         if os.path.exists(target_input_path):
             os.remove(target_input_path)
