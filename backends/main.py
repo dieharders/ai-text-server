@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+from embedding import embedding
 
 
 @asynccontextmanager
@@ -426,6 +427,8 @@ def pre_process_documents(
             # @TODO Copied text should be parsed and edited to include markdown syntax to describe important bits (headings, attribution, links)
             # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
             # parsed_text = markdown.parse(copied_text)
+        # Create embeddings
+        create_embeddings(target_output_path)
     finally:
         # Delete uploaded file
         if os.path.exists(target_input_path):
@@ -444,8 +447,14 @@ def pre_process_documents(
 
 # Create vector embeddings from the pre-processed documents, then store in database.
 @app.post("/v1/embeddings/create")
-def create_embeddings():
-    return {"message": "create_embeddings"}
+def create_embeddings(file_path: str):
+    result = embedding.create(file_path)
+
+    return {
+        "success": True,
+        "message": "Successfully created embeddings",
+        "data": {"result": result},
+    }
 
 
 # Use Llama Index to run queries on vector database embeddings.
