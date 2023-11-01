@@ -2,7 +2,7 @@ import type { AppProps } from 'next/app'
 import { Inter } from 'next/font/google'
 import '@/components/globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
 /**
  * Used to setup layouts for each page.
