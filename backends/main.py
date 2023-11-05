@@ -5,7 +5,15 @@ import subprocess
 import httpx
 import re
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Depends
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    BackgroundTasks,
+    Request,
+    File,
+    UploadFile,
+    Depends,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
@@ -387,7 +395,7 @@ def pre_process_documents(
             raise Exception(f"Unsupported file format {file_extension}")
         if not form.name:
             raise Exception("You must supply a collection name.")
-    except (Exception, ValueError, TypeError) as error:
+    except (Exception, ValueError, TypeError, KeyError) as error:
         return {
             "success": False,
             "message": f"There was an internal server error uploading the file:\n{error}",
@@ -437,31 +445,61 @@ def pre_process_documents(
             # @TODO Copied text should be parsed and edited to include markdown syntax to describe important bits (headings, attribution, links)
             # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
             # parsed_text = markdown.parse(copied_text)
-        # Create embeddings
-        create_embeddings(target_output_path, new_output_path, name)
     finally:
         # Delete uploaded file
         if os.path.exists(tmp_input_file_path):
             os.remove(tmp_input_file_path)
+            print(f"Removed temp file upload.")
         else:
             print("Failed to delete temp file upload. The file does not exist.")
 
     return {
         "success": True,
-        "message": f"Successfully uploaded {filename}",
+        "message": f"Successfully processed {filename}",
         "data": {
             "filename": new_filename,
+            "path_to_file": target_output_path,
+            "base_path_to_file": new_output_path,
         },
     }
 
 
 # Create a memory for Ai
 @app.post("/v1/memory/create")
-def create_memory():
-    return {
-        "success": True,
-        "message": "Successfully created a new memory!",
-    }
+async def create_memory(
+    form: PreProcessRequest = Depends(),
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+):
+    try:
+        if not form.name:
+            raise Exception("You must supply a collection name.")
+        # Parse inputs
+        result = pre_process_documents(form, file)
+        data = result["data"]
+        # Create embeddings
+        print("Start embedding process...")
+        collection_name = form.name
+        background_tasks.add_task(
+            embedding.create_embedding,
+            data["path_to_file"],
+            data["base_path_to_file"],
+            collection_name,
+        )
+    except Exception as e:
+        msg = f"Failed to create a new memory: {e}"
+        print(msg)
+        return {
+            "success": False,
+            "message": msg,
+        }
+    else:
+        msg = "A new memory has been added to the queue. It will be available for use shortly."
+        print(msg)
+        return {
+            "success": True,
+            "message": msg,
+        }
 
 
 # Create vector embeddings from the pre-processed documents, then store in database.
@@ -470,10 +508,11 @@ def create_embeddings(path_to_file: str, base_path: str, collection_name: str):
     try:
         result = embedding.create_embedding(path_to_file, base_path, collection_name)
     except Exception as e:
-        print(f"Uh oh: {e}")
+        msg = f"Failed to create embeddings:\n{e}"
+        print(msg)
         return {
             "success": False,
-            "message": f"Failed to create embeddings:\n{e}",
+            "message": msg,
         }
 
     return {
@@ -486,7 +525,10 @@ def create_embeddings(path_to_file: str, base_path: str, collection_name: str):
 # Use Llama Index to run queries on vector database embeddings.
 @app.post("/v1/search/similiar")
 def search_similiar():
-    return {"message": "search_similiar"}
+    # index = embedding.load_embedding(llm, storage_directory)
+    # response = embedding.query_embedding("What does this mean?", index, service_context)
+    # answer = response.response
+    return {"success": True, "message": "search_similiar"}
 
 
 # Methods...

@@ -90,42 +90,59 @@ def create_embedding(file_path: str, base_path: str, collection_name: str):
         storage_directory = os.path.join(base_path, os.pardir, "chromadb")
         index.storage_context.persist(persist_dir=storage_directory)
 
-        # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
-        print("Query Data")
-        query_engine = index.as_query_engine(
-            service_context=service_context,
-            similarity_top_k=3,
-            # streaming=True,
-        )
-        query = "Why does mass conservation break down?"
-        response = query_engine.query(query)
-        print(f"Response from llamaIndex: {response}")
+        # Ask a question about data
+        # response = query_embedding("Why does mass conservation break down?", index, service_context)
 
-        # Define evaluator, evaluates whether a response is faithful to the contexts
-        print("Evaluating truthiness of response...")
-        evaluator = FaithfulnessEvaluator(service_context=service_context)
-        eval_result = evaluator.evaluate_response(response=response)
-        # evaluator = ResponseEvaluator(service_context=service_context)
-        # eval_result = evaluator.evaluate(query=query, response=response, contexts=[service_context])
-        print(f"Truthy evaluation results: {eval_result}")
+        # Verify accuracy of response
+        # verify_response(response, service_context)
 
-        # Determine which nodes contributed to the answer
-        num_source_nodes = len(response.source_nodes)
-        print(f"Number of source nodes: {num_source_nodes}")
-        print(f"Result is passing? {str(eval_result.passing)}")
-        for s in response.source_nodes:
-            print(f"Node Score: {s.score}")
-            print(s.node.metadata)
-
-        return response.response
+        print(f"Finished embedding: {file_path}")
+        return True
     except Exception as e:
         msg = f"Embedding failed:\n{e}"
         print(msg)
         raise Exception(msg)
 
 
+# Determine which nodes contributed to the answer
+def contributing_references(response, eval_result):
+    num_source_nodes = len(response.source_nodes)
+    print(f"Number of source nodes: {num_source_nodes}")
+    print(f"Result is passing? {str(eval_result.passing)}")
+    for s in response.source_nodes:
+        print(f"Node Score: {s.score}")
+        print(s.node.metadata)
+    return {
+        "num_refs": num_source_nodes,
+    }
+
+
+def verify_response(response, service_context):
+    # Define evaluator, evaluates whether a response is faithful to the contexts
+    print("Evaluating truthiness of response...")
+    evaluator = FaithfulnessEvaluator(service_context=service_context)
+    eval_result = evaluator.evaluate_response(response=response)
+    # evaluator = ResponseEvaluator(service_context=service_context)
+    # eval_result = evaluator.evaluate(query=query, response=response, contexts=[service_context])
+    print(f"Truthy evaluation results: {eval_result}")
+    contributing_references(response, eval_result)
+
+
+def query_embedding(query, index, service_context):
+    # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
+    print("Query Data")
+    query_engine = index.as_query_engine(
+        service_context=service_context,
+        similarity_top_k=3,
+        # streaming=True,
+    )
+    response = query_engine.query(query)
+    print(f"Response from llamaIndex: {response}")
+    return response
+
+
 # Now you can load the index from disk when needed, and not rebuild it each time.
-def load_index(llm, storage_directory):
+def load_embedding(llm, storage_directory):
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
     service_context = ServiceContext.from_defaults(
