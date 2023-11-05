@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import constants from '@/shared/constants.json'
 import textModels from '@/models/models'
 import AppsBrowser from '@/components/AppsBrowser'
@@ -25,6 +25,17 @@ export default function Home() {
   const [isStarted, setIsStarted] = useState(false)
   const [savePath, setSavePath] = useState<string>('')
   const [currentTextModel, setCurrentTextModel] = useState<string>('')
+
+  const loadTextModelAction = useCallback(
+    (payload: any) => {
+      fetch(`http://0.0.0.0:${PORT_HOMEBREW_API}/v1/text/load`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+    },
+    [PORT_HOMEBREW_API],
+  )
+
   // Company credits (built by)
   const renderCredits = () => {
     return (
@@ -76,12 +87,16 @@ export default function Home() {
     }
     // Load path from persistent storage
     const storedPath = localStorage.getItem(CURRENT_DOWNLOAD_PATH)
-    storedPath && setSavePath(storedPath)
     const currModel = localStorage.getItem(ITEM_CURRENT_MODEL)
     currModel && setCurrentTextModel(currModel)
+    if (storedPath) {
+      setSavePath(storedPath)
+      loadTextModelAction({ modelId: currModel, pathToModel: storedPath })
+    }
 
+    // Set defaults if none found
     if (!storedPath) saveDefaultPath()
-  }, [])
+  }, [loadTextModelAction])
 
   return (
     <div className="xs:p-0 mb-32 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:mb-0 lg:p-24">
@@ -124,6 +139,7 @@ export default function Home() {
           currentTextModel={currentTextModel}
           savePath={savePath}
           setCurrentTextModel={setCurrentTextModel}
+          loadTextModelAction={loadTextModelAction}
         />
       )}
     </div>

@@ -11,6 +11,7 @@ interface IProps {
   currentTextModel: string
   savePath: string
   setCurrentTextModel: Dispatch<SetStateAction<string>>
+  loadTextModelAction: (payload: { modelId: string; pathToModel: string }) => void
 }
 
 // LocalStorage keys
@@ -20,17 +21,26 @@ export const ITEM_CURRENT_MODEL = 'current-text-model'
 /**
  * List of curated text inference models
  */
-const ModelBrowser = ({ data, currentTextModel, savePath, setCurrentTextModel }: IProps) => {
+const ModelBrowser = ({
+  data,
+  currentTextModel,
+  savePath,
+  setCurrentTextModel,
+  loadTextModelAction,
+}: IProps) => {
   // Handlers
   const onSelectTextModel = useCallback(
     (id: string) => {
       console.log('[UI] Set current text model:', id)
       if (id) {
         setCurrentTextModel(id)
+        // Tell backend which model to load
+        const payload = { modelId: id, pathToModel: savePath }
+        loadTextModelAction(payload)
         localStorage.setItem(ITEM_CURRENT_MODEL, id)
       }
     },
-    [setCurrentTextModel],
+    [loadTextModelAction, savePath, setCurrentTextModel],
   )
   const onDownloadComplete = useCallback(() => {
     console.log('[UI] File saved successfully!')

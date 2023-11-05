@@ -1,4 +1,3 @@
-import os
 from llama_index import (
     VectorStoreIndex,
     SimpleDirectoryReader,
@@ -7,21 +6,19 @@ from llama_index import (
     load_index_from_storage,
 )
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
-from llama_index.llms import LlamaCPP, HuggingFaceLLM
-from llama_index.llms.llama_utils import messages_to_prompt, completion_to_prompt
 from llama_index.vector_stores import ChromaVectorStore
 from llama_index.storage.storage_context import StorageContext
-from llama_index.embeddings import HuggingFaceEmbedding
 from llama_index.prompts import PromptTemplate
-from llama_index.evaluation import ResponseEvaluator, FaithfulnessEvaluator
+from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
 import chromadb
 
+# from llama_index.embeddings import HuggingFaceEmbedding
 
-# path_to_model: str
-def create_embedding(file_path: str, base_path: str, collection_name: str):
+
+def create_embedding(file_path: str, storage_directory: str, collection_name: str, llm):
     try:
-        # Define embedding function
-        embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
+        # Define a specific embedding function
+        # embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
 
         # Load documents
         print(f"Load docs: {file_path}")
@@ -37,25 +34,6 @@ def create_embedding(file_path: str, base_path: str, collection_name: str):
         """
         query_wrapper_prompt = PromptTemplate(
             "[INST]<<SYS>>\n" + SYSTEM_PROMPT + "<</SYS>>\n\n{query_str}[/INST] "
-        )
-        llm = LlamaCPP(
-            model_url=None,
-            # optionally, you can set the path to a pre-downloaded model instead of model_url
-            model_path="C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.Q4_K_M.gguf",  # path_to_model,
-            temperature=0.0,
-            max_new_tokens=1024,
-            # query_wrapper_prompt=query_wrapper_prompt,
-            # llama2 has a context window of 4096 tokens, but we set it lower to allow for some wiggle room
-            context_window=3900,  # note, this sets n_ctx in the model_kwargs below, so you don't need to pass it there.
-            # kwargs to pass to __call__()
-            generate_kwargs={},
-            # kwargs to pass to __init__()
-            # set to at least 1 to use GPU
-            # model_kwargs={"n_gpu_layers": 4, "torch_dtype": torch.float16, "load_in_8bit": True},
-            # transform inputs into Llama2 format
-            messages_to_prompt=messages_to_prompt,
-            completion_to_prompt=completion_to_prompt,
-            verbose=True,
         )
 
         # Create client and a new collection
@@ -87,11 +65,10 @@ def create_embedding(file_path: str, base_path: str, collection_name: str):
             show_progress=True,
         )
         # Persist the index to disk
-        storage_directory = os.path.join(base_path, os.pardir, "chromadb")
         index.storage_context.persist(persist_dir=storage_directory)
 
         # Ask a question about data
-        # response = query_embedding("Why does mass conservation break down?", index, service_context)
+        # response = query_embedding("Why does mass conservation break down?", index, llm)
 
         # Verify accuracy of response
         # verify_response(response, service_context)
@@ -128,9 +105,14 @@ def verify_response(response, service_context):
     contributing_references(response, eval_result)
 
 
-def query_embedding(query, index, service_context):
+def query_embedding(query, index, llm):
     # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
     print("Query Data")
+    llama_debug = LlamaDebugHandler(print_trace_on_end=True)
+    callback_manager = CallbackManager([llama_debug])
+    service_context = ServiceContext.from_defaults(
+        llm=llm, embed_model="local", callback_manager=callback_manager
+    )
     query_engine = index.as_query_engine(
         service_context=service_context,
         similarity_top_k=3,
@@ -145,8 +127,9 @@ def query_embedding(query, index, service_context):
 def load_embedding(llm, storage_directory):
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
+    # @TODO Do we need to define the chunk size?
     service_context = ServiceContext.from_defaults(
-        llm=llm, chunk_size=1024, embed_model="local", callback_manager=callback_manager
+        llm=llm, chunk_size=512, embed_model="local", callback_manager=callback_manager
     )
 
     storage_context = StorageContext.from_defaults(persist_dir=storage_directory)
