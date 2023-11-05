@@ -46,3 +46,6 @@ next-env.d.ts
 **/__pycache__
 *.spec
 /includes
+
+# generated
+/memories

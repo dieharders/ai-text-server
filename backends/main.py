@@ -5,10 +5,21 @@ import subprocess
 import httpx
 import re
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Depends
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    BackgroundTasks,
+    Request,
+    File,
+    UploadFile,
+    Depends,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+from embedding import embedding
+
+MEMORY_PATH = "memories"
 
 
 @asynccontextmanager
@@ -348,7 +359,8 @@ def get_services_api() -> ServicesApiResponse:
 
 
 class PreProcessRequest(BaseModel):
-    title: str
+    name: str
+    title: Optional[str]
     description: Optional[str]
     tags: Optional[str]
 
@@ -361,7 +373,8 @@ def pre_process_documents(
     try:
         # Check supported file types
         filename = file.filename
-        target_input_path = filename
+        tmp_input_path = os.path.join(os.getcwd(), MEMORY_PATH, "tmp")
+        tmp_input_file_path = os.path.join(os.getcwd(), MEMORY_PATH, "tmp", filename)
         file_extension = filename.rsplit(".", 1)[1]
         supported_ext = (
             "txt",
@@ -380,28 +393,33 @@ def pre_process_documents(
         is_supported = file_extension.lower().endswith(supported_ext)
         if not is_supported:
             raise Exception(f"Unsupported file format {file_extension}")
-    except Exception as error:
+        if not form.name:
+            raise Exception("You must supply a collection name.")
+    except (Exception, ValueError, TypeError, KeyError) as error:
         return {
             "success": False,
-            "message": f"There was an internal server error uploading the file: {error}",
+            "message": f"There was an internal server error uploading the file:\n{error}",
         }
     else:
         # Read the form inputs
-        title = form.title
+        name = form.name  # name of new collection
+        title = form.title  # title of document
         description = form.description
         tags = form.tags
         rootFileName = os.path.splitext(filename)[0]
         new_file_path = os.getcwd()  # path to app storage
         new_filename = f"{rootFileName}.md"
         # Create new output folder
-        new_output_path = os.path.join(new_file_path, "memory")
+        new_output_path = os.path.join(new_file_path, MEMORY_PATH, "parsed")
         if not os.path.exists(new_output_path):
             os.makedirs(new_output_path)
         target_output_path = os.path.join(new_output_path, new_filename)
         # Format tags
         comma_sep_tags = re.sub("\s+", ", ", tags.strip())
         # Read the file in chunks of 1mb
-        with open(target_input_path, "wb") as f:
+        if not os.path.exists(tmp_input_path):
+            os.makedirs(tmp_input_path)
+        with open(tmp_input_file_path, "wb") as f:
             while contents := file.file.read(1024 * 1024):
                 f.write(contents)
         file.file.close()
@@ -409,13 +427,14 @@ def pre_process_documents(
         # @TODO If the file is not text, then create a text description of the contents (via VisionAi, Human, OCR)
         # Copy text contents of original file into a new file, parsed for embedding
         with open(target_output_path, "w") as output_file, open(
-            target_input_path, "r"
+            tmp_input_file_path, "r"
         ) as input_file:
             # Check if header exists
             first_line = input_file.readline()
             if first_line != "---\n":
                 # Add a header to file
                 output_file.write("---\n")
+                output_file.write(f"collection: {name}\n")
                 output_file.write(f"title: {title}\n")
                 output_file.write(f"description: {description}\n")
                 output_file.write(f"tags: {comma_sep_tags}\n")
@@ -428,30 +447,88 @@ def pre_process_documents(
             # parsed_text = markdown.parse(copied_text)
     finally:
         # Delete uploaded file
-        if os.path.exists(target_input_path):
-            os.remove(target_input_path)
+        if os.path.exists(tmp_input_file_path):
+            os.remove(tmp_input_file_path)
+            print(f"Removed temp file upload.")
         else:
             print("Failed to delete temp file upload. The file does not exist.")
 
     return {
         "success": True,
-        "message": f"Successfully uploaded {filename}",
+        "message": f"Successfully processed {filename}",
         "data": {
             "filename": new_filename,
+            "path_to_file": target_output_path,
+            "base_path_to_file": new_output_path,
         },
     }
 
 
+# Create a memory for Ai
+@app.post("/v1/memory/create")
+async def create_memory(
+    form: PreProcessRequest = Depends(),
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+):
+    try:
+        if not form.name:
+            raise Exception("You must supply a collection name.")
+        # Parse inputs
+        result = pre_process_documents(form, file)
+        data = result["data"]
+        # Create embeddings
+        print("Start embedding process...")
+        collection_name = form.name
+        background_tasks.add_task(
+            embedding.create_embedding,
+            data["path_to_file"],
+            data["base_path_to_file"],
+            collection_name,
+        )
+    except Exception as e:
+        msg = f"Failed to create a new memory: {e}"
+        print(msg)
+        return {
+            "success": False,
+            "message": msg,
+        }
+    else:
+        msg = "A new memory has been added to the queue. It will be available for use shortly."
+        print(msg)
+        return {
+            "success": True,
+            "message": msg,
+        }
+
+
 # Create vector embeddings from the pre-processed documents, then store in database.
 @app.post("/v1/embeddings/create")
-def create_embeddings():
-    return {"message": "create_embeddings"}
+def create_embeddings(path_to_file: str, base_path: str, collection_name: str):
+    try:
+        result = embedding.create_embedding(path_to_file, base_path, collection_name)
+    except Exception as e:
+        msg = f"Failed to create embeddings:\n{e}"
+        print(msg)
+        return {
+            "success": False,
+            "message": msg,
+        }
+
+    return {
+        "success": True,
+        "message": "Successfully created embeddings",
+        "data": {"result": result},
+    }
 
 
 # Use Llama Index to run queries on vector database embeddings.
 @app.post("/v1/search/similiar")
 def search_similiar():
-    return {"message": "search_similiar"}
+    # index = embedding.load_embedding(llm, storage_directory)
+    # response = embedding.query_embedding("What does this mean?", index, service_context)
+    # answer = response.response
+    return {"success": True, "message": "search_similiar"}
 
 
 # Methods...
