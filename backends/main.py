@@ -132,14 +132,14 @@ def connect() -> ConnectResponse:
 # Load in the ai model to be used for inference.
 class LoadInferenceRequest(BaseModel):
     modelId: str
-    path_to_model: str
+    pathToModel: str
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "modelId": "llama-2-13b-chat-ggml",
-                    "path_to_model": "C:\\homebrewai-app\\models\\llama-2-13b.GGUF",
+                    "pathToModel": "C:\\homebrewai-app\\models\\llama-2-13b.GGUF",
                 }
             ]
         }

@@ -28,12 +28,18 @@ export default function Home() {
 
   const loadTextModelAction = useCallback(
     (payload: any) => {
-      fetch(`http://0.0.0.0:${PORT_HOMEBREW_API}/v1/text/load`, {
+      fetch(`${HOMEBREW_BASE_PATH}/v1/text/load`, {
         method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
+      }).catch(err => {
+        console.log('[UI] Error loading model:', err)
       })
     },
-    [PORT_HOMEBREW_API],
+    [HOMEBREW_BASE_PATH],
   )
 
   // Company credits (built by)
@@ -87,12 +93,11 @@ export default function Home() {
     }
     // Load path from persistent storage
     const storedPath = localStorage.getItem(CURRENT_DOWNLOAD_PATH)
+    storedPath && setSavePath(storedPath)
     const currModel = localStorage.getItem(ITEM_CURRENT_MODEL)
     currModel && setCurrentTextModel(currModel)
-    if (storedPath) {
-      setSavePath(storedPath)
+    if (storedPath && currModel)
       loadTextModelAction({ modelId: currModel, pathToModel: storedPath })
-    }
 
     // Set defaults if none found
     if (!storedPath) saveDefaultPath()
