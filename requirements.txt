@@ -5,9 +5,9 @@ sse-starlette==1.6.5
 starlette_context==0.3.6
 pyinstaller==5.13.0
 python-multipart==0.0.6
-llama-cpp-python==0.2.11
+llama-cpp-python==0.2.14
 llama-cpp-python[server]
 # For embedding & query
-llama-index==0.8.56
+llama-index==0.8.62
 chromadb==0.4.15
-sentence-transformers==2.2.2ss
+sentence-transformers==2.2.2
