@@ -59,7 +59,8 @@ const ModelCard = ({
     const isInvalid = modelConfig?.validation === EValidationState.Fail
     const isErrored = progressState === EProgressState.Errored
     if (isInvalid) errorMsg = ' File integrity failed. Please re-download.'
-    else if (isErrored) errorMsg = 'Something went wrong, file failed to download.'
+    else if (isErrored)
+      errorMsg = 'Something went wrong. Check the target folder has write privileges.'
 
     const label = (
       <div>

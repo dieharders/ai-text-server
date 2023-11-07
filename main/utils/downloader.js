@@ -27,6 +27,7 @@ const fetchTotalSize = async url => {
   const response = await axios({
     url,
     method: 'HEAD',
+    cache: 'no-cache',
   })
   return {
     size: response?.headers?.['content-length'],
