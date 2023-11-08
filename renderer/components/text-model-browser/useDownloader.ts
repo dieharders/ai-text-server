@@ -161,10 +161,10 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
       }
     }
 
-    window.electron.message.on(handler)
+    window.electron?.message?.on(handler)
 
     return () => {
-      window.electron.message.off(handler)
+      window.electron?.message?.off(handler)
     }
   }, [modelId])
 

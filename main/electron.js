@@ -200,7 +200,7 @@ ipcMain.handle('api', async (event, eventName, options) => {
       return app.getAppPath()
     case 'delete_file': {
       try {
-        if (!dlService) createDownloaderInstance()
+        createDownloaderInstance()
         const success = await dlService.onDelete()
         if (downloaders[id]) delete downloaders[id]
         return success

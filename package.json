@@ -28,8 +28,7 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis",
-      "requestedExecutionLevel": "asInvoker"
+      "target": "nsis"
     },
     "nsis": {
       "runAfterFinish": false
