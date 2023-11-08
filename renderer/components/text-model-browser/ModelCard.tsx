@@ -3,6 +3,7 @@
 import useDownloader, { EProgressState } from './useDownloader'
 import { IModelCard } from '@/models/models'
 import { EValidationState, IModelConfig } from './configs'
+import { CURRENT_DOWNLOAD_PATH } from '@/components/text-inference-config/TextInferenceConfigMenu'
 import {
   CancelDownloadButton,
   CheckHardware,
@@ -16,7 +17,6 @@ import {
 interface IProps {
   modelCard: IModelCard
   isLoaded: boolean
-  saveToPath: string
   onSelectModel: (modelId: string) => void
   onDownloadComplete: () => void
   loadModelConfig: () => IModelConfig | undefined
@@ -25,7 +25,6 @@ interface IProps {
 
 const ModelCard = ({
   modelCard,
-  saveToPath,
   isLoaded,
   onSelectModel,
   onDownloadComplete,
@@ -34,6 +33,7 @@ const ModelCard = ({
 }: IProps) => {
   // Vars
   const { id, name, description, fileSize, ramSize, licenses, provider } = modelCard
+  const saveToPath = localStorage.getItem(CURRENT_DOWNLOAD_PATH) || ''
 
   // Downloader Hook
   const {

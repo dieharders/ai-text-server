@@ -154,12 +154,41 @@ ipcMain.handle('api', async (event, eventName, options) => {
   const modelCard = options?.modelCard
   const id = modelCard?.id
   let dlService = downloaders[id]
-  if (!dlService) {
+  const canWritePath = () => {
+    // Check we can write to path
+    const fs = require('fs')
+    const exists = fs.existsSync(filePath)
+    if (exists) {
+      try {
+        fs.accessSync(filePath, fs.constants.W_OK | fs.constants.R_OK)
+        return true
+      } catch (e) {
+        console.log('[Electron] Error: Cannot access directory')
+        return false
+      }
+    } else {
+      try {
+        fs.mkdirSync(filePath)
+        return true
+      } catch (e) {
+        if (e.code == 'EACCESS') {
+          console.log('[Electron] Error: Cannot create directory, access denied.')
+        } else {
+          console.log(`[Electron] Error: ${e.code}`)
+        }
+        return false
+      }
+    }
+  }
+  // Create downloader instance
+  const createDownloaderInstance = () => {
+    if (dlService) return
     dlService = downloader({ config, modelCard, event, filePath })
     downloaders[id] = dlService
     console.log('[Electron] New downloader created.')
   }
 
+  // Handle api events
   switch (eventName) {
     case 'showConfirmDialog':
       return dialog.showMessageBoxSync(mainWindow, options)
@@ -170,16 +199,26 @@ ipcMain.handle('api', async (event, eventName, options) => {
     case 'getAppPath':
       return app.getAppPath()
     case 'delete_file': {
-      const success = await dlService.onDelete()
-      if (dlService) delete downloaders[id]
-      return success
+      try {
+        const success = await dlService.onDelete()
+        if (dlService) delete downloaders[id]
+        return success
+      } catch (err) {
+        console.log('[Electron] Error:', err)
+        return false
+      }
     }
     case 'pause_download':
       return dlService.onPause()
+    // Initiate the previous download
     case 'resume_download':
+      if (!canWritePath()) return
+      createDownloaderInstance()
       return dlService.onStart(true)
     // Start service and return a config
     case 'start_download':
+      if (!canWritePath()) return
+      createDownloaderInstance()
       return dlService.onStart()
     default:
       return

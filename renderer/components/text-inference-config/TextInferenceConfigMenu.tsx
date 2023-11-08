@@ -47,6 +47,8 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
       // Get installed/stored model configs list and combine
       const storedConfig = getTextModelConfig(currentTextModelId)
       const config = textModels.find(model => model.id === currentTextModelId)
+      if (!storedConfig || !config) throw Error('Cannot find text model config data')
+
       const modelConfig = {
         id: config?.id,
         name: config?.name,
@@ -64,8 +66,6 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
         tags: config?.tags,
         promptTemplate: config?.promptTemplate || '{{PROMPT}}',
       }
-
-      if (!storedConfig || !config) throw Error('Cannot find text model config data')
 
       const options = { modelConfig }
 

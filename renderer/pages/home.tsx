@@ -79,7 +79,10 @@ export default function Home() {
     storedPath && setSavePath(storedPath)
     const currModel = localStorage.getItem(ITEM_CURRENT_MODEL)
     currModel && setCurrentTextModel(currModel)
-
+    // Load stored model from storage if found
+    if (storedPath && currModel)
+      loadTextModelAction({ modelId: currModel, pathToModel: storedPath })
+    // Set defaults if none found
     if (!storedPath) saveDefaultPath()
   }, [])
 
@@ -122,7 +125,6 @@ export default function Home() {
         <TextModelBrowserMenu
           data={textModels}
           currentTextModel={currentTextModel}
-          savePath={savePath}
           setCurrentTextModel={setCurrentTextModel}
         />
       )}

@@ -251,16 +251,16 @@ const models: Array<IModelCard> = [
     \n
     ASSISTANT:`,
   },
-  {
-    id: 'example-cat-anim',
-    name: 'Example Cute Cat Animation',
-    provider: 'giphy',
-    licenses: [LicenseType.Academic, LicenseType.Commercial, LicenseType.Other],
-    description: 'This is a test file (gif) for testing download behavior.',
-    fileSize: 0.03, // 3060203 bytes
-    fileName: 'cute-cat-anim.gif',
-    downloadUrl: 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif',
-  },
+  // {
+  //   id: 'example-cat-anim',
+  //   name: 'Example Cute Cat Animation',
+  //   provider: 'giphy',
+  //   licenses: [LicenseType.Academic, LicenseType.Commercial, LicenseType.Other],
+  //   description: 'This is a test file (gif) for testing download behavior.',
+  //   fileSize: 0.03, // 3060203 bytes
+  //   fileName: 'cute-cat-anim.gif',
+  //   downloadUrl: 'https://media.giphy.com/media/04uUJdw2DliDjsNOZV/giphy.gif',
+  // },
 ]
 
 export default models

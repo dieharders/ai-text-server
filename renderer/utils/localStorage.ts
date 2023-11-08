@@ -12,7 +12,7 @@ const getTextModelConfig = (id: string) => {
   const config = modelConfigs.find((item: IModelConfig) => item.id === id)
 
   if (!config) {
-    console.log('[localStorage] Cannot find text model config data')
+    console.log('[localStorage] Cannot find text model config data for', id)
     return undefined
   }
 

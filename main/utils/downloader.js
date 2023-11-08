@@ -134,6 +134,7 @@ const downloader = payload => {
   let progress = config?.progress ?? 0
   let endChunk = config?.endChunk
   // Other
+  let fileStream
   let hash // object used to create checksum from chunks
   let state = progress > 0 ? EProgressState.Idle : EProgressState.None
   const ipcEvent = payload?.event
@@ -188,7 +189,8 @@ const downloader = payload => {
       downloadUrl,
     )
     const options = startChunk > 0 ? { flags: 'a' } : null
-    const fileStream = fs.createWriteStream(writePath, options)
+    // Open handler
+    fileStream = fs.createWriteStream(writePath, options)
     // Create crypto hash object and update with each chunk.
     // Dont create a chunked hash if we are resuming from cold boot.
     const shouldCreateChunkedHashing =
@@ -334,6 +336,8 @@ const downloader = payload => {
     } catch (err) {
       console.log('[Downloader] Failed writing file to disk', err)
       updateProgressState(EProgressState.Errored)
+      // Close the file
+      fileStream && fileStream.end()
       return false
     }
   }
