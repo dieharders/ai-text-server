@@ -24,6 +24,7 @@ const axios = require('axios')
  * @returns
  */
 const fetchTotalSize = async url => {
+  console.log('[Downloader] Fetching headers...')
   const response = await axios({
     url,
     method: 'HEAD',
