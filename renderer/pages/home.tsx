@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import constants from '@/shared/constants.json'
 import textModels from '@/models/models'
 import AppsBrowser from '@/components/AppsBrowser'
@@ -25,6 +25,23 @@ export default function Home() {
   const [isStarted, setIsStarted] = useState(false)
   const [savePath, setSavePath] = useState<string>('')
   const [currentTextModel, setCurrentTextModel] = useState<string>('')
+
+  const loadTextModelAction = useCallback(
+    (payload: any) => {
+      fetch(`${HOMEBREW_BASE_PATH}/v1/text/load`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      }).catch(err => {
+        console.log('[UI] Error loading model:', err)
+      })
+    },
+    [HOMEBREW_BASE_PATH],
+  )
+
   // Company credits (built by)
   const renderCredits = () => {
     return (
@@ -82,9 +99,10 @@ export default function Home() {
     // Load stored model from storage if found
     if (storedPath && currModel)
       loadTextModelAction({ modelId: currModel, pathToModel: storedPath })
+
     // Set defaults if none found
     if (!storedPath) saveDefaultPath()
-  }, [])
+  }, [loadTextModelAction])
 
   return (
     <div className="xs:p-0 mb-32 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:mb-0 lg:p-24">
@@ -126,6 +144,7 @@ export default function Home() {
           data={textModels}
           currentTextModel={currentTextModel}
           setCurrentTextModel={setCurrentTextModel}
+          loadTextModelAction={loadTextModelAction}
         />
       )}
     </div>
