@@ -200,11 +200,12 @@ ipcMain.handle('api', async (event, eventName, options) => {
       return app.getAppPath()
     case 'delete_file': {
       try {
+        if (!dlService) createDownloaderInstance()
         const success = await dlService.onDelete()
-        if (dlService) delete downloaders[id]
+        if (downloaders[id]) delete downloaders[id]
         return success
       } catch (err) {
-        console.log('[Electron] Error:', err)
+        console.log('[Electron] Error deleting:', err)
         return false
       }
     }

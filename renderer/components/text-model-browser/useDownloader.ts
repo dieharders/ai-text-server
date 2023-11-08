@@ -84,7 +84,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
       return true
     }
 
-    console.log('[Downloader] File removal failed!', success)
+    console.log('[Downloader] File removal failed!')
     return false
   }, [apiPayload, deleteConfig])
   /**
