@@ -6,7 +6,7 @@ import { EValidationState, IModelConfig } from './configs'
 import { CURRENT_DOWNLOAD_PATH } from '@/components/text-inference-config/TextInferenceConfigMenu'
 import {
   CancelDownloadButton,
-  CheckHardware,
+  ImportModel,
   DeleteButton,
   LoadButton,
   PauseButton,
@@ -110,7 +110,7 @@ const ModelCard = ({
   const downloadCheckHardwareMenu = (
     <div className="flex flex-row gap-4">
       <StartDownloadButton action={startDownload} onComplete={onDownloadComplete} />
-      <CheckHardware />
+      <ImportModel />
     </div>
   )
 

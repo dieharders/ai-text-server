@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EProgressState } from './useDownloader'
+import { dialogOpen } from '@/components/shared/dialog'
 
 // Styling
 const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
@@ -41,6 +42,32 @@ const CheckHardware = () => {
       }}
     >
       <p className="font-bold">Check</p>
+    </button>
+  )
+}
+
+/**
+ * Import an already downloaded model file
+ */
+
+const ImportModel = () => {
+  return (
+    <button
+      type="button"
+      id="openFileDialog"
+      className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} text-sm text-blue-400 hover:bg-blue-500 hover:text-white`}
+      onClick={async () => {
+        const options = {
+          title: 'Choose a model file to import',
+          filterExtensions: ['gguf'],
+        }
+        const filePath = await dialogOpen({ isDirMode: false, options })
+        // @TODO Record in the model config
+        // filePath && setSavePath(filePath)
+        // filePath && localStorage.setItem(CURRENT_DOWNLOAD_PATH, filePath)
+      }}
+    >
+      <p className="font-bold">Import</p>
     </button>
   )
 }
@@ -177,4 +204,5 @@ export {
   PauseButton,
   DeleteButton,
   CheckHardware,
+  ImportModel,
 }
