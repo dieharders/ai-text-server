@@ -70,20 +70,21 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
   // Remove config record
   const deleteConfig = useCallback(() => {
     removeTextModelConfig(modelId)
-    console.log(`[Downloader] File ${modelId} removed successfully!`)
+    console.log(`[Downloader] Config ${modelId} removed successfully!`)
   }, [modelId])
   // Delete file
   const deleteFile = useCallback(async () => {
     const success = await window.electron.api('delete_file', apiPayload)
 
     if (success) {
+      console.log('[Downloader] Model file removed successfully!')
       deleteConfig()
       // Set the state
       setModelConfig(undefined)
       return true
     }
 
-    console.log('[Downloader] File removal failed!', success)
+    console.log('[Downloader] File removal failed!')
     return false
   }, [apiPayload, deleteConfig])
   /**
@@ -160,16 +161,18 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
       }
     }
 
-    window.electron.message.on(handler)
+    window.electron?.message?.on(handler)
 
     return () => {
-      window.electron.message.off(handler)
+      window.electron?.message?.off(handler)
     }
   }, [modelId])
 
   // Load and update model config from storage whenever progress state changes
   useEffect(() => {
     const c = loadModelConfig()
+    if (!c) return
+
     const progress = c?.progress ?? 0
     setModelConfig(c)
     // We shouldnt have to do this here but the backend has no access to initial `config` state.
