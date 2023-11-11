@@ -56,6 +56,9 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
 
     saveModelConfig(newConfig) // persistent storage
     setModelConfig(newConfig) // local (component) state
+
+    // Inform UI of progress
+    setDownloadProgress(100)
   }
 
   /**
