@@ -40,6 +40,7 @@ const ModelCard = ({
     modelConfig,
     downloadProgress,
     progressState,
+    importDownload,
     startDownload,
     pauseDownload,
     cancelDownload,
@@ -110,11 +111,7 @@ const ModelCard = ({
   const downloadCheckHardwareMenu = (
     <div className="flex flex-row gap-4">
       <StartDownloadButton action={startDownload} onComplete={onDownloadComplete} />
-      <ImportModel
-        onComplete={onDownloadComplete}
-        saveModelConfig={saveModelConfig}
-        modelCard={modelCard}
-      />
+      <ImportModel action={importDownload} onComplete={onDownloadComplete} />
     </div>
   )
 

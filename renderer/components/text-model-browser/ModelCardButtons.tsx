@@ -53,10 +53,9 @@ const CheckHardware = () => {
  */
 interface IImportModelProps {
   onComplete: () => void
-  saveModelConfig: (props: IModelConfig) => void
-  modelCard: IModelCard
+  action: (filePath: string) => void
 }
-const ImportModel = ({ onComplete, saveModelConfig, modelCard }: IImportModelProps) => {
+const ImportModel = ({ onComplete, action }: IImportModelProps) => {
   return (
     <button
       type="button"
@@ -70,23 +69,7 @@ const ImportModel = ({ onComplete, saveModelConfig, modelCard }: IImportModelPro
         const filePath = await dialogOpen({ isDirMode: false, options })
         if (!filePath) return
 
-        // Verify the known hash if one exists
-        //... modelCard.sha256
-        // Record in the model config
-        const config = {
-          modified: '', // current date of import (today)
-          size: 0, // calc in bytes
-          checksum: '', // create a hash from the selected file
-          savePath: filePath,
-          endChunk: 1, // doesnt matter
-          progress: 100,
-          validation: EValidationState.Success,
-          id: modelCard.id,
-          numTimesRun: 0,
-          isFavorited: false,
-        }
-        saveModelConfig(config) // persistent storage
-        // setModelConfig(config) // local (component) state @TODO Do we need this??
+        action(filePath)
         // Done
         onComplete()
       }}

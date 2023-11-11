@@ -30,6 +30,34 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     [modelCard, modelConfig, saveToPath],
   )
 
+  const importDownload = (filePath: string) => {
+    // Verify the known hash if one exists
+    //... modelCard.sha256
+
+    // Record in the model config
+    const config = {
+      id: modelCard.id,
+      modified: '', // @TODO current date of import (today)
+      size: 0, // @TODO calc in bytes
+      checksum: '', // @TODO create a hash from the selected file
+      savePath: filePath,
+      endChunk: 1, // doesnt matter
+      progress: 100,
+      validation: EValidationState.Success,
+      numTimesRun: 0,
+      isFavorited: false,
+    }
+
+    // Make record of installation in storage
+    const newConfig = {
+      modelId,
+      ...config,
+    }
+
+    saveModelConfig(newConfig) // persistent storage
+    setModelConfig(newConfig) // local (component) state
+  }
+
   /**
    * Start the download of the chosen model from huggingface.
    * Could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
@@ -186,6 +214,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     modelConfig,
     progressState,
     downloadProgress,
+    importDownload,
     startDownload,
     pauseDownload,
     cancelDownload,
