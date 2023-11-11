@@ -28,7 +28,6 @@ const fetchTotalSize = async url => {
   const response = await axios({
     url,
     method: 'HEAD',
-    cache: 'no-cache',
   })
   return {
     size: response?.headers?.['content-length'],
@@ -224,17 +223,14 @@ const downloader = payload => {
     return new Promise((resolve, reject) => {
       // Check download result
       if (result && !result?.error) {
-        console.log('[Downloader] File download finished successfully')
+        console.log('[Downloader] File download finished and saved to disk successfully')
       } else {
         console.log('[Downloader] File failed to download or was cancelled')
         reject(null)
       }
       // Stream closed event, return config
       fileStream.on('finish', async () => {
-        console.log(
-          '[Downloader] Stream finished: File saved to disk successfully. endChunk:',
-          endChunk,
-        )
+        console.log('[Downloader] Stream finished: endChunk:', endChunk)
         // Create a checksum from completed file only
         let checksum
         const createChecksum = async () => {
@@ -335,7 +331,7 @@ const downloader = payload => {
       validation = EValidationState.Success
       return { ...streamFileConfig, validation }
     } catch (err) {
-      console.log('[Downloader] Failed writing file to disk', err)
+      console.log('[Downloader] Failed writing file to disk, Error:', err)
       updateProgressState(EProgressState.Errored)
       // Close the file
       fileStream && fileStream.end()
@@ -389,6 +385,7 @@ const downloader = payload => {
       // Handle errors
       if (!response) {
         console.log('[Downloader] Error: Failed to receive chunk.')
+        error = true
         break
       }
 
