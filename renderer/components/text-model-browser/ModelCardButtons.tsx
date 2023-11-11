@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { EProgressState } from './useDownloader'
+import { EValidationState, IModelConfig } from './configs'
 import { dialogOpen } from '@/components/shared/dialog'
+import { IModelCard } from '@/models/models'
 
 // Styling
 const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
@@ -49,8 +51,12 @@ const CheckHardware = () => {
 /**
  * Import an already downloaded model file
  */
-
-const ImportModel = () => {
+interface IImportModelProps {
+  onComplete: () => void
+  saveModelConfig: (props: IModelConfig) => void
+  modelCard: IModelCard
+}
+const ImportModel = ({ onComplete, saveModelConfig, modelCard }: IImportModelProps) => {
   return (
     <button
       type="button"
@@ -62,9 +68,27 @@ const ImportModel = () => {
           filterExtensions: ['gguf'],
         }
         const filePath = await dialogOpen({ isDirMode: false, options })
-        // @TODO Record in the model config
-        // filePath && setSavePath(filePath)
-        // filePath && localStorage.setItem(CURRENT_DOWNLOAD_PATH, filePath)
+        if (!filePath) return
+
+        // Verify the known hash if one exists
+        //... modelCard.sha256
+        // Record in the model config
+        const config = {
+          modified: '', // current date of import (today)
+          size: 0, // calc in bytes
+          checksum: '', // create a hash from the selected file
+          savePath: filePath,
+          endChunk: 1, // doesnt matter
+          progress: 100,
+          validation: EValidationState.Success,
+          id: modelCard.id,
+          numTimesRun: 0,
+          isFavorited: false,
+        }
+        saveModelConfig(config) // persistent storage
+        // setModelConfig(config) // local (component) state @TODO Do we need this??
+        // Done
+        onComplete()
       }}
     >
       <p className="font-bold">Import</p>

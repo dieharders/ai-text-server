@@ -110,7 +110,11 @@ const ModelCard = ({
   const downloadCheckHardwareMenu = (
     <div className="flex flex-row gap-4">
       <StartDownloadButton action={startDownload} onComplete={onDownloadComplete} />
-      <ImportModel />
+      <ImportModel
+        onComplete={onDownloadComplete}
+        saveModelConfig={saveModelConfig}
+        modelCard={modelCard}
+      />
     </div>
   )
 
