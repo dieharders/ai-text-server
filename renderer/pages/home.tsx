@@ -27,7 +27,7 @@ export default function Home() {
   const [currentTextModel, setCurrentTextModel] = useState<string>('')
 
   const loadTextModelAction = useCallback(
-    (payload: any) => {
+    (payload: { modelId: string; pathToModel: string }) => {
       fetch(`${HOMEBREW_BASE_PATH}/v1/text/load`, {
         method: 'POST',
         headers: {
