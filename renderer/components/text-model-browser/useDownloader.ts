@@ -31,6 +31,39 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
   )
 
   /**
+   * Import and save config for previously imported file
+   */
+  const importDownload = useCallback(
+    async (filePath: string) => {
+      try {
+        const result = await window.electron.api('import_download', {
+          ...apiPayload,
+          importedFilePath: filePath,
+        })
+        if (!result) throw Error('Failed to import file.')
+
+        // Make record of installation in storage
+        const newConfig = {
+          modelId,
+          ...result,
+        }
+
+        saveModelConfig(newConfig) // persistent storage
+        setModelConfig(newConfig) // local (component) state
+
+        // Inform UI of progress
+        setDownloadProgress(100)
+
+        return true
+      } catch (err) {
+        console.log('[Downloader] Error:', err)
+        return false
+      }
+    },
+    [apiPayload, modelId, saveModelConfig],
+  )
+
+  /**
    * Start the download of the chosen model from huggingface.
    * Could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
    */
@@ -70,20 +103,21 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
   // Remove config record
   const deleteConfig = useCallback(() => {
     removeTextModelConfig(modelId)
-    console.log(`[Downloader] File ${modelId} removed successfully!`)
+    console.log(`[Downloader] Config ${modelId} removed successfully!`)
   }, [modelId])
   // Delete file
   const deleteFile = useCallback(async () => {
     const success = await window.electron.api('delete_file', apiPayload)
 
     if (success) {
+      console.log('[Downloader] Model file removed successfully!')
       deleteConfig()
       // Set the state
       setModelConfig(undefined)
       return true
     }
 
-    console.log('[Downloader] File removal failed!', success)
+    console.log('[Downloader] File removal failed!')
     return false
   }, [apiPayload, deleteConfig])
   /**
@@ -133,6 +167,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
 
   // Listen to main process for `progress` events
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handler = (_event: any, payload: any) => {
       if (payload.downloadId !== modelId) return
 
@@ -160,16 +195,18 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
       }
     }
 
-    window.electron.message.on(handler)
+    window.electron?.message?.on(handler)
 
     return () => {
-      window.electron.message.off(handler)
+      window.electron?.message?.off(handler)
     }
   }, [modelId])
 
   // Load and update model config from storage whenever progress state changes
   useEffect(() => {
     const c = loadModelConfig()
+    if (!c) return
+
     const progress = c?.progress ?? 0
     setModelConfig(c)
     // We shouldnt have to do this here but the backend has no access to initial `config` state.
@@ -183,6 +220,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     modelConfig,
     progressState,
     downloadProgress,
+    importDownload,
     startDownload,
     pauseDownload,
     cancelDownload,

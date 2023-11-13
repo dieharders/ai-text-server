@@ -1,15 +1,15 @@
 'use client'
 
-import { Dispatch, SetStateAction, useCallback, useMemo } from 'react'
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react'
 import ModelCard from './ModelCard'
 import { IModelCard } from '@/models/models'
 import createConfig, { IModelConfig } from './configs'
 import { getTextModelConfig, setUpdateTextModelConfig } from '@/utils/localStorage'
+import { CURRENT_DOWNLOAD_PATH } from '@/components/text-inference-config/TextInferenceConfigMenu'
 
 interface IProps {
   data: Array<IModelCard>
   currentTextModel: string
-  savePath: string
   setCurrentTextModel: Dispatch<SetStateAction<string>>
   loadTextModelAction: (payload: { modelId: string; pathToModel: string }) => void
 }
@@ -24,26 +24,29 @@ export const ITEM_CURRENT_MODEL = 'current-text-model'
 const ModelBrowser = ({
   data,
   currentTextModel,
-  savePath,
   setCurrentTextModel,
   loadTextModelAction,
 }: IProps) => {
+  const [runOnce, setRunOnce] = useState(false)
   // Handlers
   const onSelectTextModel = useCallback(
     (id: string) => {
       console.log('[UI] Set current text model:', id)
-      if (id) {
+      // @TODO This needs to load models from their config's savePath
+      const savePath = localStorage.getItem(CURRENT_DOWNLOAD_PATH)
+      if (id && savePath) {
         setCurrentTextModel(id)
         // Tell backend which model to load
         const payload = { modelId: id, pathToModel: savePath }
         loadTextModelAction(payload)
         localStorage.setItem(ITEM_CURRENT_MODEL, id)
-      }
+      } else console.log('[UI] Error: No id or savePath')
     },
-    [loadTextModelAction, savePath, setCurrentTextModel],
+    [loadTextModelAction, setCurrentTextModel],
   )
-  const onDownloadComplete = useCallback(() => {
-    console.log('[UI] File saved successfully!')
+  const onDownloadComplete = useCallback((success: boolean) => {
+    if (success) console.log('[UI] File saved successfully!')
+    else console.log('[UI] Error: File failed to save')
   }, [])
 
   // Create new entry for the installed model and record the install path.
@@ -56,17 +59,18 @@ const ModelBrowser = ({
   }
 
   // Components
-  const cards = useMemo(() => {
-    return data?.map(item => {
+  const [cards, setCards] = useState<JSX.Element[] | null>(null)
+
+  const createCard = useCallback(
+    (item: IModelCard) => {
       return (
         <ModelCard
           key={item.id}
           modelCard={item}
-          saveToPath={savePath}
           isLoaded={currentTextModel === item.id}
           loadModelConfig={() => {
             try {
-              // Look up the installed model.
+              // Look up the installed model if exists
               return getTextModelConfig(item.id)
             } catch (err) {
               // Error cant load model. `localStorage` possibly undefined.
@@ -78,8 +82,16 @@ const ModelBrowser = ({
           onDownloadComplete={onDownloadComplete}
         ></ModelCard>
       )
-    })
-  }, [currentTextModel, data, onDownloadComplete, onSelectTextModel, savePath])
+    },
+    [currentTextModel, onDownloadComplete, onSelectTextModel],
+  )
+
+  useEffect(() => {
+    if (runOnce || !data) return
+    const ref = data.map(createCard)
+    setCards(ref)
+    setRunOnce(true)
+  }, [createCard, data, runOnce])
 
   return (
     <div className="z-5 mt-16 flex h-full w-full flex-col justify-center gap-8 rounded-xl border-b border-gray-300 bg-gray-200 p-6 backdrop-blur-sm dark:border-neutral-800 dark:bg-zinc-800/30 lg:mb-0 lg:mt-52 lg:w-10/12 2xl:w-3/6">

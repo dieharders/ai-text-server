@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import useDownloader, { EProgressState } from './useDownloader'
 import { IModelCard } from '@/models/models'
 import { EValidationState, IModelConfig } from './configs'
+import { CURRENT_DOWNLOAD_PATH } from '@/components/text-inference-config/TextInferenceConfigMenu'
 import {
   CancelDownloadButton,
-  CheckHardware,
+  ImportModel,
   DeleteButton,
   LoadButton,
   PauseButton,
@@ -16,16 +18,14 @@ import {
 interface IProps {
   modelCard: IModelCard
   isLoaded: boolean
-  saveToPath: string
   onSelectModel: (modelId: string) => void
-  onDownloadComplete: () => void
+  onDownloadComplete: (success: boolean) => void
   loadModelConfig: () => IModelConfig | undefined
   saveModelConfig: (props: IModelConfig) => void
 }
 
 const ModelCard = ({
   modelCard,
-  saveToPath,
   isLoaded,
   onSelectModel,
   onDownloadComplete,
@@ -34,12 +34,15 @@ const ModelCard = ({
 }: IProps) => {
   // Vars
   const { id, name, description, fileSize, ramSize, licenses, provider } = modelCard
+  const saveToPath = localStorage.getItem(CURRENT_DOWNLOAD_PATH) || ''
+  const [disabled, setDisabled] = useState(false)
 
   // Downloader Hook
   const {
     modelConfig,
     downloadProgress,
     progressState,
+    importDownload,
     startDownload,
     pauseDownload,
     cancelDownload,
@@ -107,10 +110,30 @@ const ModelCard = ({
     </div>
   )
 
-  const downloadCheckHardwareMenu = (
+  const downloadImportMenu = (
     <div className="flex flex-row gap-4">
-      <StartDownloadButton action={startDownload} onComplete={onDownloadComplete} />
-      <CheckHardware />
+      <StartDownloadButton
+        action={async (resume?: boolean) => {
+          // Disable button while downloading
+          setDisabled(true)
+          const success = await startDownload(resume)
+          setDisabled(false)
+          return success
+        }}
+        onComplete={onDownloadComplete}
+        disabled={disabled}
+      />
+      <ImportModel
+        action={async path => {
+          // Disable button while importing
+          setDisabled(true)
+          const success = await importDownload(path)
+          setDisabled(false)
+          return success
+        }}
+        onComplete={onDownloadComplete}
+        disabled={disabled}
+      />
     </div>
   )
 
@@ -134,8 +157,7 @@ const ModelCard = ({
     if (modelConfig?.validation === EValidationState.Success && downloadProgress === 100)
       return loadRemoveMenu
     if (modelConfig?.validation === EValidationState.Fail) return cancelProgressMenu
-    if (progressState === EProgressState.None && downloadProgress === 0)
-      return downloadCheckHardwareMenu
+    if (progressState === EProgressState.None && downloadProgress === 0) return downloadImportMenu
     return inProgressMenu
   }
 
