@@ -150,7 +150,6 @@ ipcMain.handle('api', async (event, eventName, options) => {
   // Create an instance of a service to handle dl operations (if none exist)
   // This only concerns endpoints using `dlService`.
   const filePath = options?.filePath
-  const config = options?.config
   const modelCard = options?.modelCard
   const id = modelCard?.id
   let dlService = downloaders[id]
@@ -183,7 +182,7 @@ ipcMain.handle('api', async (event, eventName, options) => {
   // Create downloader instance
   const createDownloaderInstance = () => {
     if (dlService) return
-    dlService = downloader({ config, modelCard, event, filePath })
+    dlService = downloader({ event, ...options })
     downloaders[id] = dlService
     console.log('[Electron] New downloader created.')
   }
@@ -221,6 +220,10 @@ ipcMain.handle('api', async (event, eventName, options) => {
       if (!canWritePath()) return
       createDownloaderInstance()
       return dlService.onStart()
+    // Import a previously downloaded file
+    case 'import_download':
+      createDownloaderInstance()
+      return dlService.onImport()
     default:
       return
   }

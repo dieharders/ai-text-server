@@ -44,8 +44,9 @@ const ModelBrowser = ({
     },
     [loadTextModelAction, setCurrentTextModel],
   )
-  const onDownloadComplete = useCallback(() => {
-    console.log('[UI] File saved successfully!')
+  const onDownloadComplete = useCallback((success: boolean) => {
+    if (success) console.log('[UI] File saved successfully!')
+    else console.log('[UI] Error: File failed to save')
   }, [])
 
   // Create new entry for the installed model and record the install path.

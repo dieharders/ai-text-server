@@ -30,36 +30,38 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     [modelCard, modelConfig, saveToPath],
   )
 
-  const importDownload = (filePath: string) => {
-    // Verify the known hash if one exists
-    //... modelCard.sha256
+  /**
+   * Import and save config for previously imported file
+   */
+  const importDownload = useCallback(
+    async (filePath: string) => {
+      try {
+        const result = await window.electron.api('import_download', {
+          ...apiPayload,
+          importedFilePath: filePath,
+        })
+        if (!result) throw Error('Failed to import file.')
 
-    // Record in the model config
-    const config = {
-      id: modelCard.id,
-      modified: '', // @TODO current date of import (today)
-      size: 0, // @TODO calc in bytes
-      checksum: '', // @TODO create a hash from the selected file
-      savePath: filePath,
-      endChunk: 1, // doesnt matter
-      progress: 100,
-      validation: EValidationState.Success,
-      numTimesRun: 0,
-      isFavorited: false,
-    }
+        // Make record of installation in storage
+        const newConfig = {
+          modelId,
+          ...result,
+        }
 
-    // Make record of installation in storage
-    const newConfig = {
-      modelId,
-      ...config,
-    }
+        saveModelConfig(newConfig) // persistent storage
+        setModelConfig(newConfig) // local (component) state
 
-    saveModelConfig(newConfig) // persistent storage
-    setModelConfig(newConfig) // local (component) state
+        // Inform UI of progress
+        setDownloadProgress(100)
 
-    // Inform UI of progress
-    setDownloadProgress(100)
-  }
+        return true
+      } catch (err) {
+        console.log('[Downloader] Error:', err)
+        return false
+      }
+    },
+    [apiPayload, modelId, saveModelConfig],
+  )
 
   /**
    * Start the download of the chosen model from huggingface.
@@ -165,6 +167,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
 
   // Listen to main process for `progress` events
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handler = (_event: any, payload: any) => {
       if (payload.downloadId !== modelId) return
 
