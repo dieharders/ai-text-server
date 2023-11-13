@@ -1,6 +1,7 @@
 'use client'
 
 import { Dispatch, SetStateAction } from 'react'
+import { dialogOpen } from '@/components/shared/dialog'
 import textModels from '@/models/models'
 import { getTextModelConfig } from '@/utils/localStorage'
 
@@ -140,46 +141,6 @@ const FilePathChooser = ({ isStarted, savePath, setSavePath }: IPropsFilePath) =
   const textColor = isStarted ? 'text-gray-400' : 'text-inherit'
   const buttonTextColor = isStarted ? 'text-gray-400' : 'text-white-300'
 
-  const fileSelect = async (isDirMode: boolean): Promise<string | null> => {
-    const desktopDir = async (): Promise<string> => {
-      const path = await window.electron.api('getPath', 'desktop')
-      return path
-    }
-
-    // Open a native OS file explorer to choose a save path
-    const dialogOpen = async () => {
-      const mode = isDirMode ? 'openDirectory' : 'openFile'
-      const cwd = await desktopDir()
-      const properties = {
-        title: 'Choose folder to save models',
-        defaultPath: cwd,
-        properties: [mode],
-        buttonLabel: 'Choose',
-        filters: [
-          {
-            extensions: ['txt', 'gif', 'bin'],
-            name: '*',
-          },
-        ],
-      }
-      return window.electron.api('showOpenDialog', properties)
-    }
-
-    const selected = await dialogOpen()
-    console.log('[UI] User opened dialogue box', selected)
-
-    if (selected.canceled) {
-      console.log('[UI] User cancelled the selection.')
-      return null
-    } else if (selected.filePaths.length > 1) {
-      console.log('[UI] Error: user selected multiple files.')
-      return null
-    } else {
-      console.log('[UI] User selected a single folder:', selected.filePaths[0])
-      return selected.filePaths[0]
-    }
-  }
-
   const hoverStyle = isStarted
     ? 'hover:cursor-not-allowed'
     : 'hover:text-yellow-300 hover:bg-zinc-500/30'
@@ -193,10 +154,13 @@ const FilePathChooser = ({ isStarted, savePath, setSavePath }: IPropsFilePath) =
       {/* Button */}
       <button
         type="button"
-        id="openFileDialog"
+        id="openFolderDialog"
         disabled={isStarted}
         onClick={async () => {
-          const path = await fileSelect(true)
+          const options = {
+            title: 'Choose one folder to save models',
+          }
+          const path = await dialogOpen({ isDirMode: true, options })
           path && setSavePath(path)
           path && localStorage.setItem(CURRENT_DOWNLOAD_PATH, path)
         }}

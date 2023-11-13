@@ -31,6 +31,39 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
   )
 
   /**
+   * Import and save config for previously imported file
+   */
+  const importDownload = useCallback(
+    async (filePath: string) => {
+      try {
+        const result = await window.electron.api('import_download', {
+          ...apiPayload,
+          importedFilePath: filePath,
+        })
+        if (!result) throw Error('Failed to import file.')
+
+        // Make record of installation in storage
+        const newConfig = {
+          modelId,
+          ...result,
+        }
+
+        saveModelConfig(newConfig) // persistent storage
+        setModelConfig(newConfig) // local (component) state
+
+        // Inform UI of progress
+        setDownloadProgress(100)
+
+        return true
+      } catch (err) {
+        console.log('[Downloader] Error:', err)
+        return false
+      }
+    },
+    [apiPayload, modelId, saveModelConfig],
+  )
+
+  /**
    * Start the download of the chosen model from huggingface.
    * Could use this in the future: https://github.com/bodaay/HuggingFaceModelDownloader
    */
@@ -134,6 +167,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
 
   // Listen to main process for `progress` events
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handler = (_event: any, payload: any) => {
       if (payload.downloadId !== modelId) return
 
@@ -186,6 +220,7 @@ const useDownloader = ({ modelCard, saveToPath, loadModelConfig, saveModelConfig
     modelConfig,
     progressState,
     downloadProgress,
+    importDownload,
     startDownload,
     pauseDownload,
     cancelDownload,

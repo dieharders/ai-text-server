@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EProgressState } from './useDownloader'
+import { dialogOpen } from '@/components/shared/dialog'
 
 // Styling
 const sizingStyles = 'lg:static sm:border lg:bg-gray-200 lg:dark:bg-zinc-800/30'
@@ -46,6 +47,43 @@ const CheckHardware = () => {
 }
 
 /**
+ * Import an already downloaded model file
+ */
+interface IImportModelProps {
+  action: (filePath: string) => Promise<boolean>
+  onComplete: (success: boolean) => void
+  disabled: boolean
+}
+const ImportModel = ({ action, onComplete, disabled }: IImportModelProps) => {
+  const disabledStyle = disabled ? 'hover:cursor-not-allowed' : ''
+
+  return (
+    <button
+      type="button"
+      id="openFileDialog"
+      disabled={disabled}
+      className={`h-12 w-min rounded-lg px-4 ${colorStyles} ${sizingStyles} text-sm text-blue-400 hover:bg-blue-500 hover:text-white ${disabledStyle}`}
+      onClick={async () => {
+        const options = {
+          title: 'Choose a model file to import',
+          filterExtensions: ['gguf'],
+        }
+        const filePath = await dialogOpen({ isDirMode: false, options })
+        if (!filePath) {
+          onComplete(false)
+          return
+        }
+        const success = await action(filePath)
+        // Done
+        onComplete(success)
+      }}
+    >
+      <p className="font-bold">Import</p>
+    </button>
+  )
+}
+
+/**
  * This button selects this model for inference
  */
 interface ILoadProps {
@@ -73,23 +111,26 @@ const LoadButton = ({ action, isLoaded }: ILoadProps) => {
  */
 interface IStartDownloadProps {
   action: () => Promise<boolean>
-  onComplete: () => void
+  onComplete: (success: boolean) => void
+  disabled: boolean
 }
-const StartDownloadButton = ({ action, onComplete }: IStartDownloadProps) => {
+const StartDownloadButton = ({ action, onComplete, disabled }: IStartDownloadProps) => {
   const [isDisabled, setIsDisabled] = useState(false)
   const textColor = isDisabled ? 'text-gray-400 hover:text-gray-400' : 'text-yellow-400'
+  const disabledStyle = isDisabled || disabled ? 'hover:cursor-not-allowed' : ''
 
   return (
     <button
-      className={`h-12 w-full rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900`}
-      disabled={isDisabled}
+      className={`h-12 w-full rounded-lg px-4 ${colorStyles} ${sizingStyles} ${textColor} text-sm hover:bg-yellow-500 hover:text-yellow-900 ${disabledStyle}`}
+      disabled={isDisabled || disabled}
       onClick={async () => {
         setIsDisabled(true)
         const success = await action()
         if (success) {
-          onComplete()
+          onComplete(true)
           return true
         }
+        onComplete(false)
         setIsDisabled(false)
         return
       }}
@@ -125,7 +166,7 @@ const CancelDownloadButton = ({ action }: { action: () => Promise<boolean> }) =>
  */
 interface IResumeDownloadProps {
   action: () => Promise<boolean>
-  onComplete: () => void
+  onComplete: (success: boolean) => void
 }
 const ResumeButton = ({ action, onComplete }: IResumeDownloadProps) => {
   const [isDisabled, setIsDisabled] = useState(false)
@@ -137,7 +178,7 @@ const ResumeButton = ({ action, onComplete }: IResumeDownloadProps) => {
       onClick={async () => {
         setIsDisabled(true)
         const success = await action()
-        if (success) onComplete()
+        onComplete(success)
         setIsDisabled(false)
         return
       }}
@@ -177,4 +218,5 @@ export {
   PauseButton,
   DeleteButton,
   CheckHardware,
+  ImportModel,
 }

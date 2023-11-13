@@ -89,12 +89,23 @@ const onDownloadProgress = async (chunk, handleChunk) => {
 }
 
 /**
+ * Return a size in bytes
+ * @param {string} filePath
+ * @returns number
+ */
+const createFileSize = filePath => {
+  const fs = require('fs')
+  const stats = fs.statSync(filePath)
+  return stats.size
+}
+
+/**
  * Read a file from disk and create a hash for comparison to a verified signature.
  * @param {string} filePath
  * @param {string} signature
  * @returns Promise<string>
  */
-const hashEntireFile = async (filePath, signature) => {
+const hashEntireFile = async filePath => {
   const crypto = require('crypto')
   const hs = crypto.createHash('sha256').setEncoding('hex')
   let fileHash = ''
@@ -106,9 +117,9 @@ const hashEntireFile = async (filePath, signature) => {
       .pipe(hs)
       .on('finish', () => {
         fileHash = hs.read()
-        console.log(`[Downloader] Filehash calculated: ${fileHash} | ${signature}.`)
+        console.log(`[Downloader] Filehash calculated: ${fileHash}`)
         // Verified
-        if (fileHash === signature) resolve(fileHash)
+        if (fileHash) resolve(fileHash)
         else resolve('')
       })
   })
@@ -235,7 +246,7 @@ const downloader = payload => {
         let checksum
         const createChecksum = async () => {
           if (isResume && !hash) {
-            checksum = await hashEntireFile(writePath, signature)
+            checksum = await hashEntireFile(writePath)
             return { checksum }
           }
           checksum = hash.digest('hex')
@@ -339,6 +350,42 @@ const downloader = payload => {
     }
   }
   /**
+   * Create a config for a previously downloaded file
+   */
+  const onImport = async () => {
+    try {
+      const importedFilePath = payload?.importedFilePath
+      // Verify the known hash if one exists
+      const fileHash = await hashEntireFile(importedFilePath)
+      if (signature && fileHash !== signature)
+        throw Error('Imported file checksum does not match config signature')
+      // Create date string in the desired format
+      const currentDate = new Date()
+      const date = currentDate.toUTCString()
+      // Calc file size
+      const fileSize = createFileSize(importedFilePath)
+      // Record in the model config
+      const config = {
+        id: modelCard.id,
+        modified: date, // current date of import (today)
+        size: fileSize, // calc in bytes
+        checksum: fileHash, // create a hash from the selected file
+        savePath: importedFilePath,
+        endChunk: 1, // doesnt matter
+        progress: 100,
+        validation: EValidationState.Success,
+        numTimesRun: 0,
+        isFavorited: false,
+      }
+      return config
+    } catch (err) {
+      console.log('[Downloader] Error importing file', err)
+      // @TODO Should rly display a toast message for user
+      return null
+    }
+  }
+
+  /**
    * Download a large file in chunks and save to disk as stream.
    * @param {any} props
    */
@@ -407,6 +454,7 @@ const downloader = payload => {
   }
 
   return {
+    onImport,
     onStart,
     onPause,
     onDelete,
