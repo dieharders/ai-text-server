@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { getTextModelConfig } from '@/utils/localStorage'
 import constants from '@/shared/constants.json'
 import textModels from '@/models/models'
 import AppsBrowser from '@/components/AppsBrowser'
@@ -92,13 +93,14 @@ export default function Home() {
       }
     }
     // Load path from persistent storage
-    const storedPath = localStorage.getItem(CURRENT_DOWNLOAD_PATH)
+    const currModelId = localStorage.getItem(ITEM_CURRENT_MODEL) || ''
+    const storedConfig = getTextModelConfig(currModelId)
+    const storedPath = storedConfig?.savePath
     storedPath && setSavePath(storedPath)
-    const currModel = localStorage.getItem(ITEM_CURRENT_MODEL)
-    currModel && setCurrentTextModel(currModel)
+    currModelId && setCurrentTextModel(currModelId)
     // Load stored model from storage if found
-    if (storedPath && currModel)
-      loadTextModelAction({ modelId: currModel, pathToModel: storedPath })
+    if (storedPath && currModelId)
+      loadTextModelAction({ modelId: currModelId, pathToModel: storedPath })
 
     // Set defaults if none found
     if (!storedPath) saveDefaultPath()
