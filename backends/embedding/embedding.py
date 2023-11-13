@@ -58,6 +58,7 @@ def create_embedding(file_path: str, storage_directory: str, collection_name: st
             chunk_size_limit=512,
         )
         # Create the index
+        # @TODO This isnt working
         index = VectorStoreIndex.from_documents(
             documents,
             storage_context=storage_context,
@@ -68,6 +69,7 @@ def create_embedding(file_path: str, storage_directory: str, collection_name: st
         index.storage_context.persist(persist_dir=storage_directory)
 
         # Ask a question about data
+        # @TODO Try this after a memory is made and app is restarted
         # response = query_embedding("Why does mass conservation break down?", index, llm)
 
         # Verify accuracy of response
