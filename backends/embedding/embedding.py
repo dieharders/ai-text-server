@@ -15,7 +15,19 @@ from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
 # from llama_index.embeddings import HuggingFaceEmbedding
 
 
-def create_embedding(file_path: str, storage_directory: str, collection_name: str, llm):
+# Create a ChromaDB client singleton
+def create_db_client(db_client, storage_directory: str):
+    if db_client == None:
+        chroma_client = chromadb.PersistentClient(
+            path=storage_directory, settings=Settings(anonymized_telemetry=False)
+        )
+        return chroma_client
+    return db_client
+
+
+def create_embedding(
+    file_path: str, storage_directory: str, collection_name: str, llm, db_client
+):
     try:
         # @TODO Setup prompt templates in conjunction with llm when querying
         SYSTEM_PROMPT = """You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
@@ -33,13 +45,9 @@ def create_embedding(file_path: str, storage_directory: str, collection_name: st
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
         # Define a specific embedding method
         embed_model = "local"  # embed_model = HuggingFaceEmbedding(model_name="bert-base-multilingual-cased")
-        # Create a ChromaDB client singleton
-        chroma = chromadb.PersistentClient(
-            path=storage_directory, settings=Settings(anonymized_telemetry=False)
-        )
         # Create a new collection for embedding
         print("Create collection")
-        chroma_collection = chroma.get_or_create_collection(collection_name)
+        chroma_collection = db_client.get_or_create_collection(collection_name)
         # chroma_collection.add(
         #     documents=documents, metadatas=[{"source": "scientific docs"}], ids=["id1"]
         # )
@@ -117,20 +125,15 @@ def query_embedding(query, index):
 
 
 # Load index from disk
-def load_embedding(llm, storage_directory: str, collection_name: str):
+def load_embedding(llm, db_client, collection_name: str):
     # Debugging
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
-    # Create db client
-    # @TODO Re-use db client, put in app.state.chroma_client
-    chroma = chromadb.PersistentClient(
-        path=storage_directory, settings=Settings(anonymized_telemetry=False)
-    )
     # Create embedding service
     service_context = ServiceContext.from_defaults(
         llm=llm, embed_model="local", callback_manager=callback_manager
     )
-    chroma_collection = chroma.get_or_create_collection(collection_name)
+    chroma_collection = db_client.get_or_create_collection(collection_name)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     # Create index from vector db
     index = VectorStoreIndex.from_vector_store(

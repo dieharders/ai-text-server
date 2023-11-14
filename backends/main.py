@@ -30,6 +30,7 @@ async def lifespan(application: FastAPI):
     app.requests_client = httpx.AsyncClient()
     # Store some state here if you want...
     application.state.storage_directory = os.path.join(os.getcwd(), VECTOR_DB_PATH)
+    application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
 
@@ -491,12 +492,16 @@ async def create_memory(
         collection_name = form.name
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+        app.state.db_client = embedding.create_db_client(
+            app.state.db_client, app.state.storage_directory
+        )
         background_tasks.add_task(
             embedding.create_embedding,
             data["path_to_file"],
             app.state.storage_directory,
             collection_name,
             app.state.llm,
+            app.state.db_client,
         )
     except Exception as e:
         msg = f"[homebrew api] Failed to create a new memory: {e}"
@@ -542,8 +547,13 @@ def search_similar(payload: SearchSimilarRequest):
             raise Exception("No path to model provided.")
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+        app.state.db_client = embedding.create_db_client(
+            app.state.db_client, app.state.storage_directory
+        )
         index = embedding.load_embedding(
-            app.state.llm, app.state.storage_directory, collection_name
+            app.state.llm,
+            app.state.db_client,
+            collection_name,
         )
         response = embedding.query_embedding(query, index)
         answer = response.response
