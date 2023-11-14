@@ -15,10 +15,9 @@ from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
 # from llama_index.embeddings import HuggingFaceEmbedding
 
 
+# Define a specific embedding method
 def create_embed_model():
-    # Define a specific embedding method
-    embed_model = "local"  # embed_model = HuggingFaceEmbedding(model_name="bert-base-multilingual-cased")
-    return embed_model
+    return "local"  # embed_model = HuggingFaceEmbedding(model_name="bert-base-multilingual-cased")
 
 
 # Create a ChromaDB client singleton
