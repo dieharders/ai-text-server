@@ -15,6 +15,12 @@ from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
 # from llama_index.embeddings import HuggingFaceEmbedding
 
 
+def create_embed_model():
+    # Define a specific embedding method
+    embed_model = "local"  # embed_model = HuggingFaceEmbedding(model_name="bert-base-multilingual-cased")
+    return embed_model
+
+
 # Create a ChromaDB client singleton
 def create_db_client(db_client, storage_directory: str):
     if db_client == None:
@@ -43,8 +49,6 @@ def create_embedding(
         # Load documents
         print(f"[embedding api] Load docs: {file_path}")
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
-        # Define a specific embedding method
-        embed_model = "local"  # embed_model = HuggingFaceEmbedding(model_name="bert-base-multilingual-cased")
         # Create a new collection for embedding
         print("Create collection")
         chroma_collection = db_client.get_or_create_collection(collection_name)
@@ -57,7 +61,7 @@ def create_embedding(
         callback_manager = CallbackManager([llama_debug])
         # Create embedding service
         service_context = ServiceContext.from_defaults(
-            embed_model=embed_model,
+            embed_model=create_embed_model(),
             llm=llm,
             context_window=3900,
             callback_manager=callback_manager,
@@ -131,7 +135,7 @@ def load_embedding(llm, db_client, collection_name: str):
     callback_manager = CallbackManager([llama_debug])
     # Create embedding service
     service_context = ServiceContext.from_defaults(
-        llm=llm, embed_model="local", callback_manager=callback_manager
+        llm=llm, embed_model=create_embed_model(), callback_manager=callback_manager
     )
     chroma_collection = db_client.get_or_create_collection(collection_name)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
