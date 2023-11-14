@@ -5,7 +5,6 @@ import ModelCard from './ModelCard'
 import { IModelCard } from '@/models/models'
 import createConfig, { IModelConfig } from './configs'
 import { getTextModelConfig, setUpdateTextModelConfig } from '@/utils/localStorage'
-import { CURRENT_DOWNLOAD_PATH } from '@/components/text-inference-config/TextInferenceConfigMenu'
 
 interface IProps {
   data: Array<IModelCard>
@@ -28,12 +27,13 @@ const ModelBrowser = ({
   loadTextModelAction,
 }: IProps) => {
   const [runOnce, setRunOnce] = useState(false)
-
   // Handlers
   const onSelectTextModel = useCallback(
     (id: string) => {
       console.log('[UI] Set current text model:', id)
-      const savePath = localStorage.getItem(CURRENT_DOWNLOAD_PATH)
+      // Load save path from stored config
+      const storedConfig = getTextModelConfig(id)
+      const savePath = storedConfig?.savePath
       if (id && savePath) {
         setCurrentTextModel(id)
         // Tell backend which model to load

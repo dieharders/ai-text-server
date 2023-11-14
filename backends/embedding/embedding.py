@@ -1,33 +1,37 @@
 import os
+import chromadb
+from chromadb.config import Settings
 from llama_index import (
     VectorStoreIndex,
     SimpleDirectoryReader,
     ServiceContext,
-    LLMPredictor,
-    load_index_from_storage,
 )
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
-from llama_index.llms import LlamaCPP, HuggingFaceLLM
-from llama_index.llms.llama_utils import messages_to_prompt, completion_to_prompt
 from llama_index.vector_stores import ChromaVectorStore
 from llama_index.storage.storage_context import StorageContext
-from llama_index.embeddings import HuggingFaceEmbedding
 from llama_index.prompts import PromptTemplate
-from llama_index.evaluation import ResponseEvaluator, FaithfulnessEvaluator
-import chromadb
+from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
+
+# from llama_index.embeddings import HuggingFaceEmbedding
 
 
-# path_to_model: str
-def create_embedding(file_path: str, base_path: str, collection_name: str):
+# Define a specific embedding method
+def create_embed_model():
+    return "local"  # embed_model = HuggingFaceEmbedding(model_name="bert-base-multilingual-cased")
+
+
+# Create a ChromaDB client singleton
+def create_db_client(storage_directory: str):
+    return chromadb.PersistentClient(
+        path=storage_directory, settings=Settings(anonymized_telemetry=False)
+    )
+
+
+def create_embedding(
+    file_path: str, storage_directory: str, collection_name: str, llm, db_client
+):
     try:
-        # Define embedding function
-        embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
-
-        # Load documents
-        print(f"Load docs: {file_path}")
-        documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
-
-        # Setup LLM
+        # @TODO Setup prompt templates in conjunction with llm when querying
         SYSTEM_PROMPT = """You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
         - Generate human readable output, avoid creating output with gibberish text.
         - Generate only the requested output, don't include any other language before or after the requested output.
@@ -38,68 +42,49 @@ def create_embedding(file_path: str, base_path: str, collection_name: str):
         query_wrapper_prompt = PromptTemplate(
             "[INST]<<SYS>>\n" + SYSTEM_PROMPT + "<</SYS>>\n\n{query_str}[/INST] "
         )
-        llm = LlamaCPP(
-            model_url=None,
-            # optionally, you can set the path to a pre-downloaded model instead of model_url
-            model_path="C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.Q4_K_M.gguf",  # path_to_model,
-            temperature=0.0,
-            max_new_tokens=1024,
-            # query_wrapper_prompt=query_wrapper_prompt,
-            # llama2 has a context window of 4096 tokens, but we set it lower to allow for some wiggle room
-            context_window=3900,  # note, this sets n_ctx in the model_kwargs below, so you don't need to pass it there.
-            # kwargs to pass to __call__()
-            generate_kwargs={},
-            # kwargs to pass to __init__()
-            # set to at least 1 to use GPU
-            # model_kwargs={"n_gpu_layers": 4, "torch_dtype": torch.float16, "load_in_8bit": True},
-            # transform inputs into Llama2 format
-            messages_to_prompt=messages_to_prompt,
-            completion_to_prompt=completion_to_prompt,
-            verbose=True,
-        )
+        # Load documents
+        print(f"[embedding api] Load docs: {file_path}")
+        documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
+        # Create a new collection for embedding
+        print("Create collection")
+        chroma_collection = db_client.get_or_create_collection(collection_name)
+        # chroma_collection.add(
+        #     documents=documents, metadatas=[{"source": "scientific docs"}], ids=["id1"]
+        # )
 
-        # Create client and a new collection
-        chroma_client = chromadb.Client()  # chromadb.EphemeralClient()
-        chroma_collection = chroma_client.create_collection(collection_name)
-        # Set up ChromaVectorStore and set as the storage service
-        print("Setup chroma db")
-        vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        # Create embedding service
-        llm_predictor = LLMPredictor(llm=llm)
-        context_window = 3900
+        # Debugging
         llama_debug = LlamaDebugHandler(print_trace_on_end=True)
         callback_manager = CallbackManager([llama_debug])
+        # Create embedding service
         service_context = ServiceContext.from_defaults(
-            embed_model="local",  # or embed_model
-            llm_predictor=llm_predictor,
-            context_window=context_window,
+            embed_model=create_embed_model(),
+            llm=llm,
+            context_window=3900,
             callback_manager=callback_manager,
-            chunk_size=512,  # TODO Is this limit working?
+            chunk_size=512,
             chunk_overlap=20,
             chunk_size_limit=512,
         )
+        # Create a vector db
+        vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
         # Create the index
+        print("Creating index...")
         index = VectorStoreIndex.from_documents(
             documents,
             storage_context=storage_context,
             service_context=service_context,
             show_progress=True,
         )
-        # Persist the index to disk
-        storage_directory = os.path.join(base_path, os.pardir, "chromadb")
-        index.storage_context.persist(persist_dir=storage_directory)
-
-        # Ask a question about data
-        # response = query_embedding("Why does mass conservation break down?", index, service_context)
-
-        # Verify accuracy of response
-        # verify_response(response, service_context)
-
+        # Save index to disk
+        index.storage_context.persist(
+            persist_dir=os.path.join(storage_directory, collection_name)
+        )
+        # Done
         print(f"Finished embedding: {file_path}")
         return True
     except Exception as e:
-        msg = f"Embedding failed:\n{e}"
+        msg = f"[embedding api] Embedding failed:\n{e}"
         print(msg)
         raise Exception(msg)
 
@@ -107,10 +92,10 @@ def create_embedding(file_path: str, base_path: str, collection_name: str):
 # Determine which nodes contributed to the answer
 def contributing_references(response, eval_result):
     num_source_nodes = len(response.source_nodes)
-    print(f"Number of source nodes: {num_source_nodes}")
-    print(f"Result is passing? {str(eval_result.passing)}")
+    print(f"[embedding api] Number of source nodes: {num_source_nodes}")
+    print(f"[embedding api] Result is passing? {str(eval_result.passing)}")
     for s in response.source_nodes:
-        print(f"Node Score: {s.score}")
+        print(f"[embedding api] Node Score: {s.score}")
         print(s.node.metadata)
     return {
         "num_refs": num_source_nodes,
@@ -119,37 +104,40 @@ def contributing_references(response, eval_result):
 
 def verify_response(response, service_context):
     # Define evaluator, evaluates whether a response is faithful to the contexts
-    print("Evaluating truthiness of response...")
+    print("[embedding api] Evaluating truthiness of response...")
     evaluator = FaithfulnessEvaluator(service_context=service_context)
     eval_result = evaluator.evaluate_response(response=response)
     # evaluator = ResponseEvaluator(service_context=service_context)
     # eval_result = evaluator.evaluate(query=query, response=response, contexts=[service_context])
-    print(f"Truthy evaluation results: {eval_result}")
+    print(f"[embedding api] Truthy evaluation results: {eval_result}")
     contributing_references(response, eval_result)
 
 
-def query_embedding(query, index, service_context):
-    # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
-    print("Query Data")
+# Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
+def query_embedding(query, index):
+    print("[embedding api] Query Data")
     query_engine = index.as_query_engine(
-        service_context=service_context,
         similarity_top_k=3,
         # streaming=True,
     )
     response = query_engine.query(query)
-    print(f"Response from llamaIndex: {response}")
     return response
 
 
-# Now you can load the index from disk when needed, and not rebuild it each time.
-def load_embedding(llm, storage_directory):
+# Load index from disk
+def load_embedding(llm, db_client, collection_name: str):
+    # Debugging
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
+    # Create embedding service
     service_context = ServiceContext.from_defaults(
-        llm=llm, chunk_size=1024, embed_model="local", callback_manager=callback_manager
+        llm=llm, embed_model=create_embed_model(), callback_manager=callback_manager
     )
-
-    storage_context = StorageContext.from_defaults(persist_dir=storage_directory)
-    index = load_index_from_storage(storage_context, service_context=service_context)
-
+    chroma_collection = db_client.get_or_create_collection(collection_name)
+    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    # Create index from vector db
+    index = VectorStoreIndex.from_vector_store(
+        vector_store=vector_store,
+        service_context=service_context,
+    )
     return index

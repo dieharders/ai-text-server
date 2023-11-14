@@ -17,9 +17,11 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+from inference import text_llm
 from embedding import embedding
 
 MEMORY_PATH = "memories"
+VECTOR_DB_PATH = "chromadb"
 
 
 @asynccontextmanager
@@ -27,12 +29,15 @@ async def lifespan(application: FastAPI):
     print("[homebrew api] Lifespan startup")
     app.requests_client = httpx.AsyncClient()
     # Store some state here if you want...
-    # application.state.super_secret = secrets.token_hex(16)
+    application.state.storage_directory = os.path.join(os.getcwd(), VECTOR_DB_PATH)
+    application.state.db_client = None
+    application.state.llm = None  # Set each time user loads a model
+    application.state.path_to_model = ""  # Set each time user loads a model
 
     yield
 
     print("[homebrew api] Lifespan shutdown")
-    killTextInference()
+    kill_text_inference()
 
 
 app = FastAPI(title="🍺 HomeBrew API server", version="0.1.0", lifespan=lifespan)
@@ -128,12 +133,14 @@ def connect() -> ConnectResponse:
 # Load in the ai model to be used for inference.
 class LoadInferenceRequest(BaseModel):
     modelId: str
+    pathToModel: str
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "modelId": "llama-2-13b-chat-ggml",
+                    "pathToModel": "C:\\homebrewai-app\\models\\llama-2-13b.GGUF",
                 }
             ]
         }
@@ -160,12 +167,12 @@ class LoadInferenceResponse(BaseModel):
 def load_text_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
     try:
         model_id: str = data.modelId
+        app.state.path_to_model = data.pathToModel
+        print(f"[homebrew api] Path to model loaded: {data.pathToModel}")
         # Logic to load the specified ai model here...
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
     except KeyError:
-        raise HTTPException(
-            status_code=400, detail="Invalid JSON format: 'modelId' key not found"
-        )
+        raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 
 
 class StartInferenceRequest(BaseModel):
@@ -273,7 +280,7 @@ async def shutdown_text_inference() -> ShutdownInferenceResponse:
     try:
         print("[homebrew api] Shutting down all services")
         # Reset, kill processes
-        killTextInference()
+        kill_text_inference()
         delattr(app, "text_model_config")
 
         return {
@@ -426,7 +433,7 @@ def pre_process_documents(
         # Finalize uploaded file
         # @TODO If the file is not text, then create a text description of the contents (via VisionAi, Human, OCR)
         # Copy text contents of original file into a new file, parsed for embedding
-        with open(target_output_path, "w") as output_file, open(
+        with open(target_output_path, "w", encoding="utf-8") as output_file, open(
             tmp_input_file_path, "r"
         ) as input_file:
             # Check if header exists
@@ -449,9 +456,11 @@ def pre_process_documents(
         # Delete uploaded file
         if os.path.exists(tmp_input_file_path):
             os.remove(tmp_input_file_path)
-            print(f"Removed temp file upload.")
+            print(f"[homebrew api] Removed temp file upload.")
         else:
-            print("Failed to delete temp file upload. The file does not exist.")
+            print(
+                "[homebrew api] Failed to delete temp file upload. The file does not exist."
+            )
 
     return {
         "success": True,
@@ -459,7 +468,6 @@ def pre_process_documents(
         "data": {
             "filename": new_filename,
             "path_to_file": target_output_path,
-            "base_path_to_file": new_output_path,
         },
     }
 
@@ -469,32 +477,42 @@ def pre_process_documents(
 async def create_memory(
     form: PreProcessRequest = Depends(),
     file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None,
+    background_tasks: BackgroundTasks = None,  # This prop is auto added by FastAPI
 ):
     try:
         if not form.name:
             raise Exception("You must supply a collection name.")
+        if not app.state.path_to_model:
+            raise Exception("No model path defined.")
         # Parse inputs
         result = pre_process_documents(form, file)
         data = result["data"]
         # Create embeddings
-        print("Start embedding process...")
+        print("[homebrew api] Start embedding process...")
         collection_name = form.name
+        if app.state.llm == None:
+            app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+        if app.state.db_client == None:
+            app.state.db_client = embedding.create_db_client(
+                app.state.storage_directory
+            )
         background_tasks.add_task(
             embedding.create_embedding,
             data["path_to_file"],
-            data["base_path_to_file"],
+            app.state.storage_directory,
             collection_name,
+            app.state.llm,
+            app.state.db_client,
         )
     except Exception as e:
-        msg = f"Failed to create a new memory: {e}"
+        msg = f"[homebrew api] Failed to create a new memory: {e}"
         print(msg)
         return {
             "success": False,
             "message": msg,
         }
     else:
-        msg = "A new memory has been added to the queue. It will be available for use shortly."
+        msg = "[homebrew api] A new memory has been added to the queue. It will be available for use shortly."
         print(msg)
         return {
             "success": True,
@@ -502,39 +520,54 @@ async def create_memory(
         }
 
 
-# Create vector embeddings from the pre-processed documents, then store in database.
-@app.post("/v1/embeddings/create")
-def create_embeddings(path_to_file: str, base_path: str, collection_name: str):
-    try:
-        result = embedding.create_embedding(path_to_file, base_path, collection_name)
-    except Exception as e:
-        msg = f"Failed to create embeddings:\n{e}"
-        print(msg)
-        return {
-            "success": False,
-            "message": msg,
-        }
+class SearchSimilarRequest(BaseModel):
+    query: str
+    collection_name: str
 
-    return {
-        "success": True,
-        "message": "Successfully created embeddings",
-        "data": {"result": result},
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "query": "Why does mass conservation break down?",
+                    "collection_name": "examples",
+                }
+            ]
+        }
     }
 
 
 # Use Llama Index to run queries on vector database embeddings.
-@app.post("/v1/search/similiar")
-def search_similiar():
-    # index = embedding.load_embedding(llm, storage_directory)
-    # response = embedding.query_embedding("What does this mean?", index, service_context)
-    # answer = response.response
-    return {"success": True, "message": "search_similiar"}
+@app.post("/v1/search/similar")
+def search_similar(payload: SearchSimilarRequest):
+    try:
+        query = payload.query
+        collection_name = payload.collection_name
+        print(f"Search: {query} in: {collection_name}")
+
+        if not app.state.path_to_model:
+            raise Exception("No path to model provided.")
+        if app.state.llm == None:
+            app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+        if app.state.db_client == None:
+            app.state.db_client = embedding.create_db_client(
+                app.state.storage_directory
+            )
+        index = embedding.load_embedding(
+            app.state.llm,
+            app.state.db_client,
+            collection_name,
+        )
+        response = embedding.query_embedding(query, index)
+        answer = response.response
+        return {"success": True, "message": "search_similar", "data": answer}
+    except KeyError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 
 
 # Methods...
 
 
-def killTextInference():
+def kill_text_inference():
     if hasattr(app, "text_inference_process"):
         if app.text_inference_process.poll() != None:
             app.text_inference_process.kill()
@@ -543,12 +576,12 @@ def killTextInference():
 
 def start_homebrew_server():
     try:
-        print("Starting API server...")
+        print("[homebrew api] Starting API server...")
         # Start the ASGI server
         uvicorn.run(app, host="0.0.0.0", port=app.PORT_HOMEBREW_API, log_level="info")
         return True
     except:
-        print("Failed to start API server")
+        print("[homebrew api] Failed to start API server")
         return False
 
 
@@ -584,10 +617,12 @@ async def start_text_inference_server(file_path: str):
         # Execute the command
         proc = subprocess.Popen(serve_llama_cpp)
         app.text_inference_process = proc
-        print(f"Starting Inference server from: {file_path} with pid: {proc.pid}")
+        print(
+            f"[homebrew api] Starting Inference server from: {file_path} with pid: {proc.pid}"
+        )
         return True
     except:
-        print("Failed to start Inference server")
+        print("[homebrew api] Failed to start Inference server")
         return False
 
 
