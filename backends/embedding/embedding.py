@@ -22,13 +22,10 @@ def create_embed_model():
 
 
 # Create a ChromaDB client singleton
-def create_db_client(db_client, storage_directory: str):
-    if db_client == None:
-        chroma_client = chromadb.PersistentClient(
-            path=storage_directory, settings=Settings(anonymized_telemetry=False)
-        )
-        return chroma_client
-    return db_client
+def create_db_client(storage_directory: str):
+    return chromadb.PersistentClient(
+        path=storage_directory, settings=Settings(anonymized_telemetry=False)
+    )
 
 
 def create_embedding(

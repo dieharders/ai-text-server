@@ -492,9 +492,10 @@ async def create_memory(
         collection_name = form.name
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-        app.state.db_client = embedding.create_db_client(
-            app.state.db_client, app.state.storage_directory
-        )
+        if app.state.db_client == None:
+            app.state.db_client = embedding.create_db_client(
+                app.state.storage_directory
+            )
         background_tasks.add_task(
             embedding.create_embedding,
             data["path_to_file"],
@@ -547,9 +548,10 @@ def search_similar(payload: SearchSimilarRequest):
             raise Exception("No path to model provided.")
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-        app.state.db_client = embedding.create_db_client(
-            app.state.db_client, app.state.storage_directory
-        )
+        if app.state.db_client == None:
+            app.state.db_client = embedding.create_db_client(
+                app.state.storage_directory
+            )
         index = embedding.load_embedding(
             app.state.llm,
             app.state.db_client,
