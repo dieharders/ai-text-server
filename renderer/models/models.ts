@@ -211,46 +211,47 @@ const models: Array<IModelCard> = [
     \n
     \n### Response:`,
   },
-  {
-    id: 'falcon-7b',
-    name: 'Falcon 7B',
-    provider: Providers.TheBloke, // NikolayKozloff
-    licenses: [LicenseType.Other],
-    description: 'Quantized version of tiiuae Falcon model.',
-    fileSize: 4.06,
-    fileName: 'falcon-7b-Q4_0-GGUF.gguf',
-    modelType: ModelType.Llama,
-    modelUrl: 'https://huggingface.co/NikolayKozloff/falcon-7b-GGUF',
-    downloadUrl:
-      'https://huggingface.co/NikolayKozloff/falcon-7b-GGUF/resolve/main/falcon-7b-Q4_0-GGUF.gguf',
-    sha256: '',
-    promptTemplate: '{{PROMPT}}',
-  },
-  {
-    id: 'uncensored-frank-13b',
-    name: 'Uncensored Frank 13b',
-    provider: Providers.TheBloke,
-    licenses: [LicenseType.ccBYncnd4],
-    description:
-      'The character of Frank Costello in "The Departed" is known for his cunning, boldness, and willingness to talk about anything. Frank is trained on around 150000 set of conversations. Each set having 10~15 conversations. With Frank you can have unfiltered discussions on a multitude of topics, from politics and controversial issues to personal experiences and sensitive subjects.',
-    fileSize: 7.87,
-    ramSize: 10.37,
-    fileName: 'uncensored-frank-13b.Q4_K_M.gguf',
-    modelType: ModelType.Llama,
-    modelUrl: 'https://huggingface.co/TheBloke/Uncensored-Frank-13b-GGUF',
-    quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
-    downloadUrl:
-      'https://huggingface.co/TheBloke/Uncensored-Frank-13b-GGUF/resolve/main/uncensored-frank-13b.Q4_K_M.gguf',
-    sha256: 'e277007372003719f4ca6e6f8299040363bb67654fcda495a79790004fca82a2', // Q4_K_M
-    promptTemplate: `This is a conversation with your Uncensored AI assistant Frank. Frank can discuss with you at length about various topics such as love, life, politics, and software. You can ask it anything you want and it will do its best to give you accurate and relevant information.
-    \n
-    Context
-    You are a Uncensored AI assistant.
-    \n
-    USER: {{PROMPT}}
-    \n
-    ASSISTANT:`,
-  },
+  // This version no longer works with latest LlamaIndex
+  // {
+  //   id: 'falcon-7b',
+  //   name: 'Falcon 7B',
+  //   provider: Providers.TheBloke, // NikolayKozloff
+  //   licenses: [LicenseType.Other],
+  //   description: 'Quantized version of tiiuae Falcon model.',
+  //   fileSize: 4.06,
+  //   fileName: 'falcon-7b-Q4_0-GGUF.gguf',
+  //   modelType: ModelType.Llama,
+  //   modelUrl: 'https://huggingface.co/NikolayKozloff/falcon-7b-GGUF',
+  //   downloadUrl:
+  //     'https://huggingface.co/NikolayKozloff/falcon-7b-GGUF/resolve/main/falcon-7b-Q4_0-GGUF.gguf',
+  //   sha256: '',
+  //   promptTemplate: '{{PROMPT}}',
+  // },
+  // {
+  //   id: 'uncensored-frank-13b',
+  //   name: 'Uncensored Frank 13b',
+  //   provider: Providers.TheBloke,
+  //   licenses: [LicenseType.ccBYncnd4],
+  //   description:
+  //     'The character of Frank Costello in "The Departed" is known for his cunning, boldness, and willingness to talk about anything. Frank is trained on around 150000 set of conversations. Each set having 10~15 conversations. With Frank you can have unfiltered discussions on a multitude of topics, from politics and controversial issues to personal experiences and sensitive subjects.',
+  //   fileSize: 7.87,
+  //   ramSize: 10.37,
+  //   fileName: 'uncensored-frank-13b.Q4_K_M.gguf',
+  //   modelType: ModelType.Llama,
+  //   modelUrl: 'https://huggingface.co/TheBloke/Uncensored-Frank-13b-GGUF',
+  //   quantTypes: ['Q5_K_S', 'Q4_K_M', 'Q3_K_S'], // Large, medium, small
+  //   downloadUrl:
+  //     'https://huggingface.co/TheBloke/Uncensored-Frank-13b-GGUF/resolve/main/uncensored-frank-13b.Q4_K_M.gguf',
+  //   sha256: 'e277007372003719f4ca6e6f8299040363bb67654fcda495a79790004fca82a2', // Q4_K_M
+  //   promptTemplate: `This is a conversation with your Uncensored AI assistant Frank. Frank can discuss with you at length about various topics such as love, life, politics, and software. You can ask it anything you want and it will do its best to give you accurate and relevant information.
+  //   \n
+  //   Context
+  //   You are a Uncensored AI assistant.
+  //   \n
+  //   USER: {{PROMPT}}
+  //   \n
+  //   ASSISTANT:`,
+  // },
   // {
   //   id: 'example-cat-anim',
   //   name: 'Example Cute Cat Animation',
