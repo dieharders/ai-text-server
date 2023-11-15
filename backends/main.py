@@ -4,12 +4,11 @@ import uvicorn
 import subprocess
 import httpx
 import re
-from typing import List, Optional
+from typing import List, Dict, Any, Union, Optional
 from fastapi import (
     FastAPI,
     HTTPException,
     BackgroundTasks,
-    Request,
     File,
     UploadFile,
     Depends,
@@ -69,35 +68,16 @@ app.add_middleware(
 )
 
 
-@app.get("/ping")
-async def ping(request: Request):
-    success = False
-
-    # Can get state from app lifecycle here
-    # request.app.state.super_secret
-
-    # Request /v1/models endpoint on inference server to determine if alive
-    client = request.app.requests_client
-    result = None
+# Keep server/database alive
+@app.get("/v1/ping")
+def ping():
     try:
-        response = await client.get(
-            f"http://127.0.0.1:{app.PORT_TEXT_INFERENCE}/v1/models"
-        )
-        result = response.json()
+        db = get_vectordb_client()
+        db.heartbeat()
+        return {"success": True, "message": "pong"}
     except Exception as e:
-        print(f"[homebrew api] Error pinging inference server: {e}")
-
-    # Process exists
-    # if hasattr(app, "text_inference_process"):
-    #     if app.text_inference_process.poll() is None:
-    #         success = True
-
-    # Server exists
-    if result:
-        if "data" in result:
-            success = True
-
-    return {"success": success, "message": "pong"}
+        print(f"[homebrew api] Error pinging server: {e}")
+        return {"success": False, "message": ""}
 
 
 class ConnectResponse(BaseModel):
@@ -533,35 +513,178 @@ def get_all_collections():
         return {
             "success": False,
             "message": f"Error {e}",
-            "data": collections,
         }
 
 
 class GetCollectionRequest(BaseModel):
     id: str
-    includeEmbeddings: Optional[bool] = False
+    include: Optional[List[str]] = None  # ["embeddings", "documents"]
 
 
+# Return a collection by id and all its documents
 @app.get("/v1/memory/getCollection")
 def get_collection(props: GetCollectionRequest = Depends()):
     try:
         db = get_vectordb_client()
         id = props.id
+        include = props.include
         collection = db.get_collection(id)
-        if props.includeEmbeddings:
-            documents = collection.get(include=["embeddings"])
+        numItems = collection.count()
+        if include:
+            documents = collection.get(include=include)
         else:
             documents = collection.get()
         return {
             "success": True,
             "message": f"Returned {len(documents)} document(s) in collection [{id}]",
-            "data": {"collection": collection, "documents": documents},
+            "data": {
+                "collection": collection,
+                "documents": documents,
+                "numItems": numItems,
+            },
         }
     except Exception as e:
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
             "message": f"Error: {e}",
+        }
+
+
+class GetDocumentsRequest(BaseModel):
+    collection_id: str
+    doc_ids: List[str]
+    include: Optional[List[str]] = None  # ["embeddings", "documents"]
+
+
+# Get one or more documents by id
+@app.get("/v1/memory/getDocuments")
+def get_documents(params: GetDocumentsRequest):
+    try:
+        collection_id = params.collection_id
+        doc_ids = params.doc_ids
+        include = params.include
+        db = get_vectordb_client()
+        collection = db.get_collection(collection_id)
+        if include:
+            documents = collection.get(ids=doc_ids, include=include)
+        else:
+            documents = collection.get(ids=doc_ids)
+        return {
+            "success": True,
+            "message": f"Returned {len(documents)} document(s)",
+            "data": documents,
+        }
+    except Exception as e:
+        print(f"[homebrew api] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Error {e}",
+        }
+
+
+class UpdateMemoryRequest(BaseModel):
+    collection_id: Optional[str]
+    doc_ids: Optional[List[str]] = None
+    metadata: Dict[str, Union[str, int, bool, Dict[str, Any], List[str]]] = None
+    documents: List[str] = None
+
+
+# Update existing collection or document(s)
+@app.post("/v1/memory/update")
+def update_memory(params: UpdateMemoryRequest):
+    try:
+        collection_id = params.collection_id
+        doc_ids = params.doc_ids
+        metadata = params.metadata
+        documents = params.documents
+        db = get_vectordb_client()
+        collection = db.get_collection(collection_id)
+        if documents:
+            collection.update(
+                name=collection_id,
+                documents=documents,
+                metadatas=metadata,
+                ids=doc_ids,
+            )
+        else:
+            collection.modify(name=collection_id, metadata=metadata)
+        return {
+            "success": True,
+            "message": "Updated items",
+        }
+    except Exception as e:
+        print(f"[homebrew api] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Error {e}",
+        }
+
+
+class DeleteDocumentsRequest(BaseModel):
+    collection_id: str
+    doc_ids: List[str]
+
+
+# Delete a document by id
+@app.get("/v1/memory/deleteDocuments")
+def delete_documents(params: DeleteDocumentsRequest):
+    try:
+        collection_id = params.collection_id
+        doc_ids = params.doc_ids
+        db = get_vectordb_client()
+        collection = db.get_collection(collection_id)
+        collection.delete(ids=doc_ids)
+        return {
+            "success": True,
+            "message": f"Removed {len(doc_ids)} document(s)",
+        }
+    except Exception as e:
+        print(f"[homebrew api] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Error {e}",
+        }
+
+
+class DeleteCollectionRequest(BaseModel):
+    collection_id: str
+
+
+# Delete a collection by id
+@app.get("/v1/memory/deleteCollection")
+def delete_collection(params: DeleteCollectionRequest):
+    try:
+        collection_id = params.collection_id
+        db = get_vectordb_client()
+        db.delete_collection(name=collection_id)
+        return {
+            "success": True,
+            "message": f"Removed collection [{collection_id}]",
+        }
+    except Exception as e:
+        print(f"[homebrew api] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Error {e}",
+        }
+
+
+# Completely wipe database
+@app.get("/v1/memory/wipe")
+def wipe_all_memories():
+    try:
+        db = get_vectordb_client()
+        db.reset()
+        return {
+            "success": True,
+            "message": f"Successfully wiped all memories from Ai",
+        }
+    except Exception as e:
+        print(f"[homebrew api] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Error {e}",
         }
 
 
