@@ -27,6 +27,7 @@ def create_db_client(storage_directory: str):
     )
 
 
+# Create a vector embedding for the given document.
 def create_embedding(
     file_path: str, storage_directory: str, collection_name: str, llm, db_client
 ):
@@ -46,6 +47,7 @@ def create_embedding(
         print(f"[embedding api] Load docs: {file_path}")
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
         # Create a new collection for embedding
+        # You MUST use the same embedding function to create as you do to get collection.
         print("Create collection")
         chroma_collection = db_client.get_or_create_collection(collection_name)
         # chroma_collection.add(
@@ -133,6 +135,7 @@ def load_embedding(llm, db_client, collection_name: str):
     service_context = ServiceContext.from_defaults(
         llm=llm, embed_model=create_embed_model(), callback_manager=callback_manager
     )
+    # You MUST get with the same embedding function you supplied while creating the collection.
     chroma_collection = db_client.get_or_create_collection(collection_name)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     # Create index from vector db

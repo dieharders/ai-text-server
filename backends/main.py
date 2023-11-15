@@ -481,6 +481,7 @@ async def create_memory(
 ):
     try:
         if not form.name:
+            # Must be 3 and 63 characters. @TODO Add pydantic Annotation(3-63 characters)
             raise Exception("You must supply a collection name.")
         if not app.state.path_to_model:
             raise Exception("No model path defined.")
