@@ -367,9 +367,9 @@ def get_services_api() -> ServicesApiResponse:
 
 class PreProcessRequest(BaseModel):
     name: str
-    title: Optional[str]
-    description: Optional[str]
-    tags: Optional[str]
+    title: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[str] = None
 
 
 # Pre-process docs into a text format specified by user.
@@ -492,17 +492,14 @@ async def create_memory(
         collection_name = form.name
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-        if app.state.db_client == None:
-            app.state.db_client = embedding.create_db_client(
-                app.state.storage_directory
-            )
+        db_client = get_vectordb_client()
         background_tasks.add_task(
             embedding.create_embedding,
             data["path_to_file"],
             app.state.storage_directory,
             collection_name,
             app.state.llm,
-            app.state.db_client,
+            db_client,
         )
     except Exception as e:
         msg = f"[homebrew api] Failed to create a new memory: {e}"
@@ -517,6 +514,53 @@ async def create_memory(
         return {
             "success": True,
             "message": msg,
+        }
+
+
+@app.get("/v1/memory/getAllCollections")
+def get_all_collections():
+    try:
+        db = get_vectordb_client()
+        collections = db.list_collections()
+        return {
+            "success": True,
+            "message": f"Returned {len(collections)} collection(s)",
+            "data": collections,
+        }
+    except Exception as e:
+        print(f"[homebrew api] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Error {e}",
+            "data": collections,
+        }
+
+
+class GetCollectionRequest(BaseModel):
+    id: str
+    includeEmbeddings: Optional[bool] = False
+
+
+@app.get("/v1/memory/getCollection")
+def get_collection(props: GetCollectionRequest = Depends()):
+    try:
+        db = get_vectordb_client()
+        id = props.id
+        collection = db.get_collection(id)
+        if props.includeEmbeddings:
+            documents = collection.get(include=["embeddings"])
+        else:
+            documents = collection.get()
+        return {
+            "success": True,
+            "message": f"Returned {len(documents)} document(s) in collection [{id}]",
+            "data": {"collection": collection, "documents": documents},
+        }
+    except Exception as e:
+        print(f"[homebrew api] Error: {e}")
+        return {
+            "success": False,
+            "message": f"Error: {e}",
         }
 
 
@@ -548,13 +592,10 @@ def search_similar(payload: SearchSimilarRequest):
             raise Exception("No path to model provided.")
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-        if app.state.db_client == None:
-            app.state.db_client = embedding.create_db_client(
-                app.state.storage_directory
-            )
+        db_client = get_vectordb_client()
         index = embedding.load_embedding(
             app.state.llm,
-            app.state.db_client,
+            db_client,
             collection_name,
         )
         response = embedding.query_embedding(query, index)
@@ -565,6 +606,12 @@ def search_similar(payload: SearchSimilarRequest):
 
 
 # Methods...
+
+
+def get_vectordb_client():
+    if app.state.db_client == None:
+        app.state.db_client = embedding.create_db_client(app.state.storage_directory)
+    return app.state.db_client
 
 
 def kill_text_inference():
