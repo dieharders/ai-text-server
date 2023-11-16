@@ -356,11 +356,11 @@ def get_services_api() -> ServicesApiResponse:
             {
                 "name": "getCollection",
                 "urlPath": "/v1/memory/getCollection",
-                "method": "GET",
+                "method": "POST",
             },
             {
-                "name": "getDocuments",
-                "urlPath": "/v1/memory/getDocuments",
+                "name": "getDocument",
+                "urlPath": "/v1/memory/getDocument",
                 "method": "POST",
             },
             {
@@ -567,22 +567,33 @@ def get_all_collections():
 
 class GetCollectionRequest(BaseModel):
     id: str
-    include: Optional[List[str]] = None  # ["embeddings", "documents"]
+    include: Optional[List[str]] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": "examples",
+                    "include": ["embeddings", "documents"],
+                }
+            ]
+        }
+    }
 
 
 # Return a collection by id and all its documents
-@app.get("/v1/memory/getCollection")
-def get_collection(props: GetCollectionRequest = Depends()):
+@app.post("/v1/memory/getCollection")
+def get_collection(props: GetCollectionRequest):
     try:
         db = get_vectordb_client()
         id = props.id
         include = props.include
         collection = db.get_collection(id)
         numItems = collection.count()
-        if include:
-            documents = collection.get(include=include)
-        else:
+        if include == None:
             documents = collection.get()
+        else:
+            documents = collection.get(include=include)
         return {
             "success": True,
             "message": f"Returned {len(documents)} document(s) in collection [{id}]",
@@ -600,9 +611,9 @@ def get_collection(props: GetCollectionRequest = Depends()):
         }
 
 
-class GetDocumentsRequest(BaseModel):
+class GetDocumentRequest(BaseModel):
     collection_id: str
-    doc_ids: List[str]
+    document_ids: List[str]
     include: Optional[List[str]] = None
 
     model_config = {
@@ -610,7 +621,7 @@ class GetDocumentsRequest(BaseModel):
             "examples": [
                 {
                     "collection_id": "examples",
-                    "doc_ids": ["science"],
+                    "document_ids": ["science"],
                     "include": ["embeddings", "documents"],
                 }
             ]
@@ -619,18 +630,18 @@ class GetDocumentsRequest(BaseModel):
 
 
 # Get one or more documents by id
-@app.post("/v1/memory/getDocuments")
-def get_documents(params: GetDocumentsRequest):
+@app.post("/v1/memory/getDocument")
+def get_document(params: GetDocumentRequest):
     try:
         collection_id = params.collection_id
-        doc_ids = params.doc_ids
+        document_ids = params.document_ids
         include = params.include
         db = get_vectordb_client()
         collection = db.get_collection(collection_id)
-        if include:
-            documents = collection.get(ids=doc_ids, include=include)
+        if include == None:
+            documents = collection.get(ids=document_ids)
         else:
-            documents = collection.get(ids=doc_ids)
+            documents = collection.get(ids=document_ids, include=include)
         return {
             "success": True,
             "message": f"Returned {len(documents)} document(s)",
