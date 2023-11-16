@@ -361,7 +361,7 @@ def get_services_api() -> ServicesApiResponse:
             {
                 "name": "getDocuments",
                 "urlPath": "/v1/memory/getDocuments",
-                "method": "GET",
+                "method": "POST",
             },
             {
                 "name": "update",
@@ -603,11 +603,23 @@ def get_collection(props: GetCollectionRequest = Depends()):
 class GetDocumentsRequest(BaseModel):
     collection_id: str
     doc_ids: List[str]
-    include: Optional[List[str]] = None  # ["embeddings", "documents"]
+    include: Optional[List[str]] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "collection_id": "examples",
+                    "doc_ids": ["science"],
+                    "include": ["embeddings", "documents"],
+                }
+            ]
+        }
+    }
 
 
 # Get one or more documents by id
-@app.get("/v1/memory/getDocuments")
+@app.post("/v1/memory/getDocuments")
 def get_documents(params: GetDocumentsRequest):
     try:
         collection_id = params.collection_id
