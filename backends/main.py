@@ -338,6 +338,55 @@ def get_services_api() -> ServicesApiResponse:
         }
         data.append(text_inference_api)
 
+    # Return services that are ready now
+    memory_api = {
+        "name": "memory",
+        "port": app.PORT_HOMEBREW_API,
+        "endpoints": [
+            {
+                "name": "create",
+                "urlPath": "/v1/memory/create",
+                "method": "POST",
+            },
+            {
+                "name": "getAllCollections",
+                "urlPath": "/v1/memory/getAllCollections",
+                "method": "GET",
+            },
+            {
+                "name": "getCollection",
+                "urlPath": "/v1/memory/getCollection",
+                "method": "GET",
+            },
+            {
+                "name": "getDocuments",
+                "urlPath": "/v1/memory/getDocuments",
+                "method": "GET",
+            },
+            {
+                "name": "update",
+                "urlPath": "/v1/memory/update",
+                "method": "POST",
+            },
+            {
+                "name": "deleteDocuments",
+                "urlPath": "/v1/memory/deleteDocuments",
+                "method": "GET",
+            },
+            {
+                "name": "deleteCollection",
+                "urlPath": "/v1/memory/deleteCollection",
+                "method": "GET",
+            },
+            {
+                "name": "wipe",
+                "urlPath": "/v1/memory/wipe",
+                "method": "GET",
+            },
+        ],
+    }
+    data.append(memory_api)
+
     return {
         "success": True,
         "message": "These are the currently available service api's",
