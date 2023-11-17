@@ -349,6 +349,11 @@ def get_services_api() -> ServicesApiResponse:
                 "method": "POST",
             },
             {
+                "name": "addCollection",
+                "urlPath": "/v1/memory/addCollection",
+                "method": "GET",
+            },
+            {
                 "name": "getAllCollections",
                 "urlPath": "/v1/memory/getAllCollections",
                 "method": "GET",
@@ -396,9 +401,9 @@ def get_services_api() -> ServicesApiResponse:
 
 class PreProcessRequest(BaseModel):
     name: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    tags: Optional[str] = None
+    collection_name: str
+    description: Optional[str] = ""
+    tags: Optional[str] = List[None]
 
 
 # Pre-process docs into a text format specified by user.
@@ -429,8 +434,8 @@ def pre_process_documents(
         is_supported = file_extension.lower().endswith(supported_ext)
         if not is_supported:
             raise Exception(f"Unsupported file format {file_extension}")
-        if not form.name:
-            raise Exception("You must supply a collection name.")
+        if not form.name or not form.collection_name:
+            raise Exception("You must supply a collection and memory name.")
     except (Exception, ValueError, TypeError, KeyError) as error:
         return {
             "success": False,
@@ -438,8 +443,8 @@ def pre_process_documents(
         }
     else:
         # Read the form inputs
-        name = form.name  # name of new collection
-        title = form.title  # title of document
+        name = form.name  # name of new memory (document)
+        collection_name = form.collection_name
         description = form.description
         tags = form.tags
         rootFileName = os.path.splitext(filename)[0]
@@ -470,8 +475,8 @@ def pre_process_documents(
             if first_line != "---\n":
                 # Add a header to file
                 output_file.write("---\n")
-                output_file.write(f"collection: {name}\n")
-                output_file.write(f"title: {title}\n")
+                output_file.write(f"collection: {collection_name}\n")
+                output_file.write(f"document: {name}\n")
                 output_file.write(f"description: {description}\n")
                 output_file.write(f"tags: {comma_sep_tags}\n")
                 output_file.write("---\n\n")
@@ -501,7 +506,39 @@ def pre_process_documents(
     }
 
 
-# Create a memory for Ai
+class AddCollectionRequest(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    tags: Optional[str] = List[None]
+
+
+@app.get("/v1/memory/addCollection")
+def add_collection(form: AddCollectionRequest = Depends()):
+    try:
+        if not form.name:
+            raise Exception("You must supply a collection name.")
+        # Apply input values to collection metadata
+        db_client = get_vectordb_client()
+        db_client.create_collection(
+            name=form.name,
+            metadata={
+                "tags": form.tags,
+                "description": form.description,
+                "sources": [],
+            },
+        )
+        return {
+            "success": True,
+            "message": f"Successfully created new collection [{form.name}]",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Failed to create new collection [{form.name}]: {e}",
+        }
+
+
+# Create a memory for Ai. This will embed the document in vector space and add it to specified collection.
 @app.post("/v1/memory/create")
 async def create_memory(
     form: PreProcessRequest = Depends(),
@@ -509,9 +546,9 @@ async def create_memory(
     background_tasks: BackgroundTasks = None,  # This prop is auto added by FastAPI
 ):
     try:
-        if not form.name:
+        if not form.name or not form.collection_name:
             # Must be 3 and 63 characters. @TODO Add pydantic Annotation(3-63 characters)
-            raise Exception("You must supply a collection name.")
+            raise Exception("You must supply a collection and memory name")
         if not app.state.path_to_model:
             raise Exception("No model path defined.")
         # Parse inputs
@@ -519,7 +556,8 @@ async def create_memory(
         data = result["data"]
         # Create embeddings
         print("[homebrew api] Start embedding process...")
-        collection_name = form.name
+        collection_name = form.collection_name
+        document_name = form.name
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
         db_client = get_vectordb_client()
@@ -528,6 +566,7 @@ async def create_memory(
             data["path_to_file"],
             app.state.storage_directory,
             collection_name,
+            document_name,
             app.state.llm,
             db_client,
         )

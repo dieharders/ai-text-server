@@ -1,4 +1,5 @@
 import os
+import copy
 import chromadb
 from chromadb.config import Settings
 from llama_index import (
@@ -29,7 +30,12 @@ def create_db_client(storage_directory: str):
 
 # Create a vector embedding for the given document.
 def create_embedding(
-    file_path: str, storage_directory: str, collection_name: str, llm, db_client
+    file_path: str,
+    storage_directory: str,
+    collection_name: str,  # @TODO pass all the inputs
+    document_name: str,
+    llm,
+    db_client,
 ):
     try:
         # @TODO Setup prompt templates in conjunction with llm when querying
@@ -47,11 +53,27 @@ def create_embedding(
         print(f"[embedding api] Load docs: {file_path}")
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
         # Create a new collection for embedding
+        print("Find collection")
         # You MUST use the same embedding function to create as you do to get collection.
-        print("Create collection")
-        chroma_collection = db_client.get_or_create_collection(collection_name)
+        chroma_collection = db_client.get_collection(collection_name)
+        # Update collection metadata
+        sources = list(chroma_collection.metadata.sources)  # copy
+        sources.append(document_name)
+        metadata = copy.deepcopy(chroma_collection.metadata)  # deepcopy
+        metadata.sources = sources
+        chroma_collection.modify(metadata=metadata)
         # chroma_collection.add(
-        #     documents=documents, metadatas=[{"source": "scientific docs"}], ids=["id1"]
+        #     documents=documents,
+        #     metadatas=[
+        #         {
+        #             "name": document_name,
+        #             "description": "",
+        #             "tags": [],
+        #             "file_path": file_path,
+        #             "processing": "pending",
+        #         }
+        #     ],
+        #     ids=[document_name],
         # )
 
         # Debugging
