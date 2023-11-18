@@ -403,7 +403,7 @@ class PreProcessRequest(BaseModel):
     name: str
     collection_name: str
     description: Optional[str] = ""
-    tags: Optional[str] = List[None]
+    tags: Optional[str] = ""
 
 
 # Pre-process docs into a text format specified by user.
@@ -517,15 +517,19 @@ def add_collection(form: AddCollectionRequest = Depends()):
     try:
         if not form.name:
             raise Exception("You must supply a collection name.")
+        # Create payload. ChromaDB only accepts strings, numbers, bools.
+        metadata = {
+            "tags": form.tags,
+            "description": form.description,
+            "sources": json.dumps([]),
+            "filePaths": json.dumps([]),
+            "processing": json.dumps([]),
+        }
         # Apply input values to collection metadata
         db_client = get_vectordb_client()
         db_client.create_collection(
             name=form.name,
-            metadata={
-                "tags": form.tags,
-                "description": form.description,
-                "sources": [],
-            },
+            metadata=metadata,
         )
         return {
             "success": True,
@@ -538,26 +542,27 @@ def add_collection(form: AddCollectionRequest = Depends()):
         }
 
 
-# Create a memory for Ai. This will embed the document in vector space and add it to specified collection.
+# Create a memory for Ai.
+# This is a multi-step process involving several endpoints.
+# It will first process the file, then embed its data into vector space and
+# finally add it as a document to specified collection.
 @app.post("/v1/memory/create")
 async def create_memory(
     form: PreProcessRequest = Depends(),
     file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None,  # This prop is auto added by FastAPI
+    background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ):
     try:
         if not form.name or not form.collection_name:
-            # Must be 3 and 63 characters. @TODO Add pydantic Annotation(3-63 characters)
+            # Collection name must be 3 and 63 characters.
             raise Exception("You must supply a collection and memory name")
         if not app.state.path_to_model:
             raise Exception("No model path defined.")
-        # Parse inputs
+        # Parse/Process input files
         result = pre_process_documents(form, file)
         data = result["data"]
         # Create embeddings
         print("[homebrew api] Start embedding process...")
-        collection_name = form.collection_name
-        document_name = form.name
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
         db_client = get_vectordb_client()
@@ -565,8 +570,7 @@ async def create_memory(
             embedding.create_embedding,
             data["path_to_file"],
             app.state.storage_directory,
-            collection_name,
-            document_name,
+            form,
             app.state.llm,
             db_client,
         )
@@ -669,6 +673,7 @@ class GetDocumentRequest(BaseModel):
 
 
 # Get one or more documents by id
+# @TODO This is actually returning the chunks of a document. Can we return the "source" document instead?
 @app.post("/v1/memory/getDocument")
 def get_document(params: GetDocumentRequest):
     try:

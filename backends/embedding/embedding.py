@@ -1,5 +1,6 @@
 import os
 import copy
+import json
 import chromadb
 from chromadb.config import Settings
 from llama_index import (
@@ -32,8 +33,7 @@ def create_db_client(storage_directory: str):
 def create_embedding(
     file_path: str,
     storage_directory: str,
-    collection_name: str,  # @TODO pass all the inputs
-    document_name: str,
+    form,
     llm,
     db_client,
 ):
@@ -52,16 +52,43 @@ def create_embedding(
         # Load documents
         print(f"[embedding api] Load docs: {file_path}")
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
-        # Create a new collection for embedding
+        # Create a new document embedding
         print("Find collection")
+        collection_name: str = form.collection_name
+        document_name: str = form.name
+        description: str = form.description
+        tags: str = form.tags
         # You MUST use the same embedding function to create as you do to get collection.
         chroma_collection = db_client.get_collection(collection_name)
         # Update collection metadata
-        sources = list(chroma_collection.metadata.sources)  # copy
-        sources.append(document_name)
+        updated_sources_array = []
+        updated_filePaths_array = []
+        if "sources" in chroma_collection.metadata:
+            print(f"@@@@@@@@@@@@@ I fart {chroma_collection}")
+            sources_json = chroma_collection.metadata["sources"]
+            sources_array = json.loads(sources_json)
+            updated_sources_array = list(sources_array)  # copy
+        if "filePaths" in chroma_collection.metadata:
+            filePaths_json = chroma_collection.metadata["filePaths"]
+            filePaths_array = json.loads(filePaths_json)
+            updated_filePaths_array = list(filePaths_array)  # copy
         metadata = copy.deepcopy(chroma_collection.metadata)  # deepcopy
-        metadata.sources = sources
+        metadata["description"] = description
+        # Update tags @TODO Remove special chars, commas. Parse as string of space seperated words.
+        metadata["tags"] = tags
+        # Update sources (document ids)
+        updated_sources_array.append(document_name)
+        updated_sources_json = json.dumps(updated_sources_array)
+        metadata["sources"] = updated_sources_json
+        # Update sources paths (where original uploaded files are stored)
+        updated_filePaths_array.append(file_path)
+        updated_filePaths_json = json.dumps(updated_filePaths_array)
+        metadata["filePaths"] = updated_filePaths_json
+        # @TODO Update the "processing" attr for this document in the collection.metadata.processing array as "pending"
+        # ...
+        # Update the collection with new metadata
         chroma_collection.modify(metadata=metadata)
+
         # chroma_collection.add(
         #     documents=documents,
         #     metadatas=[
@@ -104,6 +131,8 @@ def create_embedding(
         index.storage_context.persist(
             persist_dir=os.path.join(storage_directory, collection_name)
         )
+        # @TODO Update the "processing" attr for this document in the collection.metadata.processing array as "complete"
+        # @TODO Update document's metadata
         # Done
         print(f"Finished embedding: {file_path}")
         return True
