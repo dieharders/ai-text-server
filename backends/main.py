@@ -4,6 +4,8 @@ import uvicorn
 import subprocess
 import httpx
 import re
+import hashlib
+from datetime import datetime
 from typing import List, Dict, Any, Union, Optional
 from fastapi import (
     FastAPI,
@@ -447,9 +449,8 @@ def pre_process_documents(
         collection_name = form.collection_name
         description = form.description
         tags = form.tags
-        rootFileName = os.path.splitext(filename)[0]
         new_file_path = os.getcwd()  # path to app storage
-        new_filename = f"{rootFileName}.md"
+        new_filename = f"{name}.md"
         # Create new output folder
         new_output_path = os.path.join(new_file_path, MEMORY_PATH, "parsed")
         if not os.path.exists(new_output_path):
@@ -486,6 +487,8 @@ def pre_process_documents(
             # @TODO Copied text should be parsed and edited to include markdown syntax to describe important bits (headings, attribution, links)
             # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
             # parsed_text = markdown.parse(copied_text)
+        # Create a checksum for validation later
+        checksum = createChecksum(target_output_path)
     finally:
         # Delete uploaded file
         if os.path.exists(tmp_input_file_path):
@@ -502,6 +505,7 @@ def pre_process_documents(
         "data": {
             "filename": new_filename,
             "path_to_file": target_output_path,
+            "checksum": checksum,
         },
     }
 
@@ -519,11 +523,10 @@ def add_collection(form: AddCollectionRequest = Depends()):
             raise Exception("You must supply a collection name.")
         # Create payload. ChromaDB only accepts strings, numbers, bools.
         metadata = {
+            # Update tags @TODO Remove special chars, commas. Parse as string of space seperated words.
             "tags": form.tags,
             "description": form.description,
             "sources": json.dumps([]),
-            "filePaths": json.dumps([]),
-            "processing": json.dumps([]),
         }
         # Apply input values to collection metadata
         db_client = get_vectordb_client()
@@ -566,24 +569,27 @@ async def create_memory(
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
         db_client = get_vectordb_client()
+        created_at = datetime.utcnow().strftime("%B %d %Y - %H:%M:%S")
         background_tasks.add_task(
             embedding.create_embedding,
             data["path_to_file"],
+            created_at,
+            data["checksum"],
             app.state.storage_directory,
             form,
             app.state.llm,
             db_client,
         )
     except Exception as e:
-        msg = f"[homebrew api] Failed to create a new memory: {e}"
-        print(msg)
+        msg = f"Failed to create a new memory: {e}"
+        print(f"[homebrew api] {msg}")
         return {
             "success": False,
             "message": msg,
         }
     else:
-        msg = "[homebrew api] A new memory has been added to the queue. It will be available for use shortly."
-        print(msg)
+        msg = "A new memory has been added to the queue. It will be available for use shortly."
+        print(f"[homebrew api] {msg}")
         return {
             "success": True,
             "message": msg,
@@ -604,7 +610,7 @@ def get_all_collections():
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": f"Error {e}",
+            "message": e,
         }
 
 
@@ -630,13 +636,17 @@ def get_collection(props: GetCollectionRequest):
     try:
         db = get_vectordb_client()
         id = props.id
-        include = props.include
         collection = db.get_collection(id)
-        numItems = collection.count()
-        if include == None:
-            documents = collection.get()
-        else:
-            documents = collection.get(include=include)
+        numItems = 0
+        documents = []
+        metadata = collection.metadata
+        if metadata == None:
+            raise Exception("No metadata found for collection")
+        if "sources" in metadata:
+            sources_json = metadata["sources"]
+            documents = json.loads(sources_json)
+            numItems = len(documents)
+
         return {
             "success": True,
             "message": f"Returned {len(documents)} document(s) in collection [{id}]",
@@ -650,7 +660,7 @@ def get_collection(props: GetCollectionRequest):
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": f"Error: {e}",
+            "message": e,
         }
 
 
@@ -695,7 +705,7 @@ def get_document(params: GetDocumentRequest):
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": f"Error {e}",
+            "message": e,
         }
 
 
@@ -733,7 +743,7 @@ def update_memory(params: UpdateMemoryRequest):
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": f"Error {e}",
+            "message": e,
         }
 
 
@@ -759,7 +769,7 @@ def delete_documents(params: DeleteDocumentsRequest):
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": f"Error {e}",
+            "message": e,
         }
 
 
@@ -769,7 +779,7 @@ class DeleteCollectionRequest(BaseModel):
 
 # Delete a collection by id
 @app.get("/v1/memory/deleteCollection")
-def delete_collection(params: DeleteCollectionRequest):
+def delete_collection(params: DeleteCollectionRequest = Depends()):
     try:
         collection_id = params.collection_id
         db = get_vectordb_client()
@@ -782,7 +792,7 @@ def delete_collection(params: DeleteCollectionRequest):
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": f"Error {e}",
+            "message": e,
         }
 
 
@@ -792,6 +802,7 @@ def wipe_all_memories():
     try:
         db = get_vectordb_client()
         db.reset()
+        # @TODO Should we also delete all parsed documents/files in /memories?
         return {
             "success": True,
             "message": f"Successfully wiped all memories from Ai",
@@ -800,7 +811,7 @@ def wipe_all_memories():
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": f"Error {e}",
+            "message": e,
         }
 
 
@@ -846,6 +857,19 @@ def search_similar(payload: SearchSimilarRequest):
 
 
 # Methods...
+
+
+def createChecksum(file_path: str):
+    BUF_SIZE = 65536
+    sha1 = hashlib.sha1()
+    with open(file_path, "rb") as f:
+        while True:
+            data = f.read(BUF_SIZE)
+            if not data:
+                break
+            sha1.update(data)
+    print("SHA1: {0}".format(sha1.hexdigest()))
+    return sha1.hexdigest()
 
 
 def get_vectordb_client():

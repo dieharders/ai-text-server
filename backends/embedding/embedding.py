@@ -1,7 +1,10 @@
-import os
+import uuid
 import copy
 import json
 import chromadb
+from typing import Any, Type
+from llama_index.llms import LlamaCPP
+from chromadb.api import ClientAPI
 from chromadb.config import Settings
 from llama_index import (
     VectorStoreIndex,
@@ -25,17 +28,20 @@ def create_embed_model():
 # Create a ChromaDB client singleton
 def create_db_client(storage_directory: str):
     return chromadb.PersistentClient(
-        path=storage_directory, settings=Settings(anonymized_telemetry=False)
+        path=storage_directory,
+        settings=Settings(anonymized_telemetry=False, allow_reset=True),
     )
 
 
 # Create a vector embedding for the given document.
 def create_embedding(
     file_path: str,
+    created_at: str,
+    checksum: str,
     storage_directory: str,
-    form,
-    llm,
-    db_client,
+    form: Any,
+    llm: Type[LlamaCPP],
+    db_client: Type[ClientAPI],
 ):
     try:
         # @TODO Setup prompt templates in conjunction with llm when querying
@@ -49,60 +55,44 @@ def create_embedding(
         query_wrapper_prompt = PromptTemplate(
             "[INST]<<SYS>>\n" + SYSTEM_PROMPT + "<</SYS>>\n\n{query_str}[/INST] "
         )
-        # Load documents
+        # Load in document files
         print(f"[embedding api] Load docs: {file_path}")
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
         # Create a new document embedding
-        print("Find collection")
         collection_name: str = form.collection_name
         document_name: str = form.name
         description: str = form.description
         tags: str = form.tags
         # You MUST use the same embedding function to create as you do to get collection.
         chroma_collection = db_client.get_collection(collection_name)
-        # Update collection metadata
+        # Update sources (document ids) metadata
+        print("[embedding api] Update collection metadata")
+        metadata = copy.deepcopy(chroma_collection.metadata)  # deepcopy
         updated_sources_array = []
-        updated_filePaths_array = []
-        if "sources" in chroma_collection.metadata:
-            print(f"@@@@@@@@@@@@@ I fart {chroma_collection}")
-            sources_json = chroma_collection.metadata["sources"]
+        if metadata != None and "sources" in metadata:
+            sources_json = metadata["sources"]
             sources_array = json.loads(sources_json)
             updated_sources_array = list(sources_array)  # copy
-        if "filePaths" in chroma_collection.metadata:
-            filePaths_json = chroma_collection.metadata["filePaths"]
-            filePaths_array = json.loads(filePaths_json)
-            updated_filePaths_array = list(filePaths_array)  # copy
-        metadata = copy.deepcopy(chroma_collection.metadata)  # deepcopy
-        metadata["description"] = description
-        # Update tags @TODO Remove special chars, commas. Parse as string of space seperated words.
-        metadata["tags"] = tags
-        # Update sources (document ids)
-        updated_sources_array.append(document_name)
+        new_source = {
+            # Globally unique id
+            "id": str(uuid.uuid4()),
+            # Source id
+            "name": document_name,
+            # Update processing flag for this document
+            "processing": "pending",
+            # Update sources paths (where original uploaded files are stored)
+            "filePath": file_path,
+            # Update other metadata
+            "description": description,
+            "tags": tags,
+        }
+        updated_sources_array.append(new_source)
+        # Convert data to json
+        print("[embedding api] Convert metadata to json...")
         updated_sources_json = json.dumps(updated_sources_array)
         metadata["sources"] = updated_sources_json
-        # Update sources paths (where original uploaded files are stored)
-        updated_filePaths_array.append(file_path)
-        updated_filePaths_json = json.dumps(updated_filePaths_array)
-        metadata["filePaths"] = updated_filePaths_json
-        # @TODO Update the "processing" attr for this document in the collection.metadata.processing array as "pending"
-        # ...
         # Update the collection with new metadata
         chroma_collection.modify(metadata=metadata)
-
-        # chroma_collection.add(
-        #     documents=documents,
-        #     metadatas=[
-        #         {
-        #             "name": document_name,
-        #             "description": "",
-        #             "tags": [],
-        #             "file_path": file_path,
-        #             "processing": "pending",
-        #         }
-        #     ],
-        #     ids=[document_name],
-        # )
-
         # Debugging
         llama_debug = LlamaDebugHandler(print_trace_on_end=True)
         callback_manager = CallbackManager([llama_debug])
@@ -120,21 +110,29 @@ def create_embedding(
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
         # Create the index
-        print("Creating index...")
+        print("[embedding api] Creating index...")
         index = VectorStoreIndex.from_documents(
-            documents,
+            collection_name=collection_name,
+            ids=[document_name],  # id of input file
+            client=db_client,
+            documents=[documents[0]],  # just one file for now
             storage_context=storage_context,
             service_context=service_context,
+            persist_directory=storage_directory,
             show_progress=True,
         )
-        # Save index to disk
-        index.storage_context.persist(
-            persist_dir=os.path.join(storage_directory, collection_name)
-        )
-        # @TODO Update the "processing" attr for this document in the collection.metadata.processing array as "complete"
-        # @TODO Update document's metadata
+        # Update new document's metadata
+        for src_item in updated_sources_array:
+            if src_item["name"] == document_name:
+                # Mark this document as done
+                src_item["processing"] = "complete"
+                src_item["createdAt"] = created_at
+                src_item["checksum"] = checksum
+                metadata["sources"] = json.dumps(updated_sources_array)
+                chroma_collection.modify(metadata=metadata)
+                break
         # Done
-        print(f"Finished embedding: {file_path}")
+        print(f"[embedding api] Finished embedding: {file_path} {index}")
         return True
     except Exception as e:
         msg = f"[embedding api] Embedding failed:\n{e}"
