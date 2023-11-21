@@ -22,6 +22,7 @@ from contextlib import asynccontextmanager
 from inference import text_llm
 from embedding import embedding
 
+FILEBROWSER_PATH = os.path.join(os.getenv("WINDIR"), "explorer.exe")
 VECTOR_DB_FOLDER = "chromadb"
 VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
 MEMORY_FOLDER = "memories"
@@ -378,6 +379,11 @@ def get_services_api() -> ServicesApiResponse:
                 "method": "POST",
             },
             {
+                "name": "fileExplore",
+                "urlPath": "/v1/memory/fileExplore",
+                "method": "GET",
+            },
+            {
                 "name": "update",
                 "urlPath": "/v1/memory/update",
                 "method": "POST",
@@ -494,7 +500,7 @@ def pre_process_documents(
             # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
             # parsed_text = markdown.parse(copied_text)
         # Create a checksum for validation later
-        checksum = createChecksum(target_output_path)
+        checksum = create_checksum(target_output_path)
     finally:
         # Delete uploaded file
         if os.path.exists(tmp_input_file_path):
@@ -718,6 +724,29 @@ def get_document(params: GetDocumentRequest):
         }
 
 
+class ExploreSourceRequest(BaseModel):
+    filePath: str
+
+
+# Open an OS file exporer on host machine
+@app.get("/v1/memory/fileExplore")
+def explore_source_file(params: ExploreSourceRequest = Depends()):
+    filePath = params.filePath
+
+    if not filePath:
+        return {
+            "success": False,
+            "message": "No file path given",
+        }
+    # Open a new os window
+    file_explore(filePath)
+
+    return {
+        "success": True,
+        "message": "Opened file explorer",
+    }
+
+
 class UpdateMemoryRequest(BaseModel):
     collection_id: Optional[str]
     doc_ids: Optional[List[str]] = None
@@ -915,7 +944,18 @@ def search_similar(payload: SearchSimilarRequest):
 # Methods...
 
 
-def createChecksum(file_path: str):
+# Open a native file explorer at location of given source
+def file_explore(path: str):
+    # explorer would choke on forward slashes
+    path = os.path.normpath(path)
+
+    if os.path.isdir(path):
+        subprocess.run([FILEBROWSER_PATH, path])
+    elif os.path.isfile(path):
+        subprocess.run([FILEBROWSER_PATH, "/select,", path])
+
+
+def create_checksum(file_path: str):
     BUF_SIZE = 65536
     sha1 = hashlib.sha1()
     with open(file_path, "rb") as f:
