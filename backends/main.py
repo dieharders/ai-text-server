@@ -1,4 +1,5 @@
 import os
+import glob
 import json
 import uvicorn
 import subprocess
@@ -21,8 +22,14 @@ from contextlib import asynccontextmanager
 from inference import text_llm
 from embedding import embedding
 
-MEMORY_PATH = "memories"
-VECTOR_DB_PATH = "chromadb"
+VECTOR_DB_FOLDER = "chromadb"
+VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
+MEMORY_FOLDER = "memories"
+PARSED_FOLDER = "parsed"
+TMP_FOLDER = "tmp"
+MEMORY_PATH = os.path.join(os.getcwd(), MEMORY_FOLDER)
+PARSED_DOCUMENT_PATH = os.path.join(MEMORY_PATH, PARSED_FOLDER)
+TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 
 
 @asynccontextmanager
@@ -30,7 +37,7 @@ async def lifespan(application: FastAPI):
     print("[homebrew api] Lifespan startup")
     app.requests_client = httpx.AsyncClient()
     # Store some state here if you want...
-    application.state.storage_directory = os.path.join(os.getcwd(), VECTOR_DB_PATH)
+    application.state.storage_directory = VECTOR_STORAGE_PATH
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
@@ -378,7 +385,7 @@ def get_services_api() -> ServicesApiResponse:
             {
                 "name": "deleteDocuments",
                 "urlPath": "/v1/memory/deleteDocuments",
-                "method": "GET",
+                "method": "POST",
             },
             {
                 "name": "deleteCollection",
@@ -416,8 +423,8 @@ def pre_process_documents(
     try:
         # Check supported file types
         filename = file.filename
-        tmp_input_path = os.path.join(os.getcwd(), MEMORY_PATH, "tmp")
-        tmp_input_file_path = os.path.join(os.getcwd(), MEMORY_PATH, "tmp", filename)
+        tmp_input_path = TMP_DOCUMENT_PATH
+        tmp_input_file_path = os.path.join(tmp_input_path, filename)
         file_extension = filename.rsplit(".", 1)[1]
         supported_ext = (
             "txt",
@@ -449,10 +456,9 @@ def pre_process_documents(
         collection_name = form.collection_name
         description = form.description
         tags = form.tags
-        new_file_path = os.getcwd()  # path to app storage
         new_filename = f"{name}.md"
         # Create new output folder
-        new_output_path = os.path.join(new_file_path, MEMORY_PATH, "parsed")
+        new_output_path = PARSED_DOCUMENT_PATH
         if not os.path.exists(new_output_path):
             os.makedirs(new_output_path)
         target_output_path = os.path.join(new_output_path, new_filename)
@@ -637,23 +643,23 @@ def get_collection(props: GetCollectionRequest):
         db = get_vectordb_client()
         id = props.id
         collection = db.get_collection(id)
-        numItems = 0
-        documents = []
+        num_items = 0
         metadata = collection.metadata
         if metadata == None:
             raise Exception("No metadata found for collection")
+
         if "sources" in metadata:
             sources_json = metadata["sources"]
-            documents = json.loads(sources_json)
-            numItems = len(documents)
+            sources_data = json.loads(sources_json)
+            num_items = len(sources_data)
+            metadata["sources"] = sources_data
 
         return {
             "success": True,
-            "message": f"Returned {len(documents)} document(s) in collection [{id}]",
+            "message": f"Returned {num_items} source(s) in collection [{id}]",
             "data": {
                 "collection": collection,
-                "documents": documents,
-                "numItems": numItems,
+                "numItems": num_items,
             },
         }
     except Exception as e:
@@ -682,8 +688,7 @@ class GetDocumentRequest(BaseModel):
     }
 
 
-# Get one or more documents by id
-# @TODO This is actually returning the chunks of a document. Can we return the "source" document instead?
+# Get one or more documents by id.
 @app.post("/v1/memory/getDocument")
 def get_document(params: GetDocumentRequest):
     try:
@@ -693,13 +698,17 @@ def get_document(params: GetDocumentRequest):
         db = get_vectordb_client()
         collection = db.get_collection(collection_id)
         if include == None:
-            documents = collection.get(ids=document_ids)
+            data = collection.get(ids=document_ids)
         else:
-            documents = collection.get(ids=document_ids, include=include)
+            data = collection.get(ids=document_ids, include=include)
+
+        documents = data["documents"]
+        num_documents = len(documents)
+
         return {
             "success": True,
-            "message": f"Returned {len(documents)} document(s)",
-            "data": documents,
+            "message": f"Returned {num_documents} document(s)",
+            "data": data,
         }
     except Exception as e:
         print(f"[homebrew api] Error: {e}")
@@ -749,21 +758,48 @@ def update_memory(params: UpdateMemoryRequest):
 
 class DeleteDocumentsRequest(BaseModel):
     collection_id: str
-    doc_ids: List[str]
+    document_ids: List[str]
 
 
 # Delete a document by id
-@app.get("/v1/memory/deleteDocuments")
+@app.post("/v1/memory/deleteDocuments")
 def delete_documents(params: DeleteDocumentsRequest):
     try:
         collection_id = params.collection_id
-        doc_ids = params.doc_ids
+        doc_ids = params.document_ids
+        num_documents = len(doc_ids)
+        document_name = doc_ids[0]
         db = get_vectordb_client()
         collection = db.get_collection(collection_id)
+        # Delete reference from collection sources
+        sources: List[dict] = json.loads(collection.metadata["sources"])
+        source_file_path = ""
+        for s in sources:
+            source_name = s["name"]
+            if source_name == document_name:
+                # Delete all files associated with embedded docs
+                source_file_path = s["filePath"]
+                source_id = s["id"]
+                print(f"[homebrew api] Remove file {source_id} from {source_file_path}")
+                if os.path.exists(source_file_path):
+                    os.remove(source_file_path)
+                # Remove source reference from array
+                sources.remove(s)
+        # Update collection
+        sources_json = json.dumps(sources)
+        collection.metadata["sources"] = sources_json
+        collection.modify(metadata=collection.metadata)
+        # Delete the embeddings from collection
         collection.delete(ids=doc_ids)
+        # Delete embeddings from llama-index @TODO Verify this works
+        if app.state.llm == None:
+            app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+        index = embedding.load_embedding(app.state.llm, db, collection_id)
+        index.delete(document_name)
+
         return {
             "success": True,
-            "message": f"Removed {len(doc_ids)} document(s)",
+            "message": f"Removed {num_documents} document(s): {document_name}",
         }
     except Exception as e:
         print(f"[homebrew api] Error: {e}")
@@ -783,7 +819,15 @@ def delete_collection(params: DeleteCollectionRequest = Depends()):
     try:
         collection_id = params.collection_id
         db = get_vectordb_client()
+        collection = db.get_collection(collection_id)
+        sources: List[dict] = json.loads(collection.metadata["sources"])
+        # Remove all associated source files
+        for s in sources:
+            filePath = s["filePath"]
+            os.remove(filePath)
+        # Remove the collection
         db.delete_collection(name=collection_id)
+
         return {
             "success": True,
             "message": f"Removed collection [{collection_id}]",
@@ -801,8 +845,20 @@ def delete_collection(params: DeleteCollectionRequest = Depends()):
 def wipe_all_memories():
     try:
         db = get_vectordb_client()
+        # Delete all db values
         db.reset()
-        # @TODO Should we also delete all parsed documents/files in /memories?
+        # Delete all parsed documents/files in /memories
+        if os.path.exists(TMP_DOCUMENT_PATH):
+            files = glob.glob(f"{TMP_DOCUMENT_PATH}/*")
+            for f in files:
+                os.remove(f)  # del files
+            os.rmdir(TMP_DOCUMENT_PATH)  # del folder
+        if os.path.exists(PARSED_DOCUMENT_PATH):
+            files = glob.glob(f"{PARSED_DOCUMENT_PATH}/*.md")
+            for f in files:
+                os.remove(f)  # del all .md files
+            os.rmdir(PARSED_DOCUMENT_PATH)  # del folder
+
         return {
             "success": True,
             "message": f"Successfully wiped all memories from Ai",

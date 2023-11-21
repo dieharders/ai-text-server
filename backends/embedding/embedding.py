@@ -1,3 +1,4 @@
+import os
 import uuid
 import copy
 import json
@@ -109,19 +110,22 @@ def create_embedding(
         # Create a vector db
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        # Create the index
+        document_text = documents[0].get_content()
+        # Create an index used for querying. This will be saved to disk for later use.
         print("[embedding api] Creating index...")
         index = VectorStoreIndex.from_documents(
             collection_name=collection_name,
             ids=[document_name],  # id of input file
             client=db_client,
+            metadatas=[new_source],
             documents=[documents[0]],  # just one file for now
             storage_context=storage_context,
             service_context=service_context,
             persist_directory=storage_directory,
             show_progress=True,
+            # use_async=True,
         )
-        # Update new document's metadata
+        # Update new document in collection's metadata
         for src_item in updated_sources_array:
             if src_item["name"] == document_name:
                 # Mark this document as done
@@ -131,8 +135,18 @@ def create_embedding(
                 metadata["sources"] = json.dumps(updated_sources_array)
                 chroma_collection.modify(metadata=metadata)
                 break
+        # Add new document
+        chroma_collection.add(
+            ids=[document_name],
+            metadatas=[new_source],
+            documents=[document_text],
+        )
+        # Save index to disk. We can read from disk later without needing to re-construct.
+        index.storage_context.persist(
+            persist_dir=os.path.join(storage_directory, collection_name)
+        )
         # Done
-        print(f"[embedding api] Finished embedding: {file_path} {index}")
+        print(f"[embedding api] Finished embedding, path: {file_path}")
         return True
     except Exception as e:
         msg = f"[embedding api] Embedding failed:\n{e}"
@@ -184,7 +198,7 @@ def load_embedding(llm, db_client, collection_name: str):
     service_context = ServiceContext.from_defaults(
         llm=llm, embed_model=create_embed_model(), callback_manager=callback_manager
     )
-    # You MUST get with the same embedding function you supplied while creating the collection.
+    # You MUST get() with the same embedding function you supplied while creating the collection.
     chroma_collection = db_client.get_or_create_collection(collection_name)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     # Create index from vector db
