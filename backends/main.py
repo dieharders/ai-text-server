@@ -4,6 +4,7 @@ import json
 import uvicorn
 import subprocess
 import httpx
+import shutil
 from typing import List, Optional
 from fastapi import (
     FastAPI,
@@ -673,20 +674,20 @@ def get_document(params: GetDocumentRequest):
         collection_id = params.collection_id
         document_ids = params.document_ids
         include = params.include
-        db = get_vectordb_client()
-        collection = db.get_collection(collection_id)
-        if include == None:
-            data = collection.get(ids=document_ids)
-        else:
-            data = collection.get(ids=document_ids, include=include)
 
-        documents = data["documents"]
+        documents = embedding.get_document(
+            collection_name=collection_id,
+            document_ids=document_ids,
+            db=get_vectordb_client(),
+            include=include,
+        )
+
         num_documents = len(documents)
 
         return {
             "success": True,
             "message": f"Returned {num_documents} document(s)",
-            "data": data,
+            "data": documents,
         }
     except Exception as e:
         print(f"[homebrew api] Error: {e}")
@@ -741,19 +742,21 @@ def update_memory(
         file_path = args.filePath
 
         # Verify id's
-        if collection_name or document_name:
+        if not collection_name or not document_name:
             raise Exception("Please supply a collection and/or document name")
 
         # Retrieve document data
         db = get_vectordb_client()
         collection = db.get_collection(collection_name)
-        document = get_document(
-            {
-                "collection_id": collection_name,
-                "document_ids": [document_name],
-            }
+        documents = embedding.get_document(
+            collection_name=collection_name,
+            document_ids=[document_name],
+            db=db,
+            include=["documents", "metadatas"],
         )
-        print(f"Found document: {document}")
+        document = documents[0]
+        document_metadata = document["metadata"]
+
         if not document:
             raise Exception("No record could be found for that memory")
 
@@ -762,29 +765,27 @@ def update_memory(
         tmp_folder = TMP_DOCUMENT_PATH
         tmp_file_path = os.path.join(TMP_DOCUMENT_PATH, new_file_name)
         if url_path:
-            print(f"Downloading file to {tmp_file_path} ...")
+            print(f"[homebrew api] Downloading file to {tmp_file_path} ...")
             # Would be nice to check file headers for checksum before downloading
             # ...
         elif file_path:
-            print(f"Loading local file from disk {file_path} ...")
+            print(f"[homebrew api] Loading local file from disk {file_path} ...")
             # Copy file from provided location to /tmp dir, only if paths differ
-            file = open(file_path, "wb")
-            if not os.path.exists(tmp_folder):
-                os.makedirs(tmp_folder)
-            with open(tmp_file_path, "wb") as f:
-                while contents := file.file.read(1024 * 1024):
-                    f.write(contents)
-            file.file.close()
+            if file_path != tmp_file_path:
+                if not os.path.exists(tmp_folder):
+                    os.makedirs(tmp_folder)
+                shutil.copy(file_path, tmp_file_path)
+            print("[homebrew api] File to be copied already in /tmp dir")
         else:
             raise Exception("Please supply a local path or url to a file")
 
         # Compare checksums
         updated_metadata = None
         new_file_hash = embedding.create_checksum(tmp_file_path)
-        stored_file_hash = document.metadata.checksum
+        stored_file_hash = document_metadata["checksum"]
         if new_file_hash != stored_file_hash:
             # Pass provided metadata or stored
-            updated_metadata = metadata or document.metadata
+            updated_metadata = metadata or document_metadata
             # Update collection with new metadata
             # collection.update(name=collection_name, documents=documents, metadatas=updated_metadata, ids=[document_name],)
             collection.modify(name=collection_name, metadata=updated_metadata)
@@ -792,15 +793,14 @@ def update_memory(
             processed_result = embedding.pre_process_documents(
                 name=document_name,
                 collection_name=collection_name,
-                description=updated_metadata.description,
-                tags=updated_metadata.tags,
+                description=updated_metadata["description"],
+                tags=updated_metadata["tags"],
                 input_file_path=tmp_file_path,
                 output_folder_path=PARSED_DOCUMENT_PATH,
             )
             # Create text embeddings
             if app.state.llm == None:
                 app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-            db_client = get_vectordb_client()
             form = {
                 "collection_name": collection_name,
                 "document_name": document_name,
@@ -814,7 +814,7 @@ def update_memory(
                 app.state.storage_directory,
                 form,
                 app.state.llm,
-                db_client,
+                db,
             )
         else:
             # Delete tmp files if exist
@@ -831,7 +831,7 @@ def update_memory(
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": f"{e}",
         }
 
 

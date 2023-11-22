@@ -5,6 +5,7 @@ import json
 import re
 import hashlib
 from datetime import datetime
+from typing import List, Optional
 import chromadb
 from typing import Any, Type
 from llama_index.llms import LlamaCPP
@@ -84,7 +85,32 @@ def check_file_support(filePath: str):
     return is_supported
 
 
-# @TODO Move code from main/pre_process_documents
+def get_document(
+    collection_name: str,
+    document_ids: List[str],
+    db,
+    include: Optional[List[str]] = None,
+):
+    collection = db.get_collection(collection_name)
+
+    if include == None:
+        data = collection.get(ids=document_ids)
+    else:
+        data = collection.get(ids=document_ids, include=include)
+
+    documents = []
+    for x, id in enumerate(document_ids):
+        doc = {}
+        if data["metadatas"] is not None:
+            doc["metadata"] = data["metadatas"][x]
+        if data["embeddings"]:
+            doc["embeddings"] = data["embeddings"][x]
+        if data["documents"]:
+            doc["documents"] = data["documents"][x]
+        documents.append(doc)
+    return documents
+
+
 def pre_process_documents(
     name, collection_name, description, tags, output_folder_path, input_file_path
 ):
