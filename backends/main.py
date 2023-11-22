@@ -4,10 +4,7 @@ import json
 import uvicorn
 import subprocess
 import httpx
-import re
-import hashlib
-from datetime import datetime
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Optional
 from fastapi import (
     FastAPI,
     HTTPException,
@@ -354,11 +351,6 @@ def get_services_api() -> ServicesApiResponse:
         "port": app.PORT_HOMEBREW_API,
         "endpoints": [
             {
-                "name": "create",
-                "urlPath": "/v1/memory/create",
-                "method": "POST",
-            },
-            {
                 "name": "addCollection",
                 "urlPath": "/v1/memory/addCollection",
                 "method": "GET",
@@ -374,18 +366,18 @@ def get_services_api() -> ServicesApiResponse:
                 "method": "POST",
             },
             {
-                "name": "getDocument",
-                "urlPath": "/v1/memory/getDocument",
-                "method": "POST",
-            },
-            {
-                "name": "fileExplore",
-                "urlPath": "/v1/memory/fileExplore",
+                "name": "deleteCollection",
+                "urlPath": "/v1/memory/deleteCollection",
                 "method": "GET",
             },
             {
-                "name": "update",
-                "urlPath": "/v1/memory/update",
+                "name": "addDocument",
+                "urlPath": "/v1/memory/addDocument",
+                "method": "POST",
+            },
+            {
+                "name": "getDocument",
+                "urlPath": "/v1/memory/getDocument",
                 "method": "POST",
             },
             {
@@ -394,9 +386,14 @@ def get_services_api() -> ServicesApiResponse:
                 "method": "POST",
             },
             {
-                "name": "deleteCollection",
-                "urlPath": "/v1/memory/deleteCollection",
+                "name": "fileExplore",
+                "urlPath": "/v1/memory/fileExplore",
                 "method": "GET",
+            },
+            {
+                "name": "updateDocument",
+                "urlPath": "/v1/memory/updateDocument",
+                "method": "POST",
             },
             {
                 "name": "wipe",
@@ -419,107 +416,33 @@ class PreProcessRequest(BaseModel):
     collection_name: str
     description: Optional[str] = ""
     tags: Optional[str] = ""
+    filePath: str
 
 
-# Pre-process docs into a text format specified by user.
-@app.post("/v1/embeddings/pre-process")
-def pre_process_documents(
-    form: PreProcessRequest = Depends(), file: UploadFile = File(...)
-):
+# @TODO Create a seperate processing func for this endpoint and others to use and put inside embedding module
+# Pre-process supplied files into a text format and save to disk for embedding later.
+@app.post("/v1/embeddings/preProcess")
+def pre_process_documents(form: PreProcessRequest = Depends()):
     try:
-        # Check supported file types
-        filename = file.filename
-        tmp_input_path = TMP_DOCUMENT_PATH
-        tmp_input_file_path = os.path.join(tmp_input_path, filename)
-        file_extension = filename.rsplit(".", 1)[1]
-        supported_ext = (
-            "txt",
-            "md",
-            "mdx",
-            "doc",
-            "docx",
-            "pdf",
-            "rtf",
-            "csv",
-            "json",
-            "xml",
-            "xls",
-            "orc",
+        file_path = form.filePath
+        processed_result = embedding.pre_process_documents(
+            name=form.name,
+            collection_name=form.collection_name,
+            description=form.description,
+            tags=form.tags,
+            input_file_path=file_path,
+            output_folder_path=PARSED_DOCUMENT_PATH,
         )
-        is_supported = file_extension.lower().endswith(supported_ext)
-        if not is_supported:
-            raise Exception(f"Unsupported file format {file_extension}")
-        if not form.name or not form.collection_name:
-            raise Exception("You must supply a collection and memory name.")
+        return {
+            "success": True,
+            "message": f"Successfully processed {file_path}",
+            "data": processed_result,
+        }
     except (Exception, ValueError, TypeError, KeyError) as error:
         return {
             "success": False,
             "message": f"There was an internal server error uploading the file:\n{error}",
         }
-    else:
-        # Read the form inputs
-        name = form.name  # name of new memory (document)
-        collection_name = form.collection_name
-        description = form.description
-        tags = form.tags
-        new_filename = f"{name}.md"
-        # Create new output folder
-        new_output_path = PARSED_DOCUMENT_PATH
-        if not os.path.exists(new_output_path):
-            os.makedirs(new_output_path)
-        target_output_path = os.path.join(new_output_path, new_filename)
-        # Format tags
-        comma_sep_tags = re.sub("\s+", ", ", tags.strip())
-        # Read the file in chunks of 1mb
-        if not os.path.exists(tmp_input_path):
-            os.makedirs(tmp_input_path)
-        with open(tmp_input_file_path, "wb") as f:
-            while contents := file.file.read(1024 * 1024):
-                f.write(contents)
-        file.file.close()
-        # Finalize uploaded file
-        # @TODO If the file is not text, then create a text description of the contents (via VisionAi, Human, OCR)
-        # Copy text contents of original file into a new file, parsed for embedding
-        with open(target_output_path, "w", encoding="utf-8") as output_file, open(
-            tmp_input_file_path, "r"
-        ) as input_file:
-            # Check if header exists
-            first_line = input_file.readline()
-            if first_line != "---\n":
-                # Add a header to file
-                output_file.write("---\n")
-                output_file.write(f"collection: {collection_name}\n")
-                output_file.write(f"document: {name}\n")
-                output_file.write(f"description: {description}\n")
-                output_file.write(f"tags: {comma_sep_tags}\n")
-                output_file.write("---\n\n")
-            input_file.seek(0)  # set back to start of file
-            # Copy each line from source file
-            output_file.writelines(line for line in input_file)
-            # @TODO Copied text should be parsed and edited to include markdown syntax to describe important bits (headings, attribution, links)
-            # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
-            # parsed_text = markdown.parse(copied_text)
-        # Create a checksum for validation later
-        checksum = create_checksum(target_output_path)
-    finally:
-        # Delete uploaded file
-        if os.path.exists(tmp_input_file_path):
-            os.remove(tmp_input_file_path)
-            print(f"[homebrew api] Removed temp file upload.")
-        else:
-            print(
-                "[homebrew api] Failed to delete temp file upload. The file does not exist."
-            )
-
-    return {
-        "success": True,
-        "message": f"Successfully processed {filename}",
-        "data": {
-            "filename": new_filename,
-            "path_to_file": target_output_path,
-            "checksum": checksum,
-        },
-    }
 
 
 class AddCollectionRequest(BaseModel):
@@ -529,7 +452,7 @@ class AddCollectionRequest(BaseModel):
 
 
 @app.get("/v1/memory/addCollection")
-def add_collection(form: AddCollectionRequest = Depends()):
+def create_memory_collection(form: AddCollectionRequest = Depends()):
     try:
         if not form.name:
             raise Exception("You must supply a collection name.")
@@ -557,42 +480,91 @@ def add_collection(form: AddCollectionRequest = Depends()):
         }
 
 
+class AddDocumentRequest(BaseModel):
+    name: str
+    collection_name: str
+    description: Optional[str] = ""
+    tags: Optional[str] = ""
+    urlPath: Optional[str] = ""
+
+
 # Create a memory for Ai.
 # This is a multi-step process involving several endpoints.
 # It will first process the file, then embed its data into vector space and
 # finally add it as a document to specified collection.
-@app.post("/v1/memory/create")
+@app.post("/v1/memory/addDocument")
 async def create_memory(
-    form: PreProcessRequest = Depends(),
+    form: AddDocumentRequest = Depends(),
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ):
     try:
-        if not form.name or not form.collection_name:
+        name = form.name
+        collection_name = form.collection_name
+        description = form.description
+        tags = form.tags
+        url_path = form.urlPath
+        tmp_input_file_path = ""
+
+        if not name or not collection_name:
             # Collection name must be 3 and 63 characters.
             raise Exception("You must supply a collection and memory name")
         if not app.state.path_to_model:
             raise Exception("No model path defined.")
+
+        # Save files to disk first
+        if url_path:
+            print(f"[homebrew api] Downloading file from url {url_path}")
+            # @TODO Download the file and save to disk
+            # file = get_file_url(url_path)
+            # filename = file.filename
+            # tmp_input_file_path = os.path.join(tmp_folder, filename)
+        if file:
+            print("[homebrew api] Saving uploaded file to disk...")
+            # Read the uploaded file in chunks of 1mb,
+            # store to a tmp dir for processing later
+            filename = file.filename
+            tmp_folder = TMP_DOCUMENT_PATH
+            tmp_input_file_path = os.path.join(tmp_folder, filename)
+            if not os.path.exists(tmp_folder):
+                os.makedirs(tmp_folder)
+            with open(tmp_input_file_path, "wb") as f:
+                while contents := file.file.read(1024 * 1024):
+                    f.write(contents)
+            file.file.close()
+        else:
+            raise Exception("No file or url supplied")
+
         # Parse/Process input files
-        result = pre_process_documents(form, file)
-        data = result["data"]
+        processed_result = embedding.pre_process_documents(
+            name=name,
+            collection_name=collection_name,
+            description=description,
+            tags=tags,
+            input_file_path=tmp_input_file_path,
+            output_folder_path=PARSED_DOCUMENT_PATH,
+        )
+
         # Create embeddings
-        print("[homebrew api] Start embedding process...")
+        print("[homebrew api] Start embedding...")
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
         db_client = get_vectordb_client()
-        created_at = datetime.utcnow().strftime("%B %d %Y - %H:%M:%S")
         background_tasks.add_task(
             embedding.create_embedding,
-            data["path_to_file"],
-            created_at,
-            data["checksum"],
+            processed_result["path_to_file"],
+            processed_result["checksum"],
             app.state.storage_directory,
             form,
             app.state.llm,
             db_client,
         )
     except Exception as e:
+        # Delete uploaded tmp file
+        if os.path.exists(tmp_input_file_path):
+            os.remove(tmp_input_file_path)
+            print(f"[homebrew api] Removed temp file.")
+        # Error
         msg = f"Failed to create a new memory: {e}"
         print(f"[homebrew api] {msg}")
         return {
@@ -747,35 +719,113 @@ def explore_source_file(params: ExploreSourceRequest = Depends()):
     }
 
 
-class UpdateMemoryRequest(BaseModel):
-    collection_id: Optional[str]
-    doc_ids: Optional[List[str]] = None
-    metadata: Dict[str, Union[str, int, bool, Dict[str, Any], List[str]]] = None
-    documents: List[str] = None
+class UpdateDocumentRequest(BaseModel):
+    collectionName: str
+    documentName: str
+    urlPath: Optional[str] = ""
+    filePath: Optional[str] = ""
+    metadata: Optional[dict] = {}
 
 
-# Update existing collection or document(s)
-@app.post("/v1/memory/update")
-def update_memory(params: UpdateMemoryRequest):
+# Re-process and re-embed existing document(s) from /parsed directory or url link
+@app.post("/v1/memory/updateDocument")
+def update_memory(
+    args: UpdateDocumentRequest,
+    background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
+):
     try:
-        collection_id = params.collection_id
-        doc_ids = params.doc_ids
-        metadata = params.metadata
-        documents = params.documents
+        collection_name = args.collectionName
+        document_name = args.documentName
+        metadata = args.metadata
+        url_path = args.urlPath
+        file_path = args.filePath
+
+        # Verify id's
+        if collection_name or document_name:
+            raise Exception("Please supply a collection and/or document name")
+
+        # Retrieve document data
         db = get_vectordb_client()
-        collection = db.get_collection(collection_id)
-        if documents:
-            collection.update(
-                name=collection_id,
-                documents=documents,
-                metadatas=metadata,
-                ids=doc_ids,
+        collection = db.get_collection(collection_name)
+        document = get_document(
+            {
+                "collection_id": collection_name,
+                "document_ids": [document_name],
+            }
+        )
+        print(f"Found document: {document}")
+        if not document:
+            raise Exception("No record could be found for that memory")
+
+        # Download or load file(s)
+        new_file_name = f"{document_name}.md"
+        tmp_folder = TMP_DOCUMENT_PATH
+        tmp_file_path = os.path.join(TMP_DOCUMENT_PATH, new_file_name)
+        if url_path:
+            print(f"Downloading file to {tmp_file_path} ...")
+            # Would be nice to check file headers for checksum before downloading
+            # ...
+        elif file_path:
+            print(f"Loading local file from disk {file_path} ...")
+            # Copy file from provided location to /tmp dir, only if paths differ
+            file = open(file_path, "wb")
+            if not os.path.exists(tmp_folder):
+                os.makedirs(tmp_folder)
+            with open(tmp_file_path, "wb") as f:
+                while contents := file.file.read(1024 * 1024):
+                    f.write(contents)
+            file.file.close()
+        else:
+            raise Exception("Please supply a local path or url to a file")
+
+        # Compare checksums
+        updated_metadata = None
+        new_file_hash = embedding.create_checksum(tmp_file_path)
+        stored_file_hash = document.metadata.checksum
+        if new_file_hash != stored_file_hash:
+            # Pass provided metadata or stored
+            updated_metadata = metadata or document.metadata
+            # Update collection with new metadata
+            # collection.update(name=collection_name, documents=documents, metadatas=updated_metadata, ids=[document_name],)
+            collection.modify(name=collection_name, metadata=updated_metadata)
+            # Process input documents
+            processed_result = embedding.pre_process_documents(
+                name=document_name,
+                collection_name=collection_name,
+                description=updated_metadata.description,
+                tags=updated_metadata.tags,
+                input_file_path=tmp_file_path,
+                output_folder_path=PARSED_DOCUMENT_PATH,
+            )
+            # Create text embeddings
+            if app.state.llm == None:
+                app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+            db_client = get_vectordb_client()
+            form = {
+                "collection_name": collection_name,
+                "document_name": document_name,
+                "description": updated_metadata.description,
+                "tags": updated_metadata.tags,
+            }
+            background_tasks.add_task(
+                embedding.create_embedding,
+                processed_result["path_to_file"],
+                processed_result["checksum"],
+                app.state.storage_directory,
+                form,
+                app.state.llm,
+                db_client,
             )
         else:
-            collection.modify(name=collection_id, metadata=metadata)
+            # Delete tmp files if exist
+            if os.path.exists(tmp_file_path):
+                os.remove(tmp_file_path)
+            # If same input file, abort
+            raise Exception("Input file has not changed.")
+
         return {
             "success": True,
-            "message": "Updated items",
+            "message": f"Updated memories [{document_name}]",
         }
     except Exception as e:
         print(f"[homebrew api] Error: {e}")
@@ -953,19 +1003,6 @@ def file_explore(path: str):
         subprocess.run([FILEBROWSER_PATH, path])
     elif os.path.isfile(path):
         subprocess.run([FILEBROWSER_PATH, "/select,", path])
-
-
-def create_checksum(file_path: str):
-    BUF_SIZE = 65536
-    sha1 = hashlib.sha1()
-    with open(file_path, "rb") as f:
-        while True:
-            data = f.read(BUF_SIZE)
-            if not data:
-                break
-            sha1.update(data)
-    print("SHA1: {0}".format(sha1.hexdigest()))
-    return sha1.hexdigest()
 
 
 def get_vectordb_client():

@@ -2,6 +2,9 @@ import os
 import uuid
 import copy
 import json
+import re
+import hashlib
+from datetime import datetime
 import chromadb
 from typing import Any, Type
 from llama_index.llms import LlamaCPP
@@ -21,6 +24,17 @@ from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
 # from llama_index.embeddings import HuggingFaceEmbedding
 
 
+# @TODO Setup prompt templates in conjunction with llm when querying
+# @TODO Pass a template like this as a prop when creating embeddings
+DEFAULT_SYSTEM_PROMPT = """You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
+- Generate human readable output, avoid creating output with gibberish text.
+- Generate only the requested output, don't include any other language before or after the requested output.
+- Never say thank you, that you are happy to help, that you are an AI agent, etc. Just answer directly.
+- Generate professional language typically used in business documents in North America.
+- Never generate offensive or foul language.
+"""
+
+
 # Define a specific embedding method
 def create_embed_model():
     return "local"  # embed_model = HuggingFaceEmbedding(model_name="bert-base-multilingual-cased")
@@ -34,10 +48,110 @@ def create_db_client(storage_directory: str):
     )
 
 
+def create_checksum(file_path: str):
+    BUF_SIZE = 65536
+    sha1 = hashlib.sha1()
+    with open(file_path, "rb") as f:
+        while True:
+            data = f.read(BUF_SIZE)
+            if not data:
+                break
+            sha1.update(data)
+    print("SHA1: {0}".format(sha1.hexdigest()))
+    return sha1.hexdigest()
+
+
+def check_file_support(filePath: str):
+    # Check supported file types
+    input_file_path = filePath
+    file_extension = input_file_path.rsplit(".", 1)[1]
+    supported_ext = (
+        "txt",
+        "md",
+        "mdx",
+        "doc",
+        "docx",
+        "pdf",
+        "rtf",
+        "csv",
+        "json",
+        "xml",
+        "xls",
+        "orc",
+    )
+    is_supported = file_extension.lower().endswith(supported_ext)
+    print(f"[embedding api] Check extension: {file_extension}")
+    return is_supported
+
+
+# @TODO Move code from main/pre_process_documents
+def pre_process_documents(
+    name, collection_name, description, tags, output_folder_path, input_file_path
+):
+    try:
+        is_supported = check_file_support(input_file_path)
+
+        if not is_supported:
+            raise Exception(f"Unsupported file format")
+        if not name or not collection_name:
+            raise Exception("You must supply a collection and memory name.")
+    except (Exception, ValueError, TypeError, KeyError) as error:
+        print(f"[embedding api] Pre-processing failed: {error}")
+        raise Exception(error)
+    else:
+        # Read the form inputs
+        new_filename = f"{name}.md"
+        # Create output folder for parsed file
+        if not os.path.exists(output_folder_path):
+            os.makedirs(output_folder_path)
+        target_output_path = os.path.join(output_folder_path, new_filename)
+        # Format tags
+        comma_sep_tags = re.sub("\s+", ", ", tags.strip())
+        # Finalize parsed file
+        # @TODO If the file is not text, then create a text description of the contents (via VisionAi, Human, OCR)
+        # Copy text contents of original file into a new file, parsed for embedding
+        with open(target_output_path, "w", encoding="utf-8") as output_file, open(
+            input_file_path, "r"
+        ) as input_file:
+            # Check if header exists
+            first_line = input_file.readline()
+            if first_line != "---\n":
+                # Add a header to file
+                output_file.write("---\n")
+                output_file.write(f"collection: {collection_name}\n")
+                output_file.write(f"document: {name}\n")
+                output_file.write(f"description: {description}\n")
+                output_file.write(f"tags: {comma_sep_tags}\n")
+                output_file.write("---\n\n")
+            input_file.seek(0)  # set back to start of file
+            # Copy each line from source file
+            output_file.writelines(line for line in input_file)
+            # @TODO Copied text should be parsed and edited to include markdown syntax to describe important bits (headings, attribution, links)
+            # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
+            # parsed_text = markdown.parse(copied_text)
+        # Create a checksum for validation later
+        checksum = create_checksum(target_output_path)
+    finally:
+        # Delete uploaded file
+        if os.path.exists(input_file_path):
+            os.remove(input_file_path)
+            print(f"[embedding api] Removed temp file upload.")
+        else:
+            print(
+                "[embedding api] Failed to delete temp file upload. The file does not exist."
+            )
+
+    print(f"[embedding api] Successfully processed {target_output_path}")
+    return {
+        "filename": new_filename,
+        "path_to_file": target_output_path,
+        "checksum": checksum,
+    }
+
+
 # Create a vector embedding for the given document.
 def create_embedding(
     file_path: str,
-    created_at: str,
     checksum: str,
     storage_directory: str,
     form: Any,
@@ -45,17 +159,6 @@ def create_embedding(
     db_client: Type[ClientAPI],
 ):
     try:
-        # @TODO Setup prompt templates in conjunction with llm when querying
-        SYSTEM_PROMPT = """You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
-        - Generate human readable output, avoid creating output with gibberish text.
-        - Generate only the requested output, don't include any other language before or after the requested output.
-        - Never say thank you, that you are happy to help, that you are an AI agent, etc. Just answer directly.
-        - Generate professional language typically used in business documents in North America.
-        - Never generate offensive or foul language.
-        """
-        query_wrapper_prompt = PromptTemplate(
-            "[INST]<<SYS>>\n" + SYSTEM_PROMPT + "<</SYS>>\n\n{query_str}[/INST] "
-        )
         # Load in document files
         print(f"[embedding api] Load docs: {file_path}")
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
@@ -130,7 +233,9 @@ def create_embedding(
             if src_item["name"] == document_name:
                 # Mark this document as done
                 src_item["processing"] = "complete"
-                src_item["createdAt"] = created_at
+                src_item["createdAt"] = datetime.utcnow().strftime(
+                    "%B %d %Y - %H:%M:%S"
+                )
                 src_item["checksum"] = checksum
                 metadata["sources"] = json.dumps(updated_sources_array)
                 chroma_collection.modify(metadata=metadata)
@@ -181,6 +286,10 @@ def verify_response(response, service_context):
 # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
 def query_embedding(query, index):
     print("[embedding api] Query Data")
+    # system_prompt = sys_prompt or DEFAULT_SYSTEM_PROMPT
+    # query_wrapper_prompt = PromptTemplate(
+    #     f"[INST]<<SYS>>\n{system_prompt}<</SYS>>\n\n{query}[/INST] "
+    # )
     query_engine = index.as_query_engine(
         similarity_top_k=3,
         # streaming=True,
