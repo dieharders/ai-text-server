@@ -482,7 +482,7 @@ def create_memory_collection(form: AddCollectionRequest = Depends()):
 
 
 class AddDocumentRequest(BaseModel):
-    name: str
+    document_name: str
     collection_name: str
     description: Optional[str] = ""
     tags: Optional[str] = ""
@@ -500,7 +500,7 @@ async def create_memory(
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ):
     try:
-        name = form.name
+        name = form.document_name
         collection_name = form.collection_name
         description = form.description
         tags = form.tags
@@ -551,12 +551,18 @@ async def create_memory(
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
         db_client = get_vectordb_client()
+        embed_form = {
+            "collection_name": collection_name,
+            "document_name": name,
+            "description": description,
+            "tags": tags,
+        }
         background_tasks.add_task(
             embedding.create_embedding,
             processed_result["path_to_file"],
             processed_result["checksum"],
             app.state.storage_directory,
-            form,
+            embed_form,
             app.state.llm,
             db_client,
         )
@@ -780,21 +786,22 @@ def update_memory(
             raise Exception("Please supply a local path or url to a file")
 
         # Compare checksums
-        updated_metadata = None
+        updated_document_metadata = None
         new_file_hash = embedding.create_checksum(tmp_file_path)
         stored_file_hash = document_metadata["checksum"]
         if new_file_hash != stored_file_hash:
             # Pass provided metadata or stored
-            updated_metadata = metadata or document_metadata
+            updated_document_metadata = metadata or document_metadata
             # Update collection with new metadata
             # collection.update(name=collection_name, documents=documents, metadatas=updated_metadata, ids=[document_name],)
-            collection.modify(name=collection_name, metadata=updated_metadata)
+            # updated_collection_metadata = collection.metadata
+            # collection.modify(name=collection_name, metadata=updated_collection_metadata)
             # Process input documents
             processed_result = embedding.pre_process_documents(
                 name=document_name,
                 collection_name=collection_name,
-                description=updated_metadata["description"],
-                tags=updated_metadata["tags"],
+                description=updated_document_metadata["description"],
+                tags=updated_document_metadata["tags"],
                 input_file_path=tmp_file_path,
                 output_folder_path=PARSED_DOCUMENT_PATH,
             )
@@ -804,8 +811,8 @@ def update_memory(
             form = {
                 "collection_name": collection_name,
                 "document_name": document_name,
-                "description": updated_metadata.description,
-                "tags": updated_metadata.tags,
+                "description": updated_document_metadata["description"],
+                "tags": updated_document_metadata["tags"],
             }
             background_tasks.add_task(
                 embedding.create_embedding,

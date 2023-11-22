@@ -189,10 +189,10 @@ def create_embedding(
         print(f"[embedding api] Load docs: {file_path}")
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
         # Create a new document embedding
-        collection_name: str = form.collection_name
-        document_name: str = form.name
-        description: str = form.description
-        tags: str = form.tags
+        collection_name: str = form["collection_name"]
+        document_name: str = form["document_name"]
+        description: str = form["description"]
+        tags: str = form["tags"]
         # You MUST use the same embedding function to create as you do to get collection.
         chroma_collection = db_client.get_collection(collection_name)
         # Update sources (document ids) metadata
