@@ -58,7 +58,7 @@ def create_checksum(file_path: str):
             if not data:
                 break
             sha1.update(data)
-    print("SHA1: {0}".format(sha1.hexdigest()))
+    print("[embedding api] SHA1: {0}".format(sha1.hexdigest()))
     return sha1.hexdigest()
 
 
@@ -85,6 +85,7 @@ def check_file_support(filePath: str):
     return is_supported
 
 
+# Return a list of documents
 def get_document(
     collection_name: str,
     document_ids: List[str],
@@ -98,29 +99,34 @@ def get_document(
     else:
         data = collection.get(ids=document_ids, include=include)
 
-    documents = []
-    for x, id in enumerate(document_ids):
+    # Return all document data in a single object
+    documents_array = []
+    for index, id in enumerate(document_ids):
         doc = {}
-        if data["metadatas"] is not None:
-            doc["metadata"] = data["metadatas"][x]
-        if data["embeddings"]:
-            doc["embeddings"] = data["embeddings"][x]
-        if data["documents"]:
-            doc["documents"] = data["documents"][x]
-        documents.append(doc)
-    return documents
+        metadatas = data["metadatas"]
+        embeddings = data["embeddings"]
+        documents = data["documents"]
+        if index < len(metadatas) and len(metadatas) > 0:
+            if metadatas:
+                doc["metadata"] = metadatas[index]
+            if embeddings:
+                doc["embeddings"] = embeddings[index]
+            if documents:
+                doc["documents"] = documents[index]
+            documents_array.append(doc)
+    return documents_array
 
 
 def pre_process_documents(
     name, collection_name, description, tags, output_folder_path, input_file_path
 ):
     try:
-        is_supported = check_file_support(input_file_path)
-
-        if not is_supported:
-            raise Exception(f"Unsupported file format")
         if not name or not collection_name:
             raise Exception("You must supply a collection and memory name.")
+        if not os.path.exists(input_file_path):
+            raise Exception("File does not exist.")
+        if not check_file_support(input_file_path):
+            raise Exception("Unsupported file format.")
     except (Exception, ValueError, TypeError, KeyError) as error:
         print(f"[embedding api] Pre-processing failed: {error}")
         raise Exception(error)
@@ -137,7 +143,7 @@ def pre_process_documents(
         # @TODO If the file is not text, then create a text description of the contents (via VisionAi, Human, OCR)
         # Copy text contents of original file into a new file, parsed for embedding
         with open(target_output_path, "w", encoding="utf-8") as output_file, open(
-            input_file_path, "r"
+            input_file_path, "r", encoding="utf-8"
         ) as input_file:
             # Check if header exists
             first_line = input_file.readline()
@@ -191,6 +197,7 @@ def create_embedding(
         # Create a new document embedding
         collection_name: str = form["collection_name"]
         document_name: str = form["document_name"]
+        document_id: str = form["document_id"]
         description: str = form["description"]
         tags: str = form["tags"]
         # You MUST use the same embedding function to create as you do to get collection.
@@ -203,26 +210,31 @@ def create_embedding(
             sources_json = metadata["sources"]
             sources_array = json.loads(sources_json)
             updated_sources_array = list(sources_array)  # copy
-        new_source = {
+        # Add/lookup sources by their universally unique id
+        new_source_id = document_id or str(uuid.uuid4())
+        new_source_metadata = {
             # Globally unique id
-            "id": str(uuid.uuid4()),
+            "id": new_source_id,
             # Source id
             "name": document_name,
-            # Update processing flag for this document
-            "processing": "pending",
             # Update sources paths (where original uploaded files are stored)
             "filePath": file_path,
             # Update other metadata
             "description": description,
             "tags": tags,
+            "checksum": checksum,
+            "createdAt": datetime.utcnow().strftime("%B %d %Y - %H:%M:%S"),
         }
-        updated_sources_array.append(new_source)
+        # Find and replace source id or add it
+        if new_source_id in updated_sources_array:
+            source_index = updated_sources_array.index(new_source_id)
+            updated_sources_array[source_index] = new_source_id
+        else:
+            updated_sources_array.append(new_source_id)
         # Convert data to json
         print("[embedding api] Convert metadata to json...")
         updated_sources_json = json.dumps(updated_sources_array)
         metadata["sources"] = updated_sources_json
-        # Update the collection with new metadata
-        chroma_collection.modify(metadata=metadata)
         # Debugging
         llama_debug = LlamaDebugHandler(print_trace_on_end=True)
         callback_manager = CallbackManager([llama_debug])
@@ -237,40 +249,37 @@ def create_embedding(
             chunk_size_limit=512,
         )
         # Create a vector db
-        vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        document_text = documents[0].get_content()
-        # Create an index used for querying. This will be saved to disk for later use.
         print("[embedding api] Creating index...")
+        vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+        # Create an index used for querying. This will be saved to disk for later use.
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+        document = documents[0]
+        document_text = document.get_content()
         index = VectorStoreIndex.from_documents(
             collection_name=collection_name,
-            ids=[document_name],  # id of input file
+            ids=[document_id],
             client=db_client,
-            metadatas=[new_source],
-            documents=[documents[0]],  # just one file for now
+            metadatas=[new_source_metadata],
+            documents=[document],  # just one file for now
             storage_context=storage_context,
             service_context=service_context,
             persist_directory=storage_directory,
             show_progress=True,
             # use_async=True,
         )
-        # Update new document in collection's metadata
-        for src_item in updated_sources_array:
-            if src_item["name"] == document_name:
-                # Mark this document as done
-                src_item["processing"] = "complete"
-                src_item["createdAt"] = datetime.utcnow().strftime(
-                    "%B %d %Y - %H:%M:%S"
-                )
-                src_item["checksum"] = checksum
-                metadata["sources"] = json.dumps(updated_sources_array)
-                chroma_collection.modify(metadata=metadata)
-                break
-        # Add new document
-        chroma_collection.add(
-            ids=[document_name],
-            metadatas=[new_source],
+        # Update the collection with new metadata
+        chroma_collection.modify(metadata=metadata)
+        # Update if embedding already exists
+        if document_id:
+            set_chroma_collection = chroma_collection.update
+        # Add new document to collection
+        else:
+            set_chroma_collection = chroma_collection.add
+        set_chroma_collection(
+            ids=[new_source_id],
+            metadatas=[new_source_metadata],
             documents=[document_text],
+            # embeddings=embeddings, # optionally add your own
         )
         # Save index to disk. We can read from disk later without needing to re-construct.
         index.storage_context.persist(
@@ -280,8 +289,8 @@ def create_embedding(
         print(f"[embedding api] Finished embedding, path: {file_path}")
         return True
     except Exception as e:
-        msg = f"[embedding api] Embedding failed:\n{e}"
-        print(msg)
+        msg = f"Embedding failed:\n{e}"
+        print(f"[embedding api] {msg}")
         raise Exception(msg)
 
 

@@ -34,7 +34,8 @@ TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     print("[homebrew api] Lifespan startup")
-    app.requests_client = httpx.AsyncClient()
+    # https://www.python-httpx.org/quickstart/
+    app.requests_client = httpx.Client()
     # Store some state here if you want...
     application.state.storage_directory = VECTOR_STORAGE_PATH
     application.state.db_client = None
@@ -496,7 +497,7 @@ class AddDocumentRequest(BaseModel):
 @app.post("/v1/memory/addDocument")
 async def create_memory(
     form: AddDocumentRequest = Depends(),
-    file: UploadFile = File(...),
+    file: UploadFile = File(None),  # File(...) means required
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ):
     try:
@@ -507,6 +508,8 @@ async def create_memory(
         url_path = form.urlPath
         tmp_input_file_path = ""
 
+        if file == None and url_path == "":
+            raise Exception("You must supply a file upload or url")
         if not name or not collection_name:
             # Collection name must be 3 and 63 characters.
             raise Exception("You must supply a collection and memory name")
@@ -514,19 +517,21 @@ async def create_memory(
             raise Exception("No model path defined.")
 
         # Save files to disk first
+        tmp_folder = TMP_DOCUMENT_PATH
+        filename = f"{name}.md"  # @TODO Change to id
+        tmp_input_file_path = os.path.join(tmp_folder, filename)
         if url_path:
-            print(f"[homebrew api] Downloading file from url {url_path}")
-            # @TODO Download the file and save to disk
-            # file = get_file_url(url_path)
-            # filename = file.filename
-            # tmp_input_file_path = os.path.join(tmp_folder, filename)
-        if file:
+            print(
+                f"[homebrew api] Downloading file from url {url_path} to {tmp_input_file_path}"
+            )
+            if not os.path.exists(tmp_folder):
+                os.makedirs(tmp_folder)
+            # Download the file and save to disk
+            await get_file_from_url(url_path, tmp_input_file_path)
+        elif file:
             print("[homebrew api] Saving uploaded file to disk...")
             # Read the uploaded file in chunks of 1mb,
             # store to a tmp dir for processing later
-            filename = file.filename
-            tmp_folder = TMP_DOCUMENT_PATH
-            tmp_input_file_path = os.path.join(tmp_folder, filename)
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             with open(tmp_input_file_path, "wb") as f:
@@ -554,6 +559,7 @@ async def create_memory(
         embed_form = {
             "collection_name": collection_name,
             "document_name": name,
+            "document_id": "",
             "description": description,
             "tags": tags,
         }
@@ -729,6 +735,7 @@ def explore_source_file(params: ExploreSourceRequest = Depends()):
 class UpdateDocumentRequest(BaseModel):
     collectionName: str
     documentName: str
+    documentId: str
     urlPath: Optional[str] = ""
     filePath: Optional[str] = ""
     metadata: Optional[dict] = {}
@@ -736,32 +743,37 @@ class UpdateDocumentRequest(BaseModel):
 
 # Re-process and re-embed existing document(s) from /parsed directory or url link
 @app.post("/v1/memory/updateDocument")
-def update_memory(
+async def update_memory(
     args: UpdateDocumentRequest,
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ):
     try:
         collection_name = args.collectionName
+        document_id = args.documentId
         document_name = args.documentName
         metadata = args.metadata
         url_path = args.urlPath
         file_path = args.filePath
+        document = None
+        document_metadata = {}
 
         # Verify id's
-        if not collection_name or not document_name:
-            raise Exception("Please supply a collection and/or document name")
+        if not collection_name or not document_name or not document_id:
+            raise Exception(
+                "Please supply a collection name, document name, and document id"
+            )
 
         # Retrieve document data
         db = get_vectordb_client()
-        collection = db.get_collection(collection_name)
         documents = embedding.get_document(
             collection_name=collection_name,
-            document_ids=[document_name],
+            document_ids=[document_id],
             db=db,
             include=["documents", "metadatas"],
         )
-        document = documents[0]
-        document_metadata = document["metadata"]
+        if len(documents) >= 1:
+            document = documents[0]
+            document_metadata = document["metadata"]
 
         if not document:
             raise Exception("No record could be found for that memory")
@@ -772,8 +784,8 @@ def update_memory(
         tmp_file_path = os.path.join(TMP_DOCUMENT_PATH, new_file_name)
         if url_path:
             print(f"[homebrew api] Downloading file to {tmp_file_path} ...")
-            # Would be nice to check file headers for checksum before downloading
-            # ...
+            # Download the file and save to disk
+            await get_file_from_url(url_path, tmp_file_path)
         elif file_path:
             print(f"[homebrew api] Loading local file from disk {file_path} ...")
             # Copy file from provided location to /tmp dir, only if paths differ
@@ -792,10 +804,6 @@ def update_memory(
         if new_file_hash != stored_file_hash:
             # Pass provided metadata or stored
             updated_document_metadata = metadata or document_metadata
-            # Update collection with new metadata
-            # collection.update(name=collection_name, documents=documents, metadatas=updated_metadata, ids=[document_name],)
-            # updated_collection_metadata = collection.metadata
-            # collection.modify(name=collection_name, metadata=updated_collection_metadata)
             # Process input documents
             processed_result = embedding.pre_process_documents(
                 name=document_name,
@@ -811,6 +819,7 @@ def update_memory(
             form = {
                 "collection_name": collection_name,
                 "document_name": document_name,
+                "document_id": document_id,
                 "description": updated_document_metadata["description"],
                 "tags": updated_document_metadata["tags"],
             }
@@ -852,40 +861,46 @@ class DeleteDocumentsRequest(BaseModel):
 def delete_documents(params: DeleteDocumentsRequest):
     try:
         collection_id = params.collection_id
-        doc_ids = params.document_ids
-        num_documents = len(doc_ids)
-        document_name = doc_ids[0]
+        document_ids = params.document_ids
+        num_documents = len(document_ids)
+        document = None
         db = get_vectordb_client()
         collection = db.get_collection(collection_id)
-        # Delete reference from collection sources
-        sources: List[dict] = json.loads(collection.metadata["sources"])
-        source_file_path = ""
-        for s in sources:
-            source_name = s["name"]
-            if source_name == document_name:
-                # Delete all files associated with embedded docs
-                source_file_path = s["filePath"]
-                source_id = s["id"]
-                print(f"[homebrew api] Remove file {source_id} from {source_file_path}")
-                if os.path.exists(source_file_path):
-                    os.remove(source_file_path)
-                # Remove source reference from array
-                sources.remove(s)
-        # Update collection
-        sources_json = json.dumps(sources)
-        collection.metadata["sources"] = sources_json
-        collection.modify(metadata=collection.metadata)
-        # Delete the embeddings from collection
-        collection.delete(ids=doc_ids)
-        # Delete embeddings from llama-index @TODO Verify this works
         if app.state.llm == None:
             app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-        index = embedding.load_embedding(app.state.llm, db, collection_id)
-        index.delete(document_name)
+
+        # Delete reference from collection sources
+        sources: List[str] = json.loads(collection.metadata["sources"])
+        source_file_path = ""
+        # Delete all files associated with embedded docs
+        documents = embedding.get_document(
+            collection_name=collection_id,
+            document_ids=document_ids,
+            db=db,
+            include=["metadatas"],
+        )
+        for document in documents:
+            document_metadata = document["metadata"]
+            source_file_path = document_metadata["filePath"]
+            document_id = document_metadata["id"]
+            print(f"[homebrew api] Remove file {document_id} from {source_file_path}")
+            if os.path.exists(source_file_path):
+                os.remove(source_file_path)
+            # Remove source reference from array
+            sources.remove(document_id)
+            # Update collection
+            sources_json = json.dumps(sources)
+            collection.metadata["sources"] = sources_json
+            collection.modify(metadata=collection.metadata)
+            # Delete embeddings from llama-index @TODO Verify this works
+            index = embedding.load_embedding(app.state.llm, db, collection_id)
+            index.delete(document_id)
+        # Delete the embeddings from collection
+        collection.delete(ids=document_ids)
 
         return {
             "success": True,
-            "message": f"Removed {num_documents} document(s): {document_name}",
+            "message": f"Removed {num_documents} document(s): {document_ids}",
         }
     except Exception as e:
         print(f"[homebrew api] Error: {e}")
@@ -906,10 +921,18 @@ def delete_collection(params: DeleteCollectionRequest = Depends()):
         collection_id = params.collection_id
         db = get_vectordb_client()
         collection = db.get_collection(collection_id)
-        sources: List[dict] = json.loads(collection.metadata["sources"])
+        sources: List[str] = json.loads(collection.metadata["sources"])
+        include = ["documents", "metadatas"]
         # Remove all associated source files
-        for s in sources:
-            filePath = s["filePath"]
+        documents = embedding.get_document(
+            collection_name=collection_id,
+            document_ids=sources,
+            db=get_vectordb_client(),
+            include=include,
+        )
+        for document in documents:
+            document_metadata = document["metadata"]
+            filePath = document_metadata["filePath"]
             os.remove(filePath)
         # Remove the collection
         db.delete_collection(name=collection_id)
@@ -979,7 +1002,7 @@ def search_similar(payload: SearchSimilarRequest):
     try:
         query = payload.query
         collection_name = payload.collection_name
-        print(f"Search: {query} in: {collection_name}")
+        print(f"[homebrew api] Search: {query} in: {collection_name}")
 
         if not app.state.path_to_model:
             raise Exception("No path to model provided.")
@@ -999,6 +1022,33 @@ def search_similar(payload: SearchSimilarRequest):
 
 
 # Methods...
+
+
+async def get_file_from_url(url: str, pathname: str):
+    # example url: https://raw.githubusercontent.com/dieharders/ai-text-server/master/README.md
+    client: httpx.Client = app.requests_client
+    CHUNK_SIZE = 1024 * 1024  # 1mb
+    TOO_LONG = 751619276  # about 700mb limit in "bytes"
+    headers = {
+        "Content-Type": "application/octet-stream",
+    }
+    # @TODO Verify stored checksum before downloading
+    head_res = client.head(url)
+    total_file_size = head_res.headers.get("content-length")
+    if int(total_file_size) > TOO_LONG:
+        raise Exception("File is too large")
+    # Stream binary content
+    with client.stream("GET", url, headers=headers) as res:
+        res.raise_for_status()
+        if res.status_code != httpx.codes.OK:
+            raise Exception("Something went wrong fetching file")
+        if int(res.headers["Content-Length"]) > TOO_LONG:
+            raise Exception("File is too large")
+        with open(pathname, "wb") as file:
+            # Write data to disk
+            for block in res.iter_bytes(chunk_size=CHUNK_SIZE):
+                file.write(block)
+    return True
 
 
 # Open a native file explorer at location of given source
