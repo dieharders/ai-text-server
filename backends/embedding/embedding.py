@@ -86,7 +86,7 @@ def check_file_support(filePath: str):
 
 
 # Create a filename for a parsed document memory
-def create_parsed_filename(collection_name, document_name):
+def create_parsed_filename(collection_name: str, document_name: str):
     return f"{collection_name}--{document_name}.md"
 
 
@@ -94,7 +94,7 @@ def create_parsed_filename(collection_name, document_name):
 def get_document(
     collection_name: str,
     document_ids: List[str],
-    db,
+    db: Type[ClientAPI],
     include: Optional[List[str]] = None,
 ):
     collection = db.get_collection(collection_name)
@@ -123,12 +123,12 @@ def get_document(
 
 
 def pre_process_documents(
-    document_name,
-    collection_name,
-    description,
-    tags,
-    output_folder_path,
-    input_file_path,
+    document_name: str,
+    collection_name: str,
+    description: str,
+    tags: str,
+    output_folder_path: str,
+    input_file_path: str,
 ):
     try:
         if not document_name or not collection_name:
@@ -199,7 +199,7 @@ def create_embedding(
     storage_directory: str,
     form: Any,
     llm: Type[LlamaCPP],
-    db_client: Type[ClientAPI],
+    db: Type[ClientAPI],
 ):
     try:
         # File attributes
@@ -221,7 +221,7 @@ def create_embedding(
         if not document_id or not collection_name or not document_name:
             raise Exception("Missing input values.")
         # You MUST use the same embedding function to create as you do to get collection.
-        chroma_collection = db_client.get_collection(collection_name)
+        chroma_collection = db.get_collection(collection_name)
         # Update sources (document ids) metadata
         print("[embedding api] Update collection metadata")
         metadata = copy.deepcopy(chroma_collection.metadata)  # deepcopy
@@ -278,7 +278,7 @@ def create_embedding(
         index = VectorStoreIndex.from_documents(
             collection_name=collection_name,
             ids=[document_id],
-            client=db_client,
+            client=db,
             metadatas=[new_source_metadata],
             documents=[document],  # just one file for now
             storage_context=storage_context,
@@ -339,7 +339,7 @@ def verify_response(response, service_context):
 
 
 # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
-def query_embedding(query, index):
+def query_embedding(query: str, index):
     print("[embedding api] Query Data")
     # system_prompt = sys_prompt or DEFAULT_SYSTEM_PROMPT
     # query_wrapper_prompt = PromptTemplate(
@@ -354,7 +354,7 @@ def query_embedding(query, index):
 
 
 # Load index from disk
-def load_embedding(llm, db_client, collection_name: str):
+def load_embedding(llm: Type[LlamaCPP], db: Type[ClientAPI], collection_name: str):
     # Debugging
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
@@ -363,7 +363,7 @@ def load_embedding(llm, db_client, collection_name: str):
         llm=llm, embed_model=create_embed_model(), callback_manager=callback_manager
     )
     # You MUST get() with the same embedding function you supplied while creating the collection.
-    chroma_collection = db_client.get_or_create_collection(collection_name)
+    chroma_collection = db.get_or_create_collection(collection_name)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     # Create index from vector db
     index = VectorStoreIndex.from_vector_store(
