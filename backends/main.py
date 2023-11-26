@@ -1,4 +1,5 @@
 import os
+import re
 import glob
 import json
 import uvicorn
@@ -421,14 +422,13 @@ class PreProcessRequest(BaseModel):
     filePath: str
 
 
-# @TODO Create a seperate processing func for this endpoint and others to use and put inside embedding module
 # Pre-process supplied files into a text format and save to disk for embedding later.
 @app.post("/v1/embeddings/preProcess")
 def pre_process_documents(form: PreProcessRequest = Depends()):
     try:
         file_path = form.filePath
-        processed_result = embedding.pre_process_documents(
-            name=form.name,
+        processed_file = embedding.pre_process_documents(
+            document_name=form.name,
             collection_name=form.collection_name,
             description=form.description,
             tags=form.tags,
@@ -438,7 +438,7 @@ def pre_process_documents(form: PreProcessRequest = Depends()):
         return {
             "success": True,
             "message": f"Successfully processed {file_path}",
-            "data": processed_result,
+            "data": processed_file,
         }
     except (Exception, ValueError, TypeError, KeyError) as error:
         return {
@@ -448,7 +448,7 @@ def pre_process_documents(form: PreProcessRequest = Depends()):
 
 
 class AddCollectionRequest(BaseModel):
-    name: str
+    collectionName: str
     description: Optional[str] = ""
     tags: Optional[str] = List[None]
 
@@ -456,35 +456,42 @@ class AddCollectionRequest(BaseModel):
 @app.get("/v1/memory/addCollection")
 def create_memory_collection(form: AddCollectionRequest = Depends()):
     try:
-        if not form.name:
+        parsed_tags = parse_valid_tags(form.tags)
+        collection_name = form.collectionName
+        if not collection_name:
             raise Exception("You must supply a collection name.")
+        if parsed_tags == None:
+            raise Exception("Invalid value for 'tags' input.")
+        if not check_valid_id(collection_name):
+            raise Exception(
+                "Invalid collection name. No '--', uppercase, spaces or special chars allowed."
+            )
         # Create payload. ChromaDB only accepts strings, numbers, bools.
         metadata = {
-            # Update tags @TODO Remove special chars, commas. Parse as string of space seperated words.
-            "tags": form.tags,
+            "tags": parsed_tags,
             "description": form.description,
             "sources": json.dumps([]),
         }
         # Apply input values to collection metadata
         db_client = get_vectordb_client()
         db_client.create_collection(
-            name=form.name,
+            name=collection_name,
             metadata=metadata,
         )
         return {
             "success": True,
-            "message": f"Successfully created new collection [{form.name}]",
+            "message": f"Successfully created new collection [{collection_name}]",
         }
     except Exception as e:
         return {
             "success": False,
-            "message": f"Failed to create new collection [{form.name}]: {e}",
+            "message": f"Failed to create new collection [{collection_name}]: {e}",
         }
 
 
 class AddDocumentRequest(BaseModel):
-    document_name: str
-    collection_name: str
+    documentName: str
+    collectionName: str
     description: Optional[str] = ""
     tags: Optional[str] = ""
     urlPath: Optional[str] = ""
@@ -501,24 +508,29 @@ async def create_memory(
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ):
     try:
-        name = form.document_name
-        collection_name = form.collection_name
+        document_name = form.documentName
+        collection_name = form.collectionName
         description = form.description
-        tags = form.tags
         url_path = form.urlPath
+        tags = parse_valid_tags(form.tags)
         tmp_input_file_path = ""
 
         if file == None and url_path == "":
-            raise Exception("You must supply a file upload or url")
-        if not name or not collection_name:
-            # Collection name must be 3 and 63 characters.
-            raise Exception("You must supply a collection and memory name")
+            raise Exception("You must supply a file upload or url.")
+        if not document_name or not collection_name:
+            raise Exception("You must supply a collection and memory name.")
+        if tags == None:
+            raise Exception("Invalid value for 'tags' input.")
+        if not check_valid_id(document_name):
+            raise Exception(
+                "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
+            )
         if not app.state.path_to_model:
             raise Exception("No model path defined.")
 
-        # Save files to disk first
+        # Save temp files to disk first. The filename doesnt matter much.
         tmp_folder = TMP_DOCUMENT_PATH
-        filename = f"{name}.md"  # @TODO Change to id
+        filename = embedding.create_parsed_filename(collection_name, document_name)
         tmp_input_file_path = os.path.join(tmp_folder, filename)
         if url_path:
             print(
@@ -542,8 +554,8 @@ async def create_memory(
             raise Exception("No file or url supplied")
 
         # Parse/Process input files
-        processed_result = embedding.pre_process_documents(
-            name=name,
+        processed_file = embedding.pre_process_documents(
+            document_name=document_name,
             collection_name=collection_name,
             description=description,
             tags=tags,
@@ -558,25 +570,21 @@ async def create_memory(
         db_client = get_vectordb_client()
         embed_form = {
             "collection_name": collection_name,
-            "document_name": name,
-            "document_id": "",
+            "document_name": document_name,
+            "document_id": processed_file["document_id"],
             "description": description,
             "tags": tags,
+            "is_update": False,
         }
         background_tasks.add_task(
             embedding.create_embedding,
-            processed_result["path_to_file"],
-            processed_result["checksum"],
+            processed_file,
             app.state.storage_directory,
             embed_form,
             app.state.llm,
             db_client,
         )
-    except Exception as e:
-        # Delete uploaded tmp file
-        if os.path.exists(tmp_input_file_path):
-            os.remove(tmp_input_file_path)
-            print(f"[homebrew api] Removed temp file.")
+    except (Exception, KeyError) as e:
         # Error
         msg = f"Failed to create a new memory: {e}"
         print(f"[homebrew api] {msg}")
@@ -591,6 +599,11 @@ async def create_memory(
             "success": True,
             "message": msg,
         }
+    finally:
+        # Delete uploaded tmp file
+        if os.path.exists(tmp_input_file_path):
+            os.remove(tmp_input_file_path)
+            print(f"[homebrew api] Removed temp file.")
 
 
 @app.get("/v1/memory/getAllCollections")
@@ -762,6 +775,10 @@ async def update_memory(
             raise Exception(
                 "Please supply a collection name, document name, and document id"
             )
+        if not check_valid_id(document_name):
+            raise Exception(
+                "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
+            )
 
         # Retrieve document data
         db = get_vectordb_client()
@@ -778,17 +795,17 @@ async def update_memory(
         if not document:
             raise Exception("No record could be found for that memory")
 
-        # Download or load file(s)
-        new_file_name = f"{document_name}.md"
+        # Fetch file(s)
+        new_file_name = embedding.create_parsed_filename(collection_name, document_id)
         tmp_folder = TMP_DOCUMENT_PATH
         tmp_file_path = os.path.join(TMP_DOCUMENT_PATH, new_file_name)
         if url_path:
-            print(f"[homebrew api] Downloading file to {tmp_file_path} ...")
             # Download the file and save to disk
+            print(f"[homebrew api] Downloading file to {tmp_file_path} ...")
             await get_file_from_url(url_path, tmp_file_path)
         elif file_path:
-            print(f"[homebrew api] Loading local file from disk {file_path} ...")
             # Copy file from provided location to /tmp dir, only if paths differ
+            print(f"[homebrew api] Loading local file from disk {file_path} ...")
             if file_path != tmp_file_path:
                 if not os.path.exists(tmp_folder):
                     os.makedirs(tmp_folder)
@@ -798,18 +815,22 @@ async def update_memory(
             raise Exception("Please supply a local path or url to a file")
 
         # Compare checksums
-        updated_document_metadata = None
+        updated_document_metadata = {}
         new_file_hash = embedding.create_checksum(tmp_file_path)
         stored_file_hash = document_metadata["checksum"]
         if new_file_hash != stored_file_hash:
             # Pass provided metadata or stored
             updated_document_metadata = metadata or document_metadata
+            # Validate tags
+            updated_tags = parse_valid_tags(updated_document_metadata["tags"])
+            if updated_tags == None:
+                raise Exception("Invalid value for 'tags' input.")
             # Process input documents
-            processed_result = embedding.pre_process_documents(
-                name=document_name,
+            processed_file = embedding.pre_process_documents(
+                document_name=document_name,
                 collection_name=collection_name,
                 description=updated_document_metadata["description"],
-                tags=updated_document_metadata["tags"],
+                tags=updated_tags,
                 input_file_path=tmp_file_path,
                 output_folder_path=PARSED_DOCUMENT_PATH,
             )
@@ -821,12 +842,12 @@ async def update_memory(
                 "document_name": document_name,
                 "document_id": document_id,
                 "description": updated_document_metadata["description"],
-                "tags": updated_document_metadata["tags"],
+                "tags": updated_tags,
+                "is_update": True,
             }
             background_tasks.add_task(
                 embedding.create_embedding,
-                processed_result["path_to_file"],
-                processed_result["checksum"],
+                processed_file,
                 app.state.storage_directory,
                 form,
                 app.state.llm,
@@ -1022,6 +1043,72 @@ def search_similar(payload: SearchSimilarRequest):
 
 
 # Methods...
+
+
+# Verify the string contains only lowercase letters, numbers, and a select special chars and whitespace
+# InValidate by checking for "None" return value
+def parse_valid_tags(tags: str):
+    try:
+        # Check for correct type of input
+        if not isinstance(tags, str):
+            raise Exception("'Tags' must be a string")
+        # We dont care about empty string for optional input
+        if not len(tags):
+            return tags
+        # Allow only lowercase chars, numbers and certain special chars and whitespaces
+        m = re.compile(r"^[a-z0-9$*-]+( [a-z0-9$*-]+)*$")
+        if not m.match(tags):
+            raise Exception("'Tags' input value has invalid chars.")
+        # Remove any whitespace/hyphens from start/end
+        result = tags.strip()
+        result = tags.strip("-")
+        # Remove invalid single words
+        array_values = result.split(" ")
+        result_array = []
+        for word in array_values:
+            # Words cannot have dashes at start/end
+            p_word = word.strip("-")
+            # Single char words not allowed
+            if len(word) > 1:
+                result_array.append(p_word)
+        result = " ".join(result_array)
+        # Return a sanitized string
+        return result
+    except Exception as e:
+        print(f"[homebrew api] {e}")
+        return None
+
+
+# Determine if the input string is acceptable as an id
+def check_valid_id(input: str):
+    l = len(input)
+    # Cannot be empty
+    if not l:
+        return False
+    # Check for sequences reserved for our parsing scheme
+    matches_double_hyphen = re.findall("--", input)
+    if matches_double_hyphen:
+        print(f"[homebrew api] Found double hyphen in 'id': {input}")
+        return False
+    # All names must be 3 and 63 characters
+    if l > 63 or l < 3:
+        return False
+    # No hyphens at start/end
+    if input[0] == "-" or input[l - 1] == "-":
+        print("[homebrew api] Found hyphens at start/end in [id]")
+        return False
+    # No whitespace allowed
+    matches_whitespace = re.findall("\s", input)
+    if matches_whitespace:
+        print("[homebrew api] Found whitespace in [id]")
+        return False
+    # Check special chars. All chars must be lowercase. Dashes acceptable.
+    m = re.compile(r"[a-z0-9-]*$")
+    if not m.match(input):
+        print("[homebrew api] Found invalid special chars in [id]")
+        return False
+    # Passes
+    return True
 
 
 async def get_file_from_url(url: str, pathname: str):

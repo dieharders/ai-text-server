@@ -85,6 +85,11 @@ def check_file_support(filePath: str):
     return is_supported
 
 
+# Create a filename for a parsed document memory
+def create_parsed_filename(collection_name, document_name):
+    return f"{collection_name}--{document_name}.md"
+
+
 # Return a list of documents
 def get_document(
     collection_name: str,
@@ -118,10 +123,15 @@ def get_document(
 
 
 def pre_process_documents(
-    name, collection_name, description, tags, output_folder_path, input_file_path
+    document_name,
+    collection_name,
+    description,
+    tags,
+    output_folder_path,
+    input_file_path,
 ):
     try:
-        if not name or not collection_name:
+        if not document_name or not collection_name:
             raise Exception("You must supply a collection and memory name.")
         if not os.path.exists(input_file_path):
             raise Exception("File does not exist.")
@@ -132,12 +142,13 @@ def pre_process_documents(
         raise Exception(error)
     else:
         # Read the form inputs
-        new_filename = f"{name}.md"
+        document_id = str(uuid.uuid4())
+        new_filename = create_parsed_filename(collection_name, document_id)
         # Create output folder for parsed file
         if not os.path.exists(output_folder_path):
             os.makedirs(output_folder_path)
         target_output_path = os.path.join(output_folder_path, new_filename)
-        # Format tags
+        # Format tags for inclusion in document
         comma_sep_tags = re.sub("\s+", ", ", tags.strip())
         # Finalize parsed file
         # @TODO If the file is not text, then create a text description of the contents (via VisionAi, Human, OCR)
@@ -151,7 +162,7 @@ def pre_process_documents(
                 # Add a header to file
                 output_file.write("---\n")
                 output_file.write(f"collection: {collection_name}\n")
-                output_file.write(f"document: {name}\n")
+                output_file.write(f"document: {document_name}\n")
                 output_file.write(f"description: {description}\n")
                 output_file.write(f"tags: {comma_sep_tags}\n")
                 output_file.write("---\n\n")
@@ -175,7 +186,8 @@ def pre_process_documents(
 
     print(f"[embedding api] Successfully processed {target_output_path}")
     return {
-        "filename": new_filename,
+        "document_id": document_id,
+        "file_name": new_filename,
         "path_to_file": target_output_path,
         "checksum": checksum,
     }
@@ -183,23 +195,31 @@ def pre_process_documents(
 
 # Create a vector embedding for the given document.
 def create_embedding(
-    file_path: str,
-    checksum: str,
+    processed_file: dict,
     storage_directory: str,
     form: Any,
     llm: Type[LlamaCPP],
     db_client: Type[ClientAPI],
 ):
     try:
+        # File attributes
+        file_name: str = processed_file["file_name"]
+        file_path: str = processed_file["path_to_file"]
+        checksum: str = processed_file["checksum"]
         # Load in document files
         print(f"[embedding api] Load docs: {file_path}")
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
+        if len(documents) == 0:
+            raise Exception("No documents found.")
         # Create a new document embedding
         collection_name: str = form["collection_name"]
         document_name: str = form["document_name"]
         document_id: str = form["document_id"]
         description: str = form["description"]
         tags: str = form["tags"]
+        is_update = form["is_update"]
+        if not document_id or not collection_name or not document_name:
+            raise Exception("Missing input values.")
         # You MUST use the same embedding function to create as you do to get collection.
         chroma_collection = db_client.get_collection(collection_name)
         # Update sources (document ids) metadata
@@ -211,10 +231,9 @@ def create_embedding(
             sources_array = json.loads(sources_json)
             updated_sources_array = list(sources_array)  # copy
         # Add/lookup sources by their universally unique id
-        new_source_id = document_id or str(uuid.uuid4())
         new_source_metadata = {
             # Globally unique id
-            "id": new_source_id,
+            "id": document_id,
             # Source id
             "name": document_name,
             # Update sources paths (where original uploaded files are stored)
@@ -224,13 +243,14 @@ def create_embedding(
             "tags": tags,
             "checksum": checksum,
             "createdAt": datetime.utcnow().strftime("%B %d %Y - %H:%M:%S"),
+            "fileName": file_name,
         }
         # Find and replace source id or add it
-        if new_source_id in updated_sources_array:
-            source_index = updated_sources_array.index(new_source_id)
-            updated_sources_array[source_index] = new_source_id
+        if document_id in updated_sources_array:
+            source_index = updated_sources_array.index(document_id)
+            updated_sources_array[source_index] = document_id
         else:
-            updated_sources_array.append(new_source_id)
+            updated_sources_array.append(document_id)
         # Convert data to json
         print("[embedding api] Convert metadata to json...")
         updated_sources_json = json.dumps(updated_sources_array)
@@ -269,14 +289,14 @@ def create_embedding(
         )
         # Update the collection with new metadata
         chroma_collection.modify(metadata=metadata)
-        # Update if embedding already exists
-        if document_id:
+        # Update if embedding id already exists
+        if is_update:
             set_chroma_collection = chroma_collection.update
         # Add new document to collection
         else:
             set_chroma_collection = chroma_collection.add
         set_chroma_collection(
-            ids=[new_source_id],
+            ids=[document_id],
             metadatas=[new_source_metadata],
             documents=[document_text],
             # embeddings=embeddings, # optionally add your own
