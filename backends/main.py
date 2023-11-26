@@ -453,8 +453,26 @@ class AddCollectionRequest(BaseModel):
     tags: Optional[str] = List[None]
 
 
+class AddCollectionResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Successfully created new collection",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 @app.get("/v1/memory/addCollection")
-def create_memory_collection(form: AddCollectionRequest = Depends()):
+def create_memory_collection(
+    form: AddCollectionRequest = Depends(),
+) -> AddCollectionResponse:
     try:
         parsed_tags = parse_valid_tags(form.tags)
         collection_name = form.collectionName
@@ -497,6 +515,22 @@ class AddDocumentRequest(BaseModel):
     urlPath: Optional[str] = ""
 
 
+class AddDocumentResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "A new memory has been added",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 # Create a memory for Ai.
 # This is a multi-step process involving several endpoints.
 # It will first process the file, then embed its data into vector space and
@@ -506,7 +540,7 @@ async def create_memory(
     form: AddDocumentRequest = Depends(),
     file: UploadFile = File(None),  # File(...) means required
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
-):
+) -> AddDocumentResponse:
     try:
         document_name = form.documentName
         collection_name = form.collectionName
@@ -606,8 +640,26 @@ async def create_memory(
             print(f"[homebrew api] Removed temp file.")
 
 
+class GetAllCollectionsResponse(BaseModel):
+    success: bool
+    message: str
+    data: List[dict]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Returned 5 collection(s)",
+                    "success": True,
+                    "data": [{}],
+                }
+            ]
+        }
+    }
+
+
 @app.get("/v1/memory/getAllCollections")
-def get_all_collections():
+def get_all_collections() -> GetAllCollectionsResponse:
     try:
         db = get_vectordb_client()
         collections = db.list_collections()
@@ -640,9 +692,30 @@ class GetCollectionRequest(BaseModel):
     }
 
 
+class GetCollectionResponse(BaseModel):
+    success: bool
+    message: str
+    data: dict
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Returned 5 source(s) in collection",
+                    "success": True,
+                    "data": {
+                        "collection": {},
+                        "numItems": 5,
+                    },
+                }
+            ]
+        }
+    }
+
+
 # Return a collection by id and all its documents
 @app.post("/v1/memory/getCollection")
-def get_collection(props: GetCollectionRequest):
+def get_collection(props: GetCollectionRequest) -> GetCollectionResponse:
     try:
         db = get_vectordb_client()
         id = props.id
@@ -692,9 +765,27 @@ class GetDocumentRequest(BaseModel):
     }
 
 
+class GetDocumentResponse(BaseModel):
+    success: bool
+    message: str
+    data: List[dict]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Returned 1 document(s)",
+                    "success": True,
+                    "data": [{}],
+                }
+            ]
+        }
+    }
+
+
 # Get one or more documents by id.
 @app.post("/v1/memory/getDocument")
-def get_document(params: GetDocumentRequest):
+def get_document(params: GetDocumentRequest) -> GetDocumentResponse:
     try:
         collection_id = params.collection_id
         document_ids = params.document_ids
@@ -726,9 +817,27 @@ class ExploreSourceRequest(BaseModel):
     filePath: str
 
 
+class FileExploreResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Opened file explorer",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 # Open an OS file exporer on host machine
 @app.get("/v1/memory/fileExplore")
-def explore_source_file(params: ExploreSourceRequest = Depends()):
+def explore_source_file(
+    params: ExploreSourceRequest = Depends(),
+) -> FileExploreResponse:
     filePath = params.filePath
 
     if not filePath:
@@ -754,12 +863,28 @@ class UpdateDocumentRequest(BaseModel):
     metadata: Optional[dict] = {}
 
 
+class UpdateDocumentResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Updated memories",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 # Re-process and re-embed existing document(s) from /parsed directory or url link
 @app.post("/v1/memory/updateDocument")
 async def update_memory(
     args: UpdateDocumentRequest,
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
-):
+) -> UpdateDocumentResponse:
     try:
         collection_name = args.collectionName
         document_id = args.documentId
@@ -877,9 +1002,25 @@ class DeleteDocumentsRequest(BaseModel):
     document_ids: List[str]
 
 
+class DeleteDocumentsResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Removed 1 document(s)",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 # Delete a document by id
 @app.post("/v1/memory/deleteDocuments")
-def delete_documents(params: DeleteDocumentsRequest):
+def delete_documents(params: DeleteDocumentsRequest) -> DeleteDocumentsResponse:
     try:
         collection_id = params.collection_id
         document_ids = params.document_ids
@@ -935,9 +1076,27 @@ class DeleteCollectionRequest(BaseModel):
     collection_id: str
 
 
+class DeleteCollectionResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Removed collection",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 # Delete a collection by id
 @app.get("/v1/memory/deleteCollection")
-def delete_collection(params: DeleteCollectionRequest = Depends()):
+def delete_collection(
+    params: DeleteCollectionRequest = Depends(),
+) -> DeleteCollectionResponse:
     try:
         collection_id = params.collection_id
         db = get_vectordb_client()
