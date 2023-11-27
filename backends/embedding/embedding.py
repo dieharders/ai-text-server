@@ -129,6 +129,7 @@ def pre_process_documents(
     tags: str,
     output_folder_path: str,
     input_file_path: str,
+    document_id: str = "",  # supplied if document already exists
 ):
     try:
         if not document_name or not collection_name:
@@ -141,9 +142,9 @@ def pre_process_documents(
         print(f"[embedding api] Pre-processing failed: {error}")
         raise Exception(error)
     else:
-        # Read the form inputs
-        document_id = str(uuid.uuid4())
-        new_filename = create_parsed_filename(collection_name, document_id)
+        # Read the supplied id or assign a new one
+        source_id = document_id or str(uuid.uuid4())
+        new_filename = create_parsed_filename(collection_name, source_id)
         # Create output folder for parsed file
         if not os.path.exists(output_folder_path):
             os.makedirs(output_folder_path)
@@ -186,7 +187,7 @@ def pre_process_documents(
 
     print(f"[embedding api] Successfully processed {target_output_path}")
     return {
-        "document_id": document_id,
+        "document_id": source_id,
         "file_name": new_filename,
         "path_to_file": target_output_path,
         "checksum": checksum,

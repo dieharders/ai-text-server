@@ -431,6 +431,7 @@ def get_services_api() -> ServicesApiResponse:
 
 
 class PreProcessRequest(BaseModel):
+    document_id: Optional[str] = ""
     document_name: str
     collection_name: str
     description: Optional[str] = ""
@@ -466,6 +467,7 @@ class PreProcessResponse(BaseModel):
 def pre_process_documents(form: PreProcessRequest = Depends()) -> PreProcessResponse:
     try:
         # Validate inputs
+        document_id = form.document_id
         file_path = form.filePath
         collection_name = form.collection_name
         document_name = form.document_name
@@ -479,6 +481,7 @@ def pre_process_documents(form: PreProcessRequest = Depends()) -> PreProcessResp
             raise Exception("Invalid value for 'tags' input.")
         # Process files
         processed_file = embedding.pre_process_documents(
+            document_id=document_id,
             document_name=document_name,
             collection_name=collection_name,
             description=form.description,
@@ -695,7 +698,7 @@ async def create_memory(
 class GetAllCollectionsResponse(BaseModel):
     success: bool
     message: str
-    data: List[dict]
+    data: list
 
     model_config = {
         "json_schema_extra": {
@@ -703,7 +706,17 @@ class GetAllCollectionsResponse(BaseModel):
                 {
                     "message": "Returned 5 collection(s)",
                     "success": True,
-                    "data": [{}],
+                    "data": [
+                        {
+                            "name": "collection-name",
+                            "id": "1010-10101",
+                            "metadata": {
+                                "description": "A description.",
+                                "sources": "['document-id']",
+                                "tags": "html5 react",
+                            },
+                        }
+                    ],
                 }
             ]
         }
@@ -1005,6 +1018,7 @@ async def update_memory(
                 raise Exception("Invalid value for 'tags' input.")
             # Process input documents
             processed_file = embedding.pre_process_documents(
+                document_id=document_id,
                 document_name=document_name,
                 collection_name=collection_name,
                 description=description,
