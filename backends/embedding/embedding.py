@@ -354,7 +354,11 @@ def query_embedding(query: str, index):
 
 
 # Load index from disk
-def load_embedding(llm: Type[LlamaCPP], db: Type[ClientAPI], collection_name: str):
+def load_embedding(
+    llm: Type[LlamaCPP],
+    db: Type[ClientAPI],
+    collection_name: str,
+):
     # Debugging
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])

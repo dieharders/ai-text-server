@@ -78,9 +78,25 @@ app.add_middleware(
 )
 
 
+class PingResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "message": "pong",
+                }
+            ]
+        }
+    }
+
+
 # Keep server/database alive
 @app.get("/v1/ping")
-def ping():
+def ping() -> PingResponse:
     try:
         db = get_vectordb_client()
         db.heartbeat()
@@ -982,6 +998,7 @@ async def update_memory(
         if new_file_hash != stored_file_hash:
             # Pass provided metadata or stored
             updated_document_metadata = metadata or document_metadata
+            description = updated_document_metadata["description"]
             # Validate tags
             updated_tags = parse_valid_tags(updated_document_metadata["tags"])
             if updated_tags == None:
@@ -990,7 +1007,7 @@ async def update_memory(
             processed_file = embedding.pre_process_documents(
                 document_name=document_name,
                 collection_name=collection_name,
-                description=updated_document_metadata["description"],
+                description=description,
                 tags=updated_tags,
                 input_file_path=tmp_file_path,
                 output_folder_path=PARSED_DOCUMENT_PATH,
@@ -1002,7 +1019,7 @@ async def update_memory(
                 "collection_name": collection_name,
                 "document_name": document_name,
                 "document_id": document_id,
-                "description": updated_document_metadata["description"],
+                "description": description,
                 "tags": updated_tags,
                 "is_update": True,
             }
@@ -1064,27 +1081,26 @@ def delete_documents(params: DeleteDocumentsRequest) -> DeleteDocumentsResponse:
         document = None
         db = get_vectordb_client()
         collection = db.get_collection(collection_id)
-        if app.state.llm == None:
-            app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-
-        # Delete reference from collection sources
         sources: List[str] = json.loads(collection.metadata["sources"])
         source_file_path = ""
-        # Delete all files associated with embedded docs
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=document_ids,
             db=db,
             include=["metadatas"],
         )
+        if app.state.llm == None:
+            app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+        # Delete all files and references associated with embedded docs
         for document in documents:
             document_metadata = document["metadata"]
             source_file_path = document_metadata["filePath"]
             document_id = document_metadata["id"]
+            # Remove file from disk
             print(f"[homebrew api] Remove file {document_id} from {source_file_path}")
             if os.path.exists(source_file_path):
                 os.remove(source_file_path)
-            # Remove source reference from array
+            # Remove source reference from collection array
             sources.remove(document_id)
             # Update collection
             sources_json = json.dumps(sources)
@@ -1165,9 +1181,25 @@ def delete_collection(
         }
 
 
+class WipeMemoriesResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Removed all memories",
+                    "success": True,
+                }
+            ]
+        }
+    }
+
+
 # Completely wipe database
 @app.get("/v1/memory/wipe")
-def wipe_all_memories():
+def wipe_all_memories() -> WipeMemoriesResponse:
     try:
         db = get_vectordb_client()
         # Delete all db values
@@ -1186,7 +1218,7 @@ def wipe_all_memories():
 
         return {
             "success": True,
-            "message": f"Successfully wiped all memories from Ai",
+            "message": "Successfully wiped all memories from Ai",
         }
     except Exception as e:
         print(f"[homebrew api] Error: {e}")
