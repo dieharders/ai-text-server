@@ -415,26 +415,62 @@ def get_services_api() -> ServicesApiResponse:
 
 
 class PreProcessRequest(BaseModel):
-    name: str
+    document_name: str
     collection_name: str
     description: Optional[str] = ""
     tags: Optional[str] = ""
     filePath: str
 
 
+class PreProcessResponse(BaseModel):
+    success: bool
+    message: str
+    data: dict[str, str]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Successfully processed file",
+                    "success": True,
+                    "data": {
+                        "document_id": "1010-1010",
+                        "file_name": "filename.md",
+                        "path_to_file": "C:\\app_data\\parsed",
+                        "checksum": "xxx",
+                    },
+                }
+            ]
+        }
+    }
+
+
 # Pre-process supplied files into a text format and save to disk for embedding later.
 @app.post("/v1/embeddings/preProcess")
-def pre_process_documents(form: PreProcessRequest = Depends()):
+def pre_process_documents(form: PreProcessRequest = Depends()) -> PreProcessResponse:
     try:
+        # Validate inputs
         file_path = form.filePath
+        collection_name = form.collection_name
+        document_name = form.document_name
+        if not check_valid_id(collection_name) or not check_valid_id(document_name):
+            raise Exception(
+                "Invalid input. No '--', uppercase, spaces or special chars allowed."
+            )
+        # Validate tags
+        parsed_tags = parse_valid_tags(form.tags)
+        if parsed_tags == None:
+            raise Exception("Invalid value for 'tags' input.")
+        # Process files
         processed_file = embedding.pre_process_documents(
-            document_name=form.name,
-            collection_name=form.collection_name,
+            document_name=document_name,
+            collection_name=collection_name,
             description=form.description,
-            tags=form.tags,
+            tags=parsed_tags,
             input_file_path=file_path,
             output_folder_path=PARSED_DOCUMENT_PATH,
         )
+
         return {
             "success": True,
             "message": f"Successfully processed {file_path}",
