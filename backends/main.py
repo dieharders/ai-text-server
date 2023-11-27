@@ -1182,6 +1182,8 @@ def delete_collection(
             os.remove(filePath)
         # Remove the collection
         db.delete_collection(name=collection_id)
+        # Remove persisted vector index from disk
+        delete_vector_store(collection_id)
 
         return {
             "success": True,
@@ -1229,6 +1231,15 @@ def wipe_all_memories() -> WipeMemoriesResponse:
             for f in files:
                 os.remove(f)  # del all .md files
             os.rmdir(PARSED_DOCUMENT_PATH)  # del folder
+        # Remove persisted vector storage folder
+        if os.path.exists(VECTOR_STORAGE_PATH):
+            folders = glob.glob(f"{VECTOR_STORAGE_PATH}/*")
+            for dir in folders:
+                if not "chroma." in dir:
+                    files = glob.glob(f"{dir}/*")
+                    for f in files:
+                        os.remove(f)  # del files
+            os.rmdir(dir)  # del folder
 
         return {
             "success": True,
@@ -1286,8 +1297,17 @@ def search_similar(payload: SearchSimilarRequest):
 # Methods...
 
 
+def delete_vector_store(target_file_path: str):
+    path_to_delete = os.path.join(VECTOR_STORAGE_PATH, target_file_path)
+    if os.path.exists(path_to_delete):
+        files = glob.glob(f"{path_to_delete}/*")
+        for f in files:
+            os.remove(f)  # del files
+        os.rmdir(path_to_delete)  # del folder
+
+
 # Verify the string contains only lowercase letters, numbers, and a select special chars and whitespace
-# InValidate by checking for "None" return value
+# In-validate by checking for "None" return value
 def parse_valid_tags(tags: str):
     try:
         # Check for correct type of input
