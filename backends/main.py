@@ -712,7 +712,7 @@ class GetAllCollectionsResponse(BaseModel):
                             "id": "1010-10101",
                             "metadata": {
                                 "description": "A description.",
-                                "sources": "['document-id']",
+                                "sources": ["document-id"],
                                 "tags": "html5 react",
                             },
                         }
@@ -728,6 +728,15 @@ def get_all_collections() -> GetAllCollectionsResponse:
     try:
         db = get_vectordb_client()
         collections = db.list_collections()
+
+        # Parse json data
+        for collection in collections:
+            metadata = collection.metadata
+            if "sources" in metadata:
+                sources_json = metadata["sources"]
+                sources_data = json.loads(sources_json)
+                metadata["sources"] = sources_data
+
         return {
             "success": True,
             "message": f"Returned {len(collections)} collection(s)",
