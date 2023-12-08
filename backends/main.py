@@ -6,7 +6,7 @@ import uvicorn
 import subprocess
 import httpx
 import shutil
-from typing import List, Optional
+from typing import List, Tuple, Optional
 from fastapi import (
     FastAPI,
     HTTPException,
@@ -42,6 +42,7 @@ async def lifespan(application: FastAPI):
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
+    application.state.text_model_config = None
 
     yield
 
@@ -140,6 +141,7 @@ def connect() -> ConnectResponse:
 class LoadInferenceRequest(BaseModel):
     modelId: str
     pathToModel: str
+    textModelConfig: dict
 
     model_config = {
         "json_schema_extra": {
@@ -147,6 +149,20 @@ class LoadInferenceRequest(BaseModel):
                 {
                     "modelId": "llama-2-13b-chat-ggml",
                     "pathToModel": "C:\\homebrewai-app\\models\\llama-2-13b.GGUF",
+                    "textModelConfig": {
+                        "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
+                        "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
+                        "id": "llama2-13b",
+                        "numTimesRun": 0,
+                        "isFavorited": False,
+                        "validation": "success",
+                        "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
+                        "size": 1200000,
+                        "endChunk": 13,
+                        "progress": 67,
+                        "tokenizerPath": "/some/path/to/tokenizer",
+                        "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
+                    },
                 }
             ]
         }
@@ -172,7 +188,9 @@ class LoadInferenceResponse(BaseModel):
 @app.post("/v1/text/load")
 def load_text_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
     try:
-        model_id: str = data.modelId
+        # Store the current model's configuration for later reference
+        app.state.text_model_config = data.textModelConfig
+        model_id = data.modelId
         app.state.path_to_model = data.pathToModel
         print(f"[homebrew api] Path to model loaded: {data.pathToModel}")
         # Logic to load the specified ai model here...
@@ -248,7 +266,7 @@ class StartInferenceResponse(BaseModel):
 async def start_text_inference(data: StartInferenceRequest) -> StartInferenceResponse:
     try:
         # Store the current model's configuration for later reference
-        app.text_model_config = data.modelConfig
+        app.state.text_model_config = data.modelConfig
         # Send signal to start server
         model_file_path: str = data.modelConfig["savePath"]
         isStarted = await start_text_inference_server(model_file_path)
@@ -287,7 +305,7 @@ async def shutdown_text_inference() -> ShutdownInferenceResponse:
         print("[homebrew api] Shutting down all services")
         # Reset, kill processes
         kill_text_inference()
-        delattr(app, "text_model_config")
+        delattr(app.state, "text_model_config")
 
         return {
             "success": True,
@@ -337,32 +355,47 @@ def get_services_api() -> ServicesApiResponse:
     data = []
 
     # Only return api configs for servers that are actually running
-    if hasattr(app, "text_model_config"):
-        text_inference_api = {
-            "name": "textInference",
-            "port": app.PORT_TEXT_INFERENCE,
-            "endpoints": [
-                {
-                    "name": "copilot",
-                    "urlPath": "/v1/engines/copilot-codex/completions",
-                    "method": "POST",
-                },
-                {
-                    "name": "completions",
-                    "urlPath": "/v1/completions",
-                    "method": "POST",
-                    "promptTemplate": app.text_model_config["promptTemplate"],
-                },
-                {"name": "embeddings", "urlPath": "/v1/embeddings", "method": "POST"},
-                {
-                    "name": "chatCompletions",
-                    "urlPath": "/v1/chat/completions",
-                    "method": "POST",
-                },
-                {"name": "models", "urlPath": "/v1/models", "method": "GET"},
-            ],
-        }
-        data.append(text_inference_api)
+    # if hasattr(app, "text_model_config"):
+    #     text_inference_api = {
+    #         "name": "textInference",
+    #         "port": app.PORT_TEXT_INFERENCE,
+    #         "endpoints": [
+    #             {
+    #                 "name": "copilot",
+    #                 "urlPath": "/v1/engines/copilot-codex/completions",
+    #                 "method": "POST",
+    #             },
+    #             {
+    #                 "name": "completions",
+    #                 "urlPath": "/v1/completions",
+    #                 "method": "POST",
+    #                 "promptTemplate": app.text_model_config["promptTemplate"],
+    #             },
+    #             {"name": "embeddings", "urlPath": "/v1/embeddings", "method": "POST"},
+    #             {
+    #                 "name": "chatCompletions",
+    #                 "urlPath": "/v1/chat/completions",
+    #                 "method": "POST",
+    #             },
+    #             {"name": "models", "urlPath": "/v1/models", "method": "GET"},
+    #         ],
+    #     }
+    #     data.append(text_inference_api)
+
+    # Return text inference services available from Homebrew
+    text_inference_api = {
+        "name": "textInference",
+        "port": app.PORT_HOMEBREW_API,
+        "endpoints": [
+            {
+                "name": "inference",
+                "urlPath": "/v1/text/inference",
+                "method": "POST",
+                "promptTemplate": app.state.text_model_config["promptTemplate"],
+            },
+        ],
+    }
+    data.append(text_inference_api)
 
     # Return services that are ready now
     memory_api = {
@@ -428,6 +461,76 @@ def get_services_api() -> ServicesApiResponse:
         "message": "These are the currently available service api's",
         "data": data,
     }
+
+
+class InferenceRequest(BaseModel):
+    prompt: str
+    collectionNames: Optional[List[str]] = []
+    mode: Optional[str] = "completion"
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "prompt": "Why does mass conservation break down?",
+                    "collectionNames": ["science"],
+                    "mode": "completion",
+                }
+            ]
+        }
+    }
+
+
+class InferenceResponse(BaseModel):
+    success: bool
+    message: str
+    data: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Successfull text inference",
+                    "success": True,
+                    "data": "This is a response.",
+                }
+            ]
+        }
+    }
+
+
+# Use Llama Index to run queries on vector database embeddings.
+@app.post("/v1/text/inference")
+def text_inference(payload: InferenceRequest) -> InferenceResponse:
+    try:
+        prompt = payload.prompt
+        collection_names = payload.collectionNames
+        mode = payload.mode
+
+        print(
+            f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
+        )
+
+        if not app.state.path_to_model:
+            raise Exception("No path to model provided.")
+        if not app.state.text_model_config:
+            raise Exception("No model config exists.")
+
+        # Call LLM
+        result = ""
+        if len(collection_names):
+            result = query_memory(prompt, collection_names)
+        else:
+            result = inference_completions(prompt)
+
+        # print(f"[homebrew api] result {result}")
+        return {
+            "message": "Success",
+            "success": True,
+            "data": result,
+        }
+    except KeyError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 
 
 class PreProcessRequest(BaseModel):
@@ -1262,47 +1365,6 @@ def wipe_all_memories() -> WipeMemoriesResponse:
         }
 
 
-class SearchSimilarRequest(BaseModel):
-    query: str
-    collection_name: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "query": "Why does mass conservation break down?",
-                    "collection_name": "examples",
-                }
-            ]
-        }
-    }
-
-
-# Use Llama Index to run queries on vector database embeddings.
-@app.post("/v1/search/similar")
-def search_similar(payload: SearchSimilarRequest):
-    try:
-        query = payload.query
-        collection_name = payload.collection_name
-        print(f"[homebrew api] Search: {query} in: {collection_name}")
-
-        if not app.state.path_to_model:
-            raise Exception("No path to model provided.")
-        if app.state.llm == None:
-            app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-        db_client = get_vectordb_client()
-        index = embedding.load_embedding(
-            app.state.llm,
-            db_client,
-            collection_name,
-        )
-        response = embedding.query_embedding(query, index)
-        answer = response.response
-        return {"success": True, "message": "search_similar", "data": answer}
-    except KeyError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
-
-
 # Methods...
 
 
@@ -1419,10 +1481,47 @@ def file_explore(path: str):
         subprocess.run([FILEBROWSER_PATH, "/select,", path])
 
 
+def parse_mentions(input_string) -> Tuple[List[str], str]:
+    # Pattern match words starting with @ at the beginning of the string
+    pattern = r"^@(\w+)"
+
+    # Find the match at the beginning of the string
+    matches = re.findall(pattern, input_string)
+
+    # Check if there is a match
+    if matches:
+        # Remove the matched words from the original string
+        base_query = re.sub(pattern, "", input_string)
+        print(f"Found mentions starting with @: {matches}")
+        return [matches, base_query]
+    else:
+        return [[], input_string]
+
+
 def get_vectordb_client():
     if app.state.db_client == None:
         app.state.db_client = embedding.create_db_client(app.state.storage_directory)
     return app.state.db_client
+
+
+# Belongs in text inference module
+def query_memory(query: str, collection_names: List[str]) -> str:
+    if app.state.llm == None:
+        app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+    # Unfortunately, LlamaIndex only supports searching one collection at a time,
+    # so only take the first collection. Perhaps we can solve eventually...
+    collection_name = collection_names[0]
+    db = get_vectordb_client()
+    indexDB = embedding.load_embedding(app.state.llm, db, collection_name)
+    response = embedding.query_embedding(query, indexDB)
+    answer = response.response
+    return answer
+
+
+# Belongs in text inference module
+def inference_completions(query: str) -> str:
+    # @TODO Load the normal text llm
+    return query
 
 
 def kill_text_inference():

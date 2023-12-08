@@ -28,7 +28,7 @@ export default function Home() {
   const [currentTextModel, setCurrentTextModel] = useState<string>('')
 
   const loadTextModelAction = useCallback(
-    (payload: { modelId: string; pathToModel: string }) => {
+    (payload: { modelId: string; pathToModel: string; textModelConfig: any }) => {
       fetch(`${HOMEBREW_BASE_PATH}/v1/text/load`, {
         method: 'POST',
         headers: {
@@ -95,12 +95,34 @@ export default function Home() {
     // Load path from persistent storage
     const currModelId = localStorage.getItem(ITEM_CURRENT_MODEL) || ''
     const storedConfig = getTextModelConfig(currModelId)
+    const config = textModels.find(model => model.id === currModelId)
     const storedPath = storedConfig?.savePath
+    const textModelConfig = {
+      id: config?.id,
+      name: config?.name,
+      checksum: storedConfig?.checksum,
+      isFavorited: storedConfig?.isFavorited,
+      modified: storedConfig?.modified,
+      numTimesRun: storedConfig?.numTimesRun,
+      savePath: storedPath,
+      size: storedConfig?.size,
+      description: config?.description,
+      licenses: config?.licenses,
+      modelType: config?.modelType,
+      provider: config?.provider,
+      ramSize: config?.ramSize,
+      tags: config?.tags,
+      promptTemplate: config?.promptTemplate || '{{PROMPT}}',
+    }
     storedPath && setSavePath(storedPath)
     currModelId && setCurrentTextModel(currModelId)
     // Load stored model from storage if found
     if (storedPath && currModelId)
-      loadTextModelAction({ modelId: currModelId, pathToModel: storedPath })
+      loadTextModelAction({
+        modelId: currModelId,
+        pathToModel: storedPath,
+        textModelConfig,
+      })
 
     // Set defaults if none found
     if (!storedPath) saveDefaultPath()

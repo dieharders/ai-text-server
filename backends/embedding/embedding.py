@@ -354,7 +354,7 @@ def query_embedding(query: str, index):
     return response
 
 
-# Load index from disk
+# Load embedding index from disk
 def load_embedding(
     llm: Type[LlamaCPP],
     db: Type[ClientAPI],
