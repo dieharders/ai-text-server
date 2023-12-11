@@ -1,13 +1,18 @@
-fastapi==0.101.1
+# For type safety
 pydantic_settings==2.0.3
+# For servers
+fastapi==0.101.1
 uvicorn[standard]
 sse-starlette==1.6.5
 starlette_context==0.3.6
-pyinstaller==5.13.0
+# For building single exe python
+pyinstaller==5.13.0 # this needs security update
 python-multipart==0.0.6
+# For text inference
 llama-cpp-python==0.2.14
 llama-cpp-python[server]
-# For embedding & query
+# For embedding querying
 llama-index==0.8.62
+# For embeddings creation and storage
 chromadb==0.4.15
 sentence-transformers==2.2.2

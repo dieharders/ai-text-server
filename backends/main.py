@@ -16,9 +16,10 @@ from fastapi import (
     Depends,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from inference import text_llm
+from inference import text_llama_index, text_llama_cpp_python, text_routes
 from embedding import embedding
 
 FILEBROWSER_PATH = os.path.join(os.getenv("WINDIR"), "explorer.exe")
@@ -38,6 +39,7 @@ async def lifespan(application: FastAPI):
     # https://www.python-httpx.org/quickstart/
     app.requests_client = httpx.Client()
     # Store some state here if you want...
+    app.text_inference_process = None
     application.state.storage_directory = VECTOR_STORAGE_PATH
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
@@ -269,7 +271,17 @@ async def start_text_inference(data: StartInferenceRequest) -> StartInferenceRes
         app.state.text_model_config = data.modelConfig
         # Send signal to start server
         model_file_path: str = data.modelConfig["savePath"]
-        isStarted = await start_text_inference_server(model_file_path)
+        app.text_inference_process = (
+            await text_llama_cpp_python.start_text_inference_server(
+                model_file_path,
+                app.PORT_TEXT_INFERENCE,
+            )
+        )
+
+        if app.text_inference_process:
+            isStarted = True
+        else:
+            isStarted = False
 
         return {
             "success": isStarted,
@@ -501,7 +513,7 @@ class InferenceResponse(BaseModel):
 
 # Use Llama Index to run queries on vector database embeddings.
 @app.post("/v1/text/inference")
-def text_inference(payload: InferenceRequest) -> InferenceResponse:
+async def text_inference(payload: InferenceRequest):
     try:
         prompt = payload.prompt
         collection_names = payload.collectionNames
@@ -517,18 +529,18 @@ def text_inference(payload: InferenceRequest) -> InferenceResponse:
             raise Exception("No model config exists.")
 
         # Call LLM
-        result = ""
         if len(collection_names):
-            result = query_memory(prompt, collection_names)
+            return EventSourceResponse(
+                token_streamer(query_memory(prompt, collection_names)),
+            )
         else:
-            result = inference_completions(prompt)
-
-        # print(f"[homebrew api] result {result}")
-        return {
-            "message": "Success",
-            "success": True,
-            "data": result,
-        }
+            # @TODO Return the same streaming event response as query using llamaIndex
+            result = text_routes.inference_completions(prompt)
+            return {
+                "message": "Inference complete",
+                "success": False,
+                "data": result,
+            }
     except KeyError:
         raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 
@@ -758,7 +770,7 @@ async def create_memory(
         # Create embeddings
         print("[homebrew api] Start embedding...")
         if app.state.llm == None:
-            app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+            app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
         db_client = get_vectordb_client()
         embed_form = {
             "collection_name": collection_name,
@@ -1140,7 +1152,9 @@ async def update_memory(
             )
             # Create text embeddings
             if app.state.llm == None:
-                app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+                app.state.llm = text_llama_index.load_text_model(
+                    app.state.path_to_model
+                )
             form = {
                 "collection_name": collection_name,
                 "document_name": document_name,
@@ -1216,7 +1230,7 @@ def delete_documents(params: DeleteDocumentsRequest) -> DeleteDocumentsResponse:
             include=["metadatas"],
         )
         if app.state.llm == None:
-            app.state.llm = text_llm.load_text_model(app.state.path_to_model)
+            app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
         # Delete all files and references associated with embedded docs
         for document in documents:
             document_metadata = document["metadata"]
@@ -1504,24 +1518,30 @@ def get_vectordb_client():
     return app.state.db_client
 
 
+def token_streamer(token_generator):
+    # @TODO We may need to do some token parsing here...multi-byte encoding can cut off emoji/khanji chars.
+    # result = "" # accumulate a final response to be encoded in utf-8 in entirety
+    try:
+        for token in token_generator:
+            payload = {"event": "PAYLOAD", "data": f"{token}"}
+            yield json.dumps(payload)
+    except (ValueError, UnicodeEncodeError, Exception) as e:
+        msg = f"Error streaming tokens: {e}"
+        print(msg)
+        raise Exception(msg)
+
+
 # Belongs in text inference module
-def query_memory(query: str, collection_names: List[str]) -> str:
+def query_memory(query: str, collection_names: List[str]):
     if app.state.llm == None:
-        app.state.llm = text_llm.load_text_model(app.state.path_to_model)
-    # Unfortunately, LlamaIndex only supports searching one collection at a time,
-    # so only take the first collection. Perhaps we can solve eventually...
-    collection_name = collection_names[0]
+        app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
+    # @TODO We can do filtering based on doc/collection name, metadata, etc via LlamaIndex.
+    collection_name = collection_names[0]  # Only take the first collection for now
     db = get_vectordb_client()
     indexDB = embedding.load_embedding(app.state.llm, db, collection_name)
-    response = embedding.query_embedding(query, indexDB)
-    answer = response.response
-    return answer
-
-
-# Belongs in text inference module
-def inference_completions(query: str) -> str:
-    # @TODO Load the normal text llm
-    return query
+    # Stream the response
+    token_generator = embedding.query_embedding(query, indexDB)
+    return token_generator
 
 
 def kill_text_inference():
@@ -1539,47 +1559,6 @@ def start_homebrew_server():
         return True
     except:
         print("[homebrew api] Failed to start API server")
-        return False
-
-
-async def start_text_inference_server(file_path: str):
-    try:
-        path = file_path.replace("\\", "/")
-
-        # Command to execute
-        serve_llama_cpp = [
-            "python",
-            "-m",
-            "llama_cpp.server",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            str(app.PORT_TEXT_INFERENCE),
-            "--model",
-            path,
-            # "--help",
-            "--n_ctx",
-            "2048",
-            # "--n_gpu_layers",
-            # "2",
-            # "--verbose",
-            # "True",
-            # "--cache",
-            # "True",
-            # "--cache_type",
-            # "disk",
-            # "--seed",
-            # "0",
-        ]
-        # Execute the command
-        proc = subprocess.Popen(serve_llama_cpp)
-        app.text_inference_process = proc
-        print(
-            f"[homebrew api] Starting Inference server from: {file_path} with pid: {proc.pid}"
-        )
-        return True
-    except:
-        print("[homebrew api] Failed to start Inference server")
         return False
 
 
