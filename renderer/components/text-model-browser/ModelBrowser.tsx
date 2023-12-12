@@ -10,7 +10,11 @@ interface IProps {
   data: Array<IModelCard>
   currentTextModel: string
   setCurrentTextModel: Dispatch<SetStateAction<string>>
-  loadTextModelAction: (payload: { modelId: string; pathToModel: string }) => void
+  loadTextModelAction: (payload: {
+    modelId: string
+    pathToModel: string
+    textModelConfig: any
+  }) => void
 }
 
 // LocalStorage keys
@@ -37,7 +41,7 @@ const ModelBrowser = ({
       if (id && savePath) {
         setCurrentTextModel(id)
         // Tell backend which model to load
-        const payload = { modelId: id, pathToModel: savePath }
+        const payload = { modelId: id, pathToModel: savePath, textModelConfig: storedConfig }
         loadTextModelAction(payload)
         localStorage.setItem(ITEM_CURRENT_MODEL, id)
       } else console.log('[UI] Error: No id or savePath')

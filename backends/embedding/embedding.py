@@ -19,7 +19,8 @@ from llama_index import (
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
 from llama_index.vector_stores import ChromaVectorStore
 from llama_index.storage.storage_context import StorageContext
-from llama_index.prompts import PromptTemplate
+
+# from llama_index.prompts import PromptTemplate
 from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
 
 # from llama_index.embeddings import HuggingFaceEmbedding
@@ -346,15 +347,16 @@ def query_embedding(query: str, index):
     # query_wrapper_prompt = PromptTemplate(
     #     f"[INST]<<SYS>>\n{system_prompt}<</SYS>>\n\n{query}[/INST] "
     # )
-    query_engine = index.as_query_engine(
+    streaming_response = index.as_query_engine(
+        streaming=True,
         similarity_top_k=3,
-        # streaming=True,
-    )
-    response = query_engine.query(query)
-    return response
+    ).query(query)
+    response_generator = streaming_response.response_gen
+    # answer = response.response
+    return response_generator
 
 
-# Load index from disk
+# Load embedding index from disk
 def load_embedding(
     llm: Type[LlamaCPP],
     db: Type[ClientAPI],
