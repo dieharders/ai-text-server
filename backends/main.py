@@ -1523,7 +1523,7 @@ def token_streamer(token_generator):
     # result = "" # accumulate a final response to be encoded in utf-8 in entirety
     try:
         for token in token_generator:
-            payload = {"event": "PAYLOAD", "data": f"{token}"}
+            payload = {"event": "GENERATING_TOKENS", "data": f"{token}"}
             yield json.dumps(payload)
     except (ValueError, UnicodeEncodeError, Exception) as e:
         msg = f"Error streaming tokens: {e}"
