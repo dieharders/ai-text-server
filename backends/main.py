@@ -16,7 +16,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from contextlib import asynccontextmanager
-from inference import text_llama_index, text_routes
+from inference import text_llama_index
 from embedding import embedding
 from server import common, classes
 
@@ -240,13 +240,7 @@ async def text_inference(payload: classes.InferenceRequest):
                 ),
             )
         else:
-            # @TODO Return the same streaming event response as query using llamaIndex
-            result = text_routes.inference_completions(prompt)
-            return {
-                "message": "Inference complete",
-                "success": False,
-                "data": result,
-            }
+            return EventSourceResponse(text_llama_index.text_completion(prompt, app))
     except KeyError:
         raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 

@@ -5,6 +5,11 @@ from llama_index.llms.llama_utils import messages_to_prompt, completion_to_promp
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
 from embedding import embedding
 
+###
+# Llama-Index allows us to search embeddings in a db and perform queries on them.
+# It wraps llama-cpp-python so we can run inference from here as well.
+###
+
 
 # Low level llama-cpp-python object wrapped in class from LlamaIndex
 def load_text_model(path_to_model):
@@ -49,6 +54,7 @@ def token_streamer(token_generator):
     try:
         for token in token_generator:
             payload = {"event": "GENERATING_TOKENS", "data": f"{token}"}
+            # print(token, end="", flush=True)
             yield json.dumps(payload)
     except (ValueError, UnicodeEncodeError, Exception) as e:
         msg = f"Error streaming tokens: {e}"
@@ -66,3 +72,15 @@ def query_memory(query: str, collection_names: List[str], app, db):
     # Stream the response
     token_generator = embedding.query_embedding(query, indexDB)
     return token_streamer(token_generator)
+
+
+# Perform a normal text completion on a prompt
+def text_completion(prompt: str, app):
+    if app.state.llm == None:
+        app.state.llm = load_text_model(app.state.path_to_model)
+    # Stream response
+    token_generator = app.state.llm.stream_complete(prompt)
+    for token in token_generator:
+        # print(token.delta, end="", flush=True)
+        payload = {"event": "GENERATING_TOKENS", "data": f"{token.delta}"}
+        yield json.dumps(payload)
