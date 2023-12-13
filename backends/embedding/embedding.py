@@ -50,6 +50,12 @@ def create_db_client(storage_directory: str):
     )
 
 
+def get_vectordb_client(app):
+    if app.state.db_client == None:
+        app.state.db_client = create_db_client(app.state.storage_directory)
+    return app.state.db_client
+
+
 def create_checksum(file_path: str):
     BUF_SIZE = 65536
     sha1 = hashlib.sha1()

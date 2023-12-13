@@ -1,6 +1,9 @@
+import json
+from typing import List
 from llama_index.llms import LlamaCPP
 from llama_index.llms.llama_utils import messages_to_prompt, completion_to_prompt
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
+from embedding import embedding
 
 
 # Low level llama-cpp-python object wrapped in class from LlamaIndex
@@ -38,3 +41,28 @@ def unload_text_model(llm):
     # Python garbage collector should cleanup if no ref to obj exists
     # https://github.com/abetlen/llama-cpp-python/issues/302
     del llm
+
+
+def token_streamer(token_generator):
+    # @TODO We may need to do some token parsing here...multi-byte encoding can cut off emoji/khanji chars.
+    # result = "" # accumulate a final response to be encoded in utf-8 in entirety
+    try:
+        for token in token_generator:
+            payload = {"event": "GENERATING_TOKENS", "data": f"{token}"}
+            yield json.dumps(payload)
+    except (ValueError, UnicodeEncodeError, Exception) as e:
+        msg = f"Error streaming tokens: {e}"
+        print(msg)
+        raise Exception(msg)
+
+
+# Search through a database of embeddings and return similiar documents for llm to use as context
+def query_memory(query: str, collection_names: List[str], app, db):
+    if app.state.llm == None:
+        app.state.llm = load_text_model(app.state.path_to_model)
+    # @TODO We can do filtering based on doc/collection name, metadata, etc via LlamaIndex.
+    collection_name = collection_names[0]  # Only take the first collection for now
+    indexDB = embedding.load_embedding(app.state.llm, db, collection_name)
+    # Stream the response
+    token_generator = embedding.query_embedding(query, indexDB)
+    return token_streamer(token_generator)
