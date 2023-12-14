@@ -16,13 +16,16 @@ def load_text_model(path_to_model):
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
 
+    # From: https://docs.llamaindex.ai/en/stable/examples/llm/llama_2_llama_cpp.html
     llm = LlamaCPP(
         # provide a url to download a model from
         model_url=None,
         # or, you can set the path to a pre-downloaded model instead of model_url
         model_path=path_to_model,
+        # Must be set for the particular model you are using, only for chat completions
+        # chat_format="llama-2",
         temperature=0.0,
-        max_new_tokens=1024,
+        max_new_tokens=256,  # this should prob be a factor (ctx/8) of the context window. Providing a few back and forth convo before limit is reached.
         # query_wrapper_prompt=query_wrapper_prompt,
         # llama2 has a context window of 4096 tokens, but we set it lower to allow for some wiggle room
         context_window=3900,  # note, this sets n_ctx in the model_kwargs below, so you don't need to pass it there.
@@ -31,7 +34,9 @@ def load_text_model(path_to_model):
         # kwargs to pass to __init__()
         # set to at least 1 to use GPU
         # model_kwargs={"n_gpu_layers": 4, "torch_dtype": torch.float16, "load_in_8bit": True},
-        model_kwargs={},
+        model_kwargs={
+            "n_gpu_layers": 32
+        },  # n_gpu_layers should be exposed to users to adjust based on their hardware
         # transform inputs into Llama2 format
         messages_to_prompt=messages_to_prompt,
         completion_to_prompt=completion_to_prompt,
