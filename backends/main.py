@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager
 from inference import text_llama_index
 from embedding import embedding
 from server import common, classes
+from routes import router as endpoint_router
 
 VECTOR_DB_FOLDER = "chromadb"
 VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
@@ -37,6 +38,7 @@ async def lifespan(application: FastAPI):
     app.requests_client = httpx.Client()
     # Store some state here if you want...
     app.text_inference_process = None
+    application.state.PORT_HOMEBREW_API = app.PORT_HOMEBREW_API
     application.state.storage_directory = VECTOR_STORAGE_PATH
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
@@ -61,7 +63,6 @@ origins = [
     "https://homebrew-ai-discover.vercel.app",  # (required) client app origin (production)
 ]
 
-
 # Redirect requests to our custom endpoints
 # from fastapi import Request
 # @app.middleware("http")
@@ -69,6 +70,7 @@ origins = [
 #     return await redirects.text(request, call_next, str(app.PORT_TEXT_INFERENCE))
 
 
+# Add CORS support
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -76,6 +78,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+##############
+### Routes ###
+##############
+
+app.include_router(endpoint_router)
 
 
 # Keep server/database alive
@@ -102,6 +110,17 @@ def connect() -> classes.ConnectResponse:
     }
 
 
+@app.get("/v1/text/models")
+def get_text_model():
+    return {
+        "success": True,
+        "message": "",
+        "data": {
+            "name": "",
+        },
+    }
+
+
 @app.post("/v1/text/load")
 def load_text_inference(
     data: classes.LoadInferenceRequest,
@@ -116,103 +135,6 @@ def load_text_inference(
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
     except KeyError:
         raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
-
-
-# Return api info for available services
-@app.get("/v1/services/api")
-def get_services_api() -> classes.ServicesApiResponse:
-    data = []
-
-    # Return text inference services available from Homebrew
-    text_inference_api = {
-        "name": "textInference",
-        "port": app.PORT_HOMEBREW_API,
-        "endpoints": [
-            {
-                "name": "inference",
-                "urlPath": "/v1/text/inference",
-                "method": "POST",
-                "promptTemplate": app.state.text_model_config["promptTemplate"],
-            },
-            {
-                "name": "models",
-                "urlPath": "/v1/text/models",
-                "method": "GET",
-            },
-            # llama.cpp offers native embedding
-            {
-                "name": "embedding",
-                "urlPath": "/v1/text/embedding",
-                "method": "GET",
-            },
-        ],
-    }
-    data.append(text_inference_api)
-
-    # Return services that are ready now
-    memory_api = {
-        "name": "memory",
-        "port": app.PORT_HOMEBREW_API,
-        "endpoints": [
-            {
-                "name": "addCollection",
-                "urlPath": "/v1/memory/addCollection",
-                "method": "GET",
-            },
-            {
-                "name": "getAllCollections",
-                "urlPath": "/v1/memory/getAllCollections",
-                "method": "GET",
-            },
-            {
-                "name": "getCollection",
-                "urlPath": "/v1/memory/getCollection",
-                "method": "POST",
-            },
-            {
-                "name": "deleteCollection",
-                "urlPath": "/v1/memory/deleteCollection",
-                "method": "GET",
-            },
-            {
-                "name": "addDocument",
-                "urlPath": "/v1/memory/addDocument",
-                "method": "POST",
-            },
-            {
-                "name": "getDocument",
-                "urlPath": "/v1/memory/getDocument",
-                "method": "POST",
-            },
-            {
-                "name": "deleteDocuments",
-                "urlPath": "/v1/memory/deleteDocuments",
-                "method": "POST",
-            },
-            {
-                "name": "fileExplore",
-                "urlPath": "/v1/memory/fileExplore",
-                "method": "GET",
-            },
-            {
-                "name": "updateDocument",
-                "urlPath": "/v1/memory/updateDocument",
-                "method": "POST",
-            },
-            {
-                "name": "wipe",
-                "urlPath": "/v1/memory/wipe",
-                "method": "GET",
-            },
-        ],
-    }
-    data.append(memory_api)
-
-    return {
-        "success": True,
-        "message": "These are the currently available service api's",
-        "data": data,
-    }
 
 
 # Use Llama Index to run queries on vector database embeddings.
@@ -834,6 +756,5 @@ if __name__ == "__main__":
     with open(path, "r") as json_file:
         data = json.load(json_file)
         app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]
-        app.PORT_TEXT_INFERENCE = data["PORT_TEXT_INFERENCE"]
     # Starts the homebrew API server
     start_homebrew_server()
