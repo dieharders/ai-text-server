@@ -51,7 +51,7 @@ async def lifespan(application: FastAPI):
     common.kill_text_inference(app)
 
 
-app = FastAPI(title="🍺 HomeBrew API server", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="🍺 HomeBrew API server", version="0.2.0", lifespan=lifespan)
 
 
 # Configure CORS settings
@@ -112,11 +112,21 @@ def connect() -> classes.ConnectResponse:
 
 @app.get("/v1/text/models")
 def get_text_model():
+    # llm = app.state.llm
+    model_config = app.state.text_model_config
+
     return {
         "success": True,
         "message": "",
         "data": {
-            "name": "",
+            "id": model_config["id"],
+            "name": model_config["name"],
+            "path": model_config["savePath"],
+            "size": model_config["size"],
+            "type": model_config["type"],
+            "ownedBy": model_config["provider"],
+            "permissions": model_config["licenses"],
+            "promptTemplate": model_config["promptTemplate"],
         },
     }
 
