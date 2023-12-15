@@ -1,12 +1,10 @@
 import os
-import re
 import glob
 import json
 import uvicorn
-import subprocess
 import httpx
 import shutil
-from typing import List, Tuple, Optional
+from typing import List
 from fastapi import (
     FastAPI,
     HTTPException,
@@ -17,12 +15,12 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
-from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from inference import text_llama_index, text_llama_cpp_python, text_routes
+from inference import text_llama_index
 from embedding import embedding
+from server import common, classes
+from routes import router as endpoint_router
 
-FILEBROWSER_PATH = os.path.join(os.getenv("WINDIR"), "explorer.exe")
 VECTOR_DB_FOLDER = "chromadb"
 VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
 MEMORY_FOLDER = "memories"
@@ -40,6 +38,7 @@ async def lifespan(application: FastAPI):
     app.requests_client = httpx.Client()
     # Store some state here if you want...
     app.text_inference_process = None
+    application.state.PORT_HOMEBREW_API = app.PORT_HOMEBREW_API
     application.state.storage_directory = VECTOR_STORAGE_PATH
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
@@ -49,10 +48,10 @@ async def lifespan(application: FastAPI):
     yield
 
     print("[homebrew api] Lifespan shutdown")
-    kill_text_inference()
+    common.kill_text_inference(app)
 
 
-app = FastAPI(title="🍺 HomeBrew API server", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="🍺 HomeBrew API server", version="0.2.0", lifespan=lifespan)
 
 
 # Configure CORS settings
@@ -64,7 +63,6 @@ origins = [
     "https://homebrew-ai-discover.vercel.app",  # (required) client app origin (production)
 ]
 
-
 # Redirect requests to our custom endpoints
 # from fastapi import Request
 # @app.middleware("http")
@@ -72,6 +70,7 @@ origins = [
 #     return await redirects.text(request, call_next, str(app.PORT_TEXT_INFERENCE))
 
 
+# Add CORS support
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -80,28 +79,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+##############
+### Routes ###
+##############
 
-class PingResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "success": True,
-                    "message": "pong",
-                }
-            ]
-        }
-    }
+app.include_router(endpoint_router)
 
 
 # Keep server/database alive
 @app.get("/v1/ping")
-def ping() -> PingResponse:
+def ping() -> classes.PingResponse:
     try:
-        db = get_vectordb_client()
+        db = embedding.get_vectordb_client(app)
         db.heartbeat()
         return {"success": True, "message": "pong"}
     except Exception as e:
@@ -109,27 +98,9 @@ def ping() -> PingResponse:
         return {"success": False, "message": ""}
 
 
-class ConnectResponse(BaseModel):
-    success: bool
-    message: str
-    data: dict
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "success": True,
-                    "message": "Connected to api server on port 8008.",
-                    "data": {"docs": "http://localhost:8008/docs"},
-                }
-            ]
-        }
-    }
-
-
 # Tell client we are ready to accept requests
 @app.get("/v1/connect")
-def connect() -> ConnectResponse:
+def connect() -> classes.ConnectResponse:
     return {
         "success": True,
         "message": f"Connected to api server on port {app.PORT_HOMEBREW_API}. Refer to 'http://localhost:{app.PORT_HOMEBREW_API}/docs' for api docs.",
@@ -139,56 +110,31 @@ def connect() -> ConnectResponse:
     }
 
 
-# Load in the ai model to be used for inference.
-class LoadInferenceRequest(BaseModel):
-    modelId: str
-    pathToModel: str
-    textModelConfig: dict
+@app.get("/v1/text/models")
+def get_text_model():
+    # llm = app.state.llm
+    model_config = app.state.text_model_config
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "modelId": "llama-2-13b-chat-ggml",
-                    "pathToModel": "C:\\homebrewai-app\\models\\llama-2-13b.GGUF",
-                    "textModelConfig": {
-                        "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-                        "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-                        "id": "llama2-13b",
-                        "numTimesRun": 0,
-                        "isFavorited": False,
-                        "validation": "success",
-                        "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-                        "size": 1200000,
-                        "endChunk": 13,
-                        "progress": 67,
-                        "tokenizerPath": "/some/path/to/tokenizer",
-                        "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-                    },
-                }
-            ]
-        }
-    }
-
-
-class LoadInferenceResponse(BaseModel):
-    message: str
-    success: bool
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "AI model [llama-2-13b-chat-ggml] loaded.",
-                    "success": True,
-                }
-            ]
-        }
+    return {
+        "success": True,
+        "message": "",
+        "data": {
+            "id": model_config["id"],
+            "name": model_config["name"],
+            "path": model_config["savePath"],
+            "size": model_config["size"],
+            "type": model_config["type"],
+            "ownedBy": model_config["provider"],
+            "permissions": model_config["licenses"],
+            "promptTemplate": model_config["promptTemplate"],
+        },
     }
 
 
 @app.post("/v1/text/load")
-def load_text_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
+def load_text_inference(
+    data: classes.LoadInferenceRequest,
+) -> classes.LoadInferenceResponse:
     try:
         # Store the current model's configuration for later reference
         app.state.text_model_config = data.textModelConfig
@@ -201,319 +147,9 @@ def load_text_inference(data: LoadInferenceRequest) -> LoadInferenceResponse:
         raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 
 
-class StartInferenceRequest(BaseModel):
-    modelConfig: dict
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "modelConfig": {
-                        "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-                        "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-                        "id": "llama2-13b",
-                        "numTimesRun": 0,
-                        "isFavorited": False,
-                        "validation": "success",
-                        "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-                        "size": 1200000,
-                        "endChunk": 13,
-                        "progress": 67,
-                        "tokenizerPath": "/some/path/to/tokenizer",
-                        "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-                    },
-                }
-            ]
-        }
-    }
-
-
-class StartInferenceResponse(BaseModel):
-    success: bool
-    message: str
-    data: dict
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "success": True,
-                    "message": "AI text inference started.",
-                    "data": {
-                        "port": 8080,
-                        "docs": "http://localhost:8080/docs",
-                        "textModelConfig": {
-                            "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-                            "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-                            "id": "llama2-13b",
-                            "numTimesRun": 0,
-                            "isFavorited": False,
-                            "validation": "success",
-                            "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-                            "size": 1200000,
-                            "endChunk": 13,
-                            "progress": 67,
-                            "tokenizerPath": "/some/path/to/tokenizer",
-                            "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-                        },
-                    },
-                }
-            ]
-        }
-    }
-
-
-# Starts the text inference server
-@app.post("/v1/text/start")
-async def start_text_inference(data: StartInferenceRequest) -> StartInferenceResponse:
-    try:
-        # Store the current model's configuration for later reference
-        app.state.text_model_config = data.modelConfig
-        # Send signal to start server
-        model_file_path: str = data.modelConfig["savePath"]
-        app.text_inference_process = (
-            await text_llama_cpp_python.start_text_inference_server(
-                model_file_path,
-                app.PORT_TEXT_INFERENCE,
-            )
-        )
-
-        if app.text_inference_process:
-            isStarted = True
-        else:
-            isStarted = False
-
-        return {
-            "success": isStarted,
-            "message": "AI inference started.",
-            "data": {
-                "port": app.PORT_TEXT_INFERENCE,
-                "docs": f"http://localhost:{app.PORT_TEXT_INFERENCE}/docs",
-                "text_model_config": data.modelConfig,
-            },
-        }
-    except KeyError:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid JSON format: 'modelConfig' key not found",
-        )
-
-
-class ShutdownInferenceResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [{"message": "Services shutdown.", "success": True}]
-        }
-    }
-
-
-# Shutdown all currently open processes/subprocesses for text inferencing.
-@app.get("/v1/services/shutdown")
-async def shutdown_text_inference() -> ShutdownInferenceResponse:
-    try:
-        print("[homebrew api] Shutting down all services")
-        # Reset, kill processes
-        kill_text_inference()
-        delattr(app.state, "text_model_config")
-
-        return {
-            "success": True,
-            "message": "Services shutdown successfully.",
-        }
-    except Exception as e:
-        print(f"[homebrew api] Error shutting down services: {e}")
-        return {
-            "success": False,
-            "message": f"Error shutting down services: {e}",
-        }
-
-
-class ServicesApiResponse(BaseModel):
-    success: bool
-    message: str
-    data: List[dict]
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "success": True,
-                    "message": "These are api params for accessing services endpoints.",
-                    "data": [
-                        {
-                            "name": "textInference",
-                            "port": 8008,
-                            "endpoints": [
-                                {
-                                    "name": "completions",
-                                    "urlPath": "/v1/completions",
-                                    "method": "POST",
-                                }
-                            ],
-                        }
-                    ],
-                }
-            ]
-        }
-    }
-
-
-# Return api info for available services
-@app.get("/v1/services/api")
-def get_services_api() -> ServicesApiResponse:
-    data = []
-
-    # Only return api configs for servers that are actually running
-    # if hasattr(app, "text_model_config"):
-    #     text_inference_api = {
-    #         "name": "textInference",
-    #         "port": app.PORT_TEXT_INFERENCE,
-    #         "endpoints": [
-    #             {
-    #                 "name": "copilot",
-    #                 "urlPath": "/v1/engines/copilot-codex/completions",
-    #                 "method": "POST",
-    #             },
-    #             {
-    #                 "name": "completions",
-    #                 "urlPath": "/v1/completions",
-    #                 "method": "POST",
-    #                 "promptTemplate": app.text_model_config["promptTemplate"],
-    #             },
-    #             {"name": "embeddings", "urlPath": "/v1/embeddings", "method": "POST"},
-    #             {
-    #                 "name": "chatCompletions",
-    #                 "urlPath": "/v1/chat/completions",
-    #                 "method": "POST",
-    #             },
-    #             {"name": "models", "urlPath": "/v1/models", "method": "GET"},
-    #         ],
-    #     }
-    #     data.append(text_inference_api)
-
-    # Return text inference services available from Homebrew
-    text_inference_api = {
-        "name": "textInference",
-        "port": app.PORT_HOMEBREW_API,
-        "endpoints": [
-            {
-                "name": "inference",
-                "urlPath": "/v1/text/inference",
-                "method": "POST",
-                "promptTemplate": app.state.text_model_config["promptTemplate"],
-            },
-        ],
-    }
-    data.append(text_inference_api)
-
-    # Return services that are ready now
-    memory_api = {
-        "name": "memory",
-        "port": app.PORT_HOMEBREW_API,
-        "endpoints": [
-            {
-                "name": "addCollection",
-                "urlPath": "/v1/memory/addCollection",
-                "method": "GET",
-            },
-            {
-                "name": "getAllCollections",
-                "urlPath": "/v1/memory/getAllCollections",
-                "method": "GET",
-            },
-            {
-                "name": "getCollection",
-                "urlPath": "/v1/memory/getCollection",
-                "method": "POST",
-            },
-            {
-                "name": "deleteCollection",
-                "urlPath": "/v1/memory/deleteCollection",
-                "method": "GET",
-            },
-            {
-                "name": "addDocument",
-                "urlPath": "/v1/memory/addDocument",
-                "method": "POST",
-            },
-            {
-                "name": "getDocument",
-                "urlPath": "/v1/memory/getDocument",
-                "method": "POST",
-            },
-            {
-                "name": "deleteDocuments",
-                "urlPath": "/v1/memory/deleteDocuments",
-                "method": "POST",
-            },
-            {
-                "name": "fileExplore",
-                "urlPath": "/v1/memory/fileExplore",
-                "method": "GET",
-            },
-            {
-                "name": "updateDocument",
-                "urlPath": "/v1/memory/updateDocument",
-                "method": "POST",
-            },
-            {
-                "name": "wipe",
-                "urlPath": "/v1/memory/wipe",
-                "method": "GET",
-            },
-        ],
-    }
-    data.append(memory_api)
-
-    return {
-        "success": True,
-        "message": "These are the currently available service api's",
-        "data": data,
-    }
-
-
-class InferenceRequest(BaseModel):
-    prompt: str
-    collectionNames: Optional[List[str]] = []
-    mode: Optional[str] = "completion"
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "prompt": "Why does mass conservation break down?",
-                    "collectionNames": ["science"],
-                    "mode": "completion",
-                }
-            ]
-        }
-    }
-
-
-class InferenceResponse(BaseModel):
-    success: bool
-    message: str
-    data: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Successfull text inference",
-                    "success": True,
-                    "data": "This is a response.",
-                }
-            ]
-        }
-    }
-
-
 # Use Llama Index to run queries on vector database embeddings.
 @app.post("/v1/text/inference")
-async def text_inference(payload: InferenceRequest):
+async def text_inference(payload: classes.InferenceRequest):
     try:
         prompt = payload.prompt
         collection_names = payload.collectionNames
@@ -531,67 +167,35 @@ async def text_inference(payload: InferenceRequest):
         # Call LLM
         if len(collection_names):
             return EventSourceResponse(
-                token_streamer(query_memory(prompt, collection_names)),
+                text_llama_index.query_memory(
+                    prompt, collection_names, app, embedding.get_vectordb_client(app)
+                ),
             )
         else:
-            # @TODO Return the same streaming event response as query using llamaIndex
-            result = text_routes.inference_completions(prompt)
-            return {
-                "message": "Inference complete",
-                "success": False,
-                "data": result,
-            }
+            return EventSourceResponse(text_llama_index.text_completion(prompt, app))
     except KeyError:
         raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 
 
-class PreProcessRequest(BaseModel):
-    document_id: Optional[str] = ""
-    document_name: str
-    collection_name: str
-    description: Optional[str] = ""
-    tags: Optional[str] = ""
-    filePath: str
-
-
-class PreProcessResponse(BaseModel):
-    success: bool
-    message: str
-    data: dict[str, str]
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Successfully processed file",
-                    "success": True,
-                    "data": {
-                        "document_id": "1010-1010",
-                        "file_name": "filename.md",
-                        "path_to_file": "C:\\app_data\\parsed",
-                        "checksum": "xxx",
-                    },
-                }
-            ]
-        }
-    }
-
-
 # Pre-process supplied files into a text format and save to disk for embedding later.
 @app.post("/v1/embeddings/preProcess")
-def pre_process_documents(form: PreProcessRequest = Depends()) -> PreProcessResponse:
+def pre_process_documents(
+    form: classes.PreProcessRequest = Depends(),
+) -> classes.PreProcessResponse:
     try:
         # Validate inputs
         document_id = form.document_id
         file_path = form.filePath
         collection_name = form.collection_name
         document_name = form.document_name
-        if not check_valid_id(collection_name) or not check_valid_id(document_name):
+        if not common.check_valid_id(collection_name) or not common.check_valid_id(
+            document_name
+        ):
             raise Exception(
                 "Invalid input. No '--', uppercase, spaces or special chars allowed."
             )
         # Validate tags
-        parsed_tags = parse_valid_tags(form.tags)
+        parsed_tags = common.parse_valid_tags(form.tags)
         if parsed_tags == None:
             raise Exception("Invalid value for 'tags' input.")
         # Process files
@@ -617,40 +221,18 @@ def pre_process_documents(form: PreProcessRequest = Depends()) -> PreProcessResp
         }
 
 
-class AddCollectionRequest(BaseModel):
-    collectionName: str
-    description: Optional[str] = ""
-    tags: Optional[str] = List[None]
-
-
-class AddCollectionResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Successfully created new collection",
-                    "success": True,
-                }
-            ]
-        }
-    }
-
-
 @app.get("/v1/memory/addCollection")
 def create_memory_collection(
-    form: AddCollectionRequest = Depends(),
-) -> AddCollectionResponse:
+    form: classes.AddCollectionRequest = Depends(),
+) -> classes.AddCollectionResponse:
     try:
-        parsed_tags = parse_valid_tags(form.tags)
+        parsed_tags = common.parse_valid_tags(form.tags)
         collection_name = form.collectionName
         if not collection_name:
             raise Exception("You must supply a collection name.")
         if parsed_tags == None:
             raise Exception("Invalid value for 'tags' input.")
-        if not check_valid_id(collection_name):
+        if not common.check_valid_id(collection_name):
             raise Exception(
                 "Invalid collection name. No '--', uppercase, spaces or special chars allowed."
             )
@@ -661,7 +243,7 @@ def create_memory_collection(
             "sources": json.dumps([]),
         }
         # Apply input values to collection metadata
-        db_client = get_vectordb_client()
+        db_client = embedding.get_vectordb_client(app)
         db_client.create_collection(
             name=collection_name,
             metadata=metadata,
@@ -677,46 +259,22 @@ def create_memory_collection(
         }
 
 
-class AddDocumentRequest(BaseModel):
-    documentName: str
-    collectionName: str
-    description: Optional[str] = ""
-    tags: Optional[str] = ""
-    urlPath: Optional[str] = ""
-
-
-class AddDocumentResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "A new memory has been added",
-                    "success": True,
-                }
-            ]
-        }
-    }
-
-
 # Create a memory for Ai.
 # This is a multi-step process involving several endpoints.
 # It will first process the file, then embed its data into vector space and
 # finally add it as a document to specified collection.
 @app.post("/v1/memory/addDocument")
 async def create_memory(
-    form: AddDocumentRequest = Depends(),
+    form: classes.AddDocumentRequest = Depends(),
     file: UploadFile = File(None),  # File(...) means required
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
-) -> AddDocumentResponse:
+) -> classes.AddDocumentResponse:
     try:
         document_name = form.documentName
         collection_name = form.collectionName
         description = form.description
         url_path = form.urlPath
-        tags = parse_valid_tags(form.tags)
+        tags = common.parse_valid_tags(form.tags)
         tmp_input_file_path = ""
 
         if file == None and url_path == "":
@@ -725,7 +283,7 @@ async def create_memory(
             raise Exception("You must supply a collection and memory name.")
         if tags == None:
             raise Exception("Invalid value for 'tags' input.")
-        if not check_valid_id(document_name):
+        if not common.check_valid_id(document_name):
             raise Exception(
                 "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
             )
@@ -743,7 +301,7 @@ async def create_memory(
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             # Download the file and save to disk
-            await get_file_from_url(url_path, tmp_input_file_path)
+            await common.get_file_from_url(url_path, tmp_input_file_path, app)
         elif file:
             print("[homebrew api] Saving uploaded file to disk...")
             # Read the uploaded file in chunks of 1mb,
@@ -771,7 +329,7 @@ async def create_memory(
         print("[homebrew api] Start embedding...")
         if app.state.llm == None:
             app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
-        db_client = get_vectordb_client()
+        db_client = embedding.get_vectordb_client(app)
         embed_form = {
             "collection_name": collection_name,
             "document_name": document_name,
@@ -810,38 +368,10 @@ async def create_memory(
             print(f"[homebrew api] Removed temp file.")
 
 
-class GetAllCollectionsResponse(BaseModel):
-    success: bool
-    message: str
-    data: list
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Returned 5 collection(s)",
-                    "success": True,
-                    "data": [
-                        {
-                            "name": "collection-name",
-                            "id": "1010-10101",
-                            "metadata": {
-                                "description": "A description.",
-                                "sources": ["document-id"],
-                                "tags": "html5 react",
-                            },
-                        }
-                    ],
-                }
-            ]
-        }
-    }
-
-
 @app.get("/v1/memory/getAllCollections")
-def get_all_collections() -> GetAllCollectionsResponse:
+def get_all_collections() -> classes.GetAllCollectionsResponse:
     try:
-        db = get_vectordb_client()
+        db = embedding.get_vectordb_client(app)
         collections = db.list_collections()
 
         # Parse json data
@@ -865,48 +395,13 @@ def get_all_collections() -> GetAllCollectionsResponse:
         }
 
 
-class GetCollectionRequest(BaseModel):
-    id: str
-    include: Optional[List[str]] = None
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "id": "examples",
-                    "include": ["embeddings", "documents"],
-                }
-            ]
-        }
-    }
-
-
-class GetCollectionResponse(BaseModel):
-    success: bool
-    message: str
-    data: dict
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Returned 5 source(s) in collection",
-                    "success": True,
-                    "data": {
-                        "collection": {},
-                        "numItems": 5,
-                    },
-                }
-            ]
-        }
-    }
-
-
 # Return a collection by id and all its documents
 @app.post("/v1/memory/getCollection")
-def get_collection(props: GetCollectionRequest) -> GetCollectionResponse:
+def get_collection(
+    props: classes.GetCollectionRequest,
+) -> classes.GetCollectionResponse:
     try:
-        db = get_vectordb_client()
+        db = embedding.get_vectordb_client(app)
         id = props.id
         collection = db.get_collection(id)
         num_items = 0
@@ -936,45 +431,9 @@ def get_collection(props: GetCollectionRequest) -> GetCollectionResponse:
         }
 
 
-class GetDocumentRequest(BaseModel):
-    collection_id: str
-    document_ids: List[str]
-    include: Optional[List[str]] = None
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "collection_id": "examples",
-                    "document_ids": ["science"],
-                    "include": ["embeddings", "documents"],
-                }
-            ]
-        }
-    }
-
-
-class GetDocumentResponse(BaseModel):
-    success: bool
-    message: str
-    data: List[dict]
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Returned 1 document(s)",
-                    "success": True,
-                    "data": [{}],
-                }
-            ]
-        }
-    }
-
-
 # Get one or more documents by id.
 @app.post("/v1/memory/getDocument")
-def get_document(params: GetDocumentRequest) -> GetDocumentResponse:
+def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentResponse:
     try:
         collection_id = params.collection_id
         document_ids = params.document_ids
@@ -983,7 +442,7 @@ def get_document(params: GetDocumentRequest) -> GetDocumentResponse:
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=document_ids,
-            db=get_vectordb_client(),
+            db=embedding.get_vectordb_client(app),
             include=include,
         )
 
@@ -1002,31 +461,11 @@ def get_document(params: GetDocumentRequest) -> GetDocumentResponse:
         }
 
 
-class ExploreSourceRequest(BaseModel):
-    filePath: str
-
-
-class FileExploreResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Opened file explorer",
-                    "success": True,
-                }
-            ]
-        }
-    }
-
-
 # Open an OS file exporer on host machine
 @app.get("/v1/memory/fileExplore")
 def explore_source_file(
-    params: ExploreSourceRequest = Depends(),
-) -> FileExploreResponse:
+    params: classes.FileExploreRequest = Depends(),
+) -> classes.FileExploreResponse:
     filePath = params.filePath
 
     if not filePath:
@@ -1035,7 +474,7 @@ def explore_source_file(
             "message": "No file path given",
         }
     # Open a new os window
-    file_explore(filePath)
+    common.file_explore(filePath)
 
     return {
         "success": True,
@@ -1043,37 +482,12 @@ def explore_source_file(
     }
 
 
-class UpdateDocumentRequest(BaseModel):
-    collectionName: str
-    documentName: str
-    documentId: str
-    urlPath: Optional[str] = ""
-    filePath: Optional[str] = ""
-    metadata: Optional[dict] = {}
-
-
-class UpdateDocumentResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Updated memories",
-                    "success": True,
-                }
-            ]
-        }
-    }
-
-
 # Re-process and re-embed existing document(s) from /parsed directory or url link
 @app.post("/v1/memory/updateDocument")
 async def update_memory(
-    args: UpdateDocumentRequest,
+    args: classes.UpdateDocumentRequest,
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
-) -> UpdateDocumentResponse:
+) -> classes.UpdateDocumentResponse:
     try:
         collection_name = args.collectionName
         document_id = args.documentId
@@ -1089,13 +503,13 @@ async def update_memory(
             raise Exception(
                 "Please supply a collection name, document name, and document id"
             )
-        if not check_valid_id(document_name):
+        if not common.check_valid_id(document_name):
             raise Exception(
                 "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
             )
 
         # Retrieve document data
-        db = get_vectordb_client()
+        db = embedding.get_vectordb_client(app)
         documents = embedding.get_document(
             collection_name=collection_name,
             document_ids=[document_id],
@@ -1116,7 +530,7 @@ async def update_memory(
         if url_path:
             # Download the file and save to disk
             print(f"[homebrew api] Downloading file to {tmp_file_path} ...")
-            await get_file_from_url(url_path, tmp_file_path)
+            await common.get_file_from_url(url_path, tmp_file_path, app)
         elif file_path:
             # Copy file from provided location to /tmp dir, only if paths differ
             print(f"[homebrew api] Loading local file from disk {file_path} ...")
@@ -1137,7 +551,7 @@ async def update_memory(
             updated_document_metadata = metadata or document_metadata
             description = updated_document_metadata["description"]
             # Validate tags
-            updated_tags = parse_valid_tags(updated_document_metadata["tags"])
+            updated_tags = common.parse_valid_tags(updated_document_metadata["tags"])
             if updated_tags == None:
                 raise Exception("Invalid value for 'tags' input.")
             # Process input documents
@@ -1190,36 +604,17 @@ async def update_memory(
         }
 
 
-class DeleteDocumentsRequest(BaseModel):
-    collection_id: str
-    document_ids: List[str]
-
-
-class DeleteDocumentsResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Removed 1 document(s)",
-                    "success": True,
-                }
-            ]
-        }
-    }
-
-
 # Delete a document by id
 @app.post("/v1/memory/deleteDocuments")
-def delete_documents(params: DeleteDocumentsRequest) -> DeleteDocumentsResponse:
+def delete_documents(
+    params: classes.DeleteDocumentsRequest,
+) -> classes.DeleteDocumentsResponse:
     try:
         collection_id = params.collection_id
         document_ids = params.document_ids
         num_documents = len(document_ids)
         document = None
-        db = get_vectordb_client()
+        db = embedding.get_vectordb_client(app)
         collection = db.get_collection(collection_id)
         sources: List[str] = json.loads(collection.metadata["sources"])
         source_file_path = ""
@@ -1264,34 +659,14 @@ def delete_documents(params: DeleteDocumentsRequest) -> DeleteDocumentsResponse:
         }
 
 
-class DeleteCollectionRequest(BaseModel):
-    collection_id: str
-
-
-class DeleteCollectionResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Removed collection",
-                    "success": True,
-                }
-            ]
-        }
-    }
-
-
 # Delete a collection by id
 @app.get("/v1/memory/deleteCollection")
 def delete_collection(
-    params: DeleteCollectionRequest = Depends(),
-) -> DeleteCollectionResponse:
+    params: classes.DeleteCollectionRequest = Depends(),
+) -> classes.DeleteCollectionResponse:
     try:
         collection_id = params.collection_id
-        db = get_vectordb_client()
+        db = embedding.get_vectordb_client(app)
         collection = db.get_collection(collection_id)
         sources: List[str] = json.loads(collection.metadata["sources"])
         include = ["documents", "metadatas"]
@@ -1299,7 +674,7 @@ def delete_collection(
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=sources,
-            db=get_vectordb_client(),
+            db=embedding.get_vectordb_client(app),
             include=include,
         )
         for document in documents:
@@ -1309,7 +684,7 @@ def delete_collection(
         # Remove the collection
         db.delete_collection(name=collection_id)
         # Remove persisted vector index from disk
-        delete_vector_store(collection_id)
+        common.delete_vector_store(collection_id, VECTOR_STORAGE_PATH)
 
         return {
             "success": True,
@@ -1323,27 +698,11 @@ def delete_collection(
         }
 
 
-class WipeMemoriesResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Removed all memories",
-                    "success": True,
-                }
-            ]
-        }
-    }
-
-
 # Completely wipe database
 @app.get("/v1/memory/wipe")
-def wipe_all_memories() -> WipeMemoriesResponse:
+def wipe_all_memories() -> classes.WipeMemoriesResponse:
     try:
-        db = get_vectordb_client()
+        db = embedding.get_vectordb_client(app)
         # Delete all db values
         db.reset()
         # Delete all parsed documents/files in /memories
@@ -1382,175 +741,6 @@ def wipe_all_memories() -> WipeMemoriesResponse:
 # Methods...
 
 
-def delete_vector_store(target_file_path: str):
-    path_to_delete = os.path.join(VECTOR_STORAGE_PATH, target_file_path)
-    if os.path.exists(path_to_delete):
-        files = glob.glob(f"{path_to_delete}/*")
-        for f in files:
-            os.remove(f)  # del files
-        os.rmdir(path_to_delete)  # del folder
-
-
-# Verify the string contains only lowercase letters, numbers, and a select special chars and whitespace
-# In-validate by checking for "None" return value
-def parse_valid_tags(tags: str):
-    try:
-        # Check for correct type of input
-        if not isinstance(tags, str):
-            raise Exception("'Tags' must be a string")
-        # We dont care about empty string for optional input
-        if not len(tags):
-            return tags
-        # Allow only lowercase chars, numbers and certain special chars and whitespaces
-        m = re.compile(r"^[a-z0-9$*-]+( [a-z0-9$*-]+)*$")
-        if not m.match(tags):
-            raise Exception("'Tags' input value has invalid chars.")
-        # Remove any whitespace/hyphens from start/end
-        result = tags.strip()
-        result = tags.strip("-")
-        # Remove invalid single words
-        array_values = result.split(" ")
-        result_array = []
-        for word in array_values:
-            # Words cannot have dashes at start/end
-            p_word = word.strip("-")
-            # Single char words not allowed
-            if len(word) > 1:
-                result_array.append(p_word)
-        result = " ".join(result_array)
-        # Return a sanitized string
-        return result
-    except Exception as e:
-        print(f"[homebrew api] {e}")
-        return None
-
-
-# Determine if the input string is acceptable as an id
-def check_valid_id(input: str):
-    l = len(input)
-    # Cannot be empty
-    if not l:
-        return False
-    # Check for sequences reserved for our parsing scheme
-    matches_double_hyphen = re.findall("--", input)
-    if matches_double_hyphen:
-        print(f"[homebrew api] Found double hyphen in 'id': {input}")
-        return False
-    # All names must be 3 and 63 characters
-    if l > 63 or l < 3:
-        return False
-    # No hyphens at start/end
-    if input[0] == "-" or input[l - 1] == "-":
-        print("[homebrew api] Found hyphens at start/end in [id]")
-        return False
-    # No whitespace allowed
-    matches_whitespace = re.findall("\s", input)
-    if matches_whitespace:
-        print("[homebrew api] Found whitespace in [id]")
-        return False
-    # Check special chars. All chars must be lowercase. Dashes acceptable.
-    m = re.compile(r"[a-z0-9-]*$")
-    if not m.match(input):
-        print("[homebrew api] Found invalid special chars in [id]")
-        return False
-    # Passes
-    return True
-
-
-async def get_file_from_url(url: str, pathname: str):
-    # example url: https://raw.githubusercontent.com/dieharders/ai-text-server/master/README.md
-    client: httpx.Client = app.requests_client
-    CHUNK_SIZE = 1024 * 1024  # 1mb
-    TOO_LONG = 751619276  # about 700mb limit in "bytes"
-    headers = {
-        "Content-Type": "application/octet-stream",
-    }
-    # @TODO Verify stored checksum before downloading
-    head_res = client.head(url)
-    total_file_size = head_res.headers.get("content-length")
-    if int(total_file_size) > TOO_LONG:
-        raise Exception("File is too large")
-    # Stream binary content
-    with client.stream("GET", url, headers=headers) as res:
-        res.raise_for_status()
-        if res.status_code != httpx.codes.OK:
-            raise Exception("Something went wrong fetching file")
-        if int(res.headers["Content-Length"]) > TOO_LONG:
-            raise Exception("File is too large")
-        with open(pathname, "wb") as file:
-            # Write data to disk
-            for block in res.iter_bytes(chunk_size=CHUNK_SIZE):
-                file.write(block)
-    return True
-
-
-# Open a native file explorer at location of given source
-def file_explore(path: str):
-    # explorer would choke on forward slashes
-    path = os.path.normpath(path)
-
-    if os.path.isdir(path):
-        subprocess.run([FILEBROWSER_PATH, path])
-    elif os.path.isfile(path):
-        subprocess.run([FILEBROWSER_PATH, "/select,", path])
-
-
-def parse_mentions(input_string) -> Tuple[List[str], str]:
-    # Pattern match words starting with @ at the beginning of the string
-    pattern = r"^@(\w+)"
-
-    # Find the match at the beginning of the string
-    matches = re.findall(pattern, input_string)
-
-    # Check if there is a match
-    if matches:
-        # Remove the matched words from the original string
-        base_query = re.sub(pattern, "", input_string)
-        print(f"Found mentions starting with @: {matches}")
-        return [matches, base_query]
-    else:
-        return [[], input_string]
-
-
-def get_vectordb_client():
-    if app.state.db_client == None:
-        app.state.db_client = embedding.create_db_client(app.state.storage_directory)
-    return app.state.db_client
-
-
-def token_streamer(token_generator):
-    # @TODO We may need to do some token parsing here...multi-byte encoding can cut off emoji/khanji chars.
-    # result = "" # accumulate a final response to be encoded in utf-8 in entirety
-    try:
-        for token in token_generator:
-            payload = {"event": "GENERATING_TOKENS", "data": f"{token}"}
-            yield json.dumps(payload)
-    except (ValueError, UnicodeEncodeError, Exception) as e:
-        msg = f"Error streaming tokens: {e}"
-        print(msg)
-        raise Exception(msg)
-
-
-# Belongs in text inference module
-def query_memory(query: str, collection_names: List[str]):
-    if app.state.llm == None:
-        app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
-    # @TODO We can do filtering based on doc/collection name, metadata, etc via LlamaIndex.
-    collection_name = collection_names[0]  # Only take the first collection for now
-    db = get_vectordb_client()
-    indexDB = embedding.load_embedding(app.state.llm, db, collection_name)
-    # Stream the response
-    token_generator = embedding.query_embedding(query, indexDB)
-    return token_generator
-
-
-def kill_text_inference():
-    if hasattr(app, "text_inference_process"):
-        if app.text_inference_process.poll() != None:
-            app.text_inference_process.kill()
-            app.text_inference_process = None
-
-
 def start_homebrew_server():
     try:
         print("[homebrew api] Starting API server...")
@@ -1567,6 +757,7 @@ if __name__ == "__main__":
     current_directory = os.getcwd()
     substrings = current_directory.split("\\")
     last_substring = substrings[-1]
+    # This path detection is b/c of Node.js in dev vs prod mode
     if last_substring == "backends":
         path = "../shared/constants.json"
     else:
@@ -1575,6 +766,5 @@ if __name__ == "__main__":
     with open(path, "r") as json_file:
         data = json.load(json_file)
         app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]
-        app.PORT_TEXT_INFERENCE = data["PORT_TEXT_INFERENCE"]
     # Starts the homebrew API server
     start_homebrew_server()

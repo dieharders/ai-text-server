@@ -53,6 +53,7 @@ const StartEngine = ({ isStarted, setIsStarted, currentTextModelId, ip }: IProps
       const modelConfig = {
         id: config?.id,
         name: config?.name,
+        type: config?.type,
         checksum: storedConfig?.checksum,
         isFavorited: storedConfig?.isFavorited,
         modified: storedConfig?.modified,
