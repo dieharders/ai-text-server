@@ -112,13 +112,16 @@ def parse_valid_tags(tags: str):
         # We dont care about empty string for optional input
         if not len(tags):
             return tags
+        # Remove commas
+        result = tags.replace(",", "")
         # Allow only lowercase chars, numbers and certain special chars and whitespaces
         m = re.compile(r"^[a-z0-9$*-]+( [a-z0-9$*-]+)*$")
-        if not m.match(tags):
+        if not m.match(result):
             raise Exception("'Tags' input value has invalid chars.")
-        # Remove any whitespace/hyphens from start/end
-        result = tags.strip()
-        result = tags.strip("-")
+        # Remove any whitespace, hyphens from start/end
+        result = result.strip()
+        result = result.strip("-")
+
         # Remove invalid single words
         array_values = result.split(" ")
         result_array = []
