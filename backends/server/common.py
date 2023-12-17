@@ -112,13 +112,16 @@ def parse_valid_tags(tags: str):
         # We dont care about empty string for optional input
         if not len(tags):
             return tags
+        # Remove commas
+        result = tags.replace(",", "")
         # Allow only lowercase chars, numbers and certain special chars and whitespaces
         m = re.compile(r"^[a-z0-9$*-]+( [a-z0-9$*-]+)*$")
-        if not m.match(tags):
+        if not m.match(result):
             raise Exception("'Tags' input value has invalid chars.")
-        # Remove any whitespace/hyphens from start/end
-        result = tags.strip()
-        result = tags.strip("-")
+        # Remove any whitespace, hyphens from start/end
+        result = result.strip()
+        result = result.strip("-")
+
         # Remove invalid single words
         array_values = result.split(" ")
         result_array = []
@@ -129,6 +132,8 @@ def parse_valid_tags(tags: str):
             if len(word) > 1:
                 result_array.append(p_word)
         result = " ".join(result_array)
+        # Remove duplicate tags
+        result = dedupe_substrings(result)
         # Return a sanitized string
         return result
     except Exception as e:
@@ -143,3 +148,17 @@ def delete_vector_store(target_file_path: str, folder_path):
         for f in files:
             os.remove(f)  # del files
         os.rmdir(path_to_delete)  # del folder
+
+
+def dedupe_substrings(input_string):
+    unique_substrings = set()
+    str_array = input_string.split(" ")
+    result = []
+
+    for substring in str_array:
+        if substring not in unique_substrings:
+            unique_substrings.add(substring)
+            result.append(substring)
+
+    # Return as space seperated
+    return " ".join(result)
