@@ -132,6 +132,8 @@ def parse_valid_tags(tags: str):
             if len(word) > 1:
                 result_array.append(p_word)
         result = " ".join(result_array)
+        # Remove duplicate tags
+        result = dedupe_substrings(result)
         # Return a sanitized string
         return result
     except Exception as e:
@@ -146,3 +148,17 @@ def delete_vector_store(target_file_path: str, folder_path):
         for f in files:
             os.remove(f)  # del files
         os.rmdir(path_to_delete)  # del folder
+
+
+def dedupe_substrings(input_string):
+    unique_substrings = set()
+    str_array = input_string.split(" ")
+    result = []
+
+    for substring in str_array:
+        if substring not in unique_substrings:
+            unique_substrings.add(substring)
+            result.append(substring)
+
+    # Return as space seperated
+    return " ".join(result)
