@@ -10,7 +10,7 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
     app = request.app
     data = []
 
-    # Return text inference services available from Homebrew
+    # Return text inference services
     text_inference_api = {
         "name": "textInference",
         "port": app.state.PORT_HOMEBREW_API,
@@ -61,7 +61,26 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
     }
     data.append(text_inference_api)
 
-    # Return services that are ready now
+    # Return persistent file storage services
+    storage_api = {
+        "name": "storage",
+        "port": app.state.PORT_HOMEBREW_API,
+        "endpoints": [
+            {
+                "name": "getSettings",
+                "urlPath": "/v1/persist/settings",
+                "method": "GET",
+            },
+            {
+                "name": "saveSettings",
+                "urlPath": "/v1/persist/settings",
+                "method": "POST",
+            },
+        ],
+    }
+    data.append(storage_api)
+
+    # Return search over local files services
     memory_api = {
         "name": "memory",
         "port": app.state.PORT_HOMEBREW_API,

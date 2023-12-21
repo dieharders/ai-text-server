@@ -22,13 +22,15 @@ from server import common, classes
 from routes import router as endpoint_router
 
 VECTOR_DB_FOLDER = "chromadb"
-VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
 TMP_FOLDER = "tmp"
+APP_SETTINGS_FOLDER = "settings"
+VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
 MEMORY_PATH = os.path.join(os.getcwd(), MEMORY_FOLDER)
 PARSED_DOCUMENT_PATH = os.path.join(MEMORY_PATH, PARSED_FOLDER)
 TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
+APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
 
 
 @asynccontextmanager
@@ -736,6 +738,79 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
             "success": False,
             "message": e,
         }
+
+
+# Get all app settings
+@app.get("/v1/persist/settings")
+def get_settings():
+    # Paths
+    file_name = "app.json"
+    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+
+    # Check if folder exists
+    if not os.path.exists(APP_SETTINGS_PATH):
+        return {
+            "success": False,
+            "message": f"Failed to return settings. Folder does not exist.",
+            "data": None,
+        }
+
+    # Try to open the file (if it exists)
+    loaded_data = {}
+    try:
+        with open(file_path, "r") as file:
+            loaded_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist, fail
+        return {
+            "success": False,
+            "message": f"Failed to return settings. File does not exist.",
+            "data": None,
+        }
+
+    return {
+        "success": True,
+        "message": f"Returned app settings",
+        "data": loaded_data,
+    }
+
+
+# Save [domain] app settings
+@app.post("/v1/persist/settings")
+def save_settings(
+    domain: str = Depends(classes.get_domain_param),
+    body: classes.SaveSettingsRequest = None,
+) -> classes.GenericEmptyResponse:
+    new_data = body.data
+
+    # Paths
+    file_name = "app.json"
+    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+
+    # Create folder/file
+    if not os.path.exists(APP_SETTINGS_PATH):
+        os.makedirs(APP_SETTINGS_PATH)
+
+    # Try to open the file (if it exists)
+    try:
+        with open(file_path, "r") as file:
+            existing_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist yet, create an empty dictionary
+        existing_data = {}
+
+    # Update the existing data with the new variables
+    existing_data[domain] = new_data
+
+    # Save the updated data to the file, this will overwrite all values in the key's dict.
+    with open(file_path, "w") as file:
+        json.dump(existing_data, file, indent=2)
+
+    return {
+        "success": True,
+        "message": f"Saved {domain} settings to {file_path}",
+        "data": None,
+    }
 
 
 # Methods...

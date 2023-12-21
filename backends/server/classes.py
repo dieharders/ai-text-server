@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from fastapi import Query
 
 
 class PingResponse(BaseModel):
@@ -414,6 +415,7 @@ class DeleteCollectionResponse(BaseModel):
         }
     }
 
+
 class WipeMemoriesResponse(BaseModel):
     success: bool
     message: str
@@ -428,6 +430,34 @@ class WipeMemoriesResponse(BaseModel):
             ]
         }
     }
+
+
+def get_domain_param(domain: str = Query(..., title="Domain parameter")):
+    return domain
+
+
+class SaveSettingsRequest(BaseModel):
+    data: dict
+
+
+class GenericEmptyResponse(BaseModel):
+    success: bool
+    message: str
+    data: None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "This is a message",
+                    "success": True,
+                    "data": None,
+                }
+            ]
+        }
+    }
+
+
 # class StartInferenceRequest(BaseModel):
 #     modelConfig: dict
 
