@@ -103,11 +103,22 @@ def ping() -> classes.PingResponse:
 # Tell client we are ready to accept requests
 @app.get("/v1/connect")
 def connect() -> classes.ConnectResponse:
+    # Read the version from package.json file
+    try:
+        file_path = os.path.join(os.getcwd(), "package.json")
+        with open(file_path, "r") as file:
+            loaded_data = json.load(file)
+            version = loaded_data["version"]
+    except FileNotFoundError:
+        # If the file doesn't exist
+        version = "0"
+
     return {
         "success": True,
         "message": f"Connected to api server on port {app.PORT_HOMEBREW_API}. Refer to 'http://localhost:{app.PORT_HOMEBREW_API}/docs' for api docs.",
         "data": {
             "docs": f"http://localhost:{app.PORT_HOMEBREW_API}/docs",
+            "version": version,
         },
     }
 

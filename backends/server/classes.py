@@ -30,7 +30,10 @@ class ConnectResponse(BaseModel):
                 {
                     "success": True,
                     "message": "Connected to api server on port 8008.",
-                    "data": {"docs": "http://localhost:8008/docs"},
+                    "data": {
+                        "docs": "http://localhost:8008/docs",
+                        "version": "0.2.0",
+                    },
                 }
             ]
         }
