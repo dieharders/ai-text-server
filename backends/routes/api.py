@@ -16,10 +16,17 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
         "port": app.state.PORT_HOMEBREW_API,
         "endpoints": [
             {
-                "name": "inference",
+                "name": "inference",  # @TODO Change to generate ?
                 "urlPath": "/v1/text/inference",
                 "method": "POST",
-                "promptTemplate": app.state.text_model_config["promptTemplate"],
+                "promptTemplate": app.state.text_model_config[
+                    "promptTemplate"
+                ],  # @TODO Can remove once we store model configs in json files outside front-end code.
+            },
+            {
+                "name": "load",
+                "urlPath": "/v1/text/load",
+                "method": "POST",
             },
             # Return the currently loaded model and its settings
             {

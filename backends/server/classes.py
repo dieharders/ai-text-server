@@ -42,9 +42,22 @@ class ConnectResponse(BaseModel):
 
 # Load in the ai model to be used for inference.
 class LoadInferenceRequest(BaseModel):
-    modelId: str
+    modelId: str  # used to find the model config
     pathToModel: str
     textModelConfig: dict
+    # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
+    n_gpu_layers: Optional[
+        int
+    ] = 0  # @TODO expose to users to adjust based on their hardware, default should be 0, -1 = all layers, 32 for our purposes
+    use_mmap: Optional[bool] = True
+    use_mlock: Optional[bool] = False
+    f16_kv: Optional[bool] = True
+    seed: Optional[int] = 1337
+    n_ctx: Optional[int] = 512  # 3900 for llama2
+    n_batch: Optional[int] = 512
+    n_threads: Optional[int] = None
+    offload_kqv: Optional[bool] = False  # @TODO Expose this to UI
+    verbose: Optional[bool] = False
 
     model_config = {
         "json_schema_extra": {
@@ -66,6 +79,16 @@ class LoadInferenceRequest(BaseModel):
                         "tokenizerPath": "/some/path/to/tokenizer",
                         "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
                     },
+                    "n_gpu_layers": 1,
+                    "use_mmap": True,
+                    "use_mlock": False,
+                    "f16_kv": True,
+                    "seed": 1337,
+                    "n_ctx": 512,
+                    "n_batch": 512,
+                    "n_threads": None,
+                    "offload_kqv": False,
+                    "verbose": False,
                 }
             ]
         }
@@ -118,10 +141,47 @@ class ServicesApiResponse(BaseModel):
     }
 
 
+# @TODO Not all of these props need to be passed, some come from stored settings
 class InferenceRequest(BaseModel):
-    prompt: str
+    # homebrew server specific args
     collectionNames: Optional[List[str]] = []
     mode: Optional[str] = "completion"
+    # __call__ args
+    prompt: str
+    # messages: Optional[List[str]] = None
+    stream: Optional[bool] = True
+    # suffix: Optional[str] = ""
+    temperature: Optional[float] = 0.0  # precise
+    max_tokens: Optional[
+        int
+    ] = 128  # this should prob be a factor (ctx/8) of the context window. Providing a few back and forth convo before limit is reached.
+    stop: Optional[List[str]] = [
+        # "\n",
+        # "###",
+        "[DONE]",
+    ]  # A list of strings to stop generation when encountered
+    echo: Optional[bool] = False
+    model: Optional[
+        str
+    ] = "local"  # The name to use for the model in the completion object
+    grammar: Optional[dict] = None  # A grammar to use for constrained sampling
+    mirostat_tau: Optional[
+        float
+    ] = 5.0  # A higher value corresponds to more surprising or less predictable text, while a lower value corresponds to less surprising or more predictable text.
+    tfs_z: Optional[
+        float
+    ] = 1.0  # Tail Free Sampling - https://www.trentonbricken.com/Tail-Free-Sampling/
+    top_k: Optional[int] = 40
+    top_p: Optional[float] = 0.95
+    min_p: Optional[float] = 0.05
+    seed: Optional[int] = 1337
+    repeat_penalty: Optional[float] = 1.1
+    presence_penalty: Optional[
+        float
+    ] = 0.0  # The penalty to apply to tokens based on their presence in the prompt
+    frequency_penalty: Optional[
+        float
+    ] = 0.0  # The penalty to apply to tokens based on their frequency in the prompt
 
     model_config = {
         "json_schema_extra": {
@@ -129,7 +189,18 @@ class InferenceRequest(BaseModel):
                 {
                     "prompt": "Why does mass conservation break down?",
                     "collectionNames": ["science"],
-                    "mode": "completion",
+                    # Settings
+                    "mode": "completion",  # completion | chat
+                    "stream": True,
+                    "temperature": 0.2,
+                    "max_tokens": 1024,
+                    "stop": ["###", "[DONE]"],
+                    "echo": False,
+                    "model": "llama2",
+                    "seed": 1337,
+                    "top_k": 40,
+                    "top_p": 0.7,
+                    "repeat_penalty": 1.0,
                 }
             ]
         }
@@ -433,10 +504,6 @@ class WipeMemoriesResponse(BaseModel):
             ]
         }
     }
-
-
-def get_domain_param(domain: str = Query(..., title="Domain parameter")):
-    return domain
 
 
 class SaveSettingsRequest(BaseModel):

@@ -45,7 +45,8 @@ async def lifespan(application: FastAPI):
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
-    application.state.text_model_config = None
+    application.state.text_model_config = {}
+    app.state.settings = {}
 
     yield
 
@@ -153,23 +154,62 @@ def load_text_inference(
         app.state.text_model_config = data.textModelConfig
         model_id = data.modelId
         app.state.path_to_model = data.pathToModel
+        # Save model init settings to disk
+        save_settings(
+            {
+                "init": {
+                    "n_gpu_layers": data.n_gpu_layers,
+                    "use_mmap": data.use_mmap,
+                    "use_mlock": data.use_mlock,
+                    "f16_kv": data.f16_kv,
+                    "seed": data.seed,
+                    "n_ctx": data.n_ctx,
+                    "n_batch": data.n_batch,
+                    "n_threads": data.n_threads,
+                    "offload_kqv": data.offload_kqv,
+                    "verbose": data.verbose,
+                    "offload_kqv": data.offload_kqv,
+                },
+            }
+        )
         print(f"[homebrew api] Path to model loaded: {data.pathToModel}")
-        # Logic to load the specified ai model here...
+        # Load the specified Ai model
+        if app.state.llm == None:
+            model_settings = app.state.settings["init"]
+            generate_settings = {}
+            app.state.llm = text_llama_index.load_text_model(
+                app.state.path_to_model, model_settings, generate_settings
+            )
+
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
     except KeyError:
         raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 
 
-# Use Llama Index to run queries on vector database embeddings.
+# Use Llama Index to run queries on vector database embeddings or run normal chat inference.
 @app.post("/v1/text/inference")
 async def text_inference(payload: classes.InferenceRequest):
     try:
         prompt = payload.prompt
         collection_names = payload.collectionNames
         mode = payload.mode
-
-        print(
-            f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
+        options = dict(
+            stream=payload.stream,
+            temperature=payload.temperature,
+            max_tokens=payload.max_tokens,
+            stop=payload.stop,
+            echo=payload.echo,
+            model=payload.model,
+            grammar=payload.grammar,
+            mirostat_tau=payload.mirostat_tau,
+            tfs_z=payload.tfs_z,
+            top_k=payload.top_k,
+            top_p=payload.top_p,
+            min_p=payload.min_p,
+            seed=payload.seed,
+            repeat_penalty=payload.repeat_penalty,
+            presence_penalty=payload.presence_penalty,
+            frequency_penalty=payload.frequency_penalty,
         )
 
         if not app.state.path_to_model:
@@ -179,13 +219,23 @@ async def text_inference(payload: classes.InferenceRequest):
 
         # Call LLM
         if len(collection_names):
+            print(
+                f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
+            )
+
             return EventSourceResponse(
                 text_llama_index.query_memory(
-                    prompt, collection_names, app, embedding.get_vectordb_client(app)
+                    prompt,
+                    collection_names,
+                    app,
+                    embedding.get_vectordb_client(app),
+                    options,
                 ),
             )
         else:
-            return EventSourceResponse(text_llama_index.text_completion(prompt, app))
+            return EventSourceResponse(
+                text_llama_index.text_completion(prompt, app, options)
+            )
     except KeyError:
         raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
 
@@ -341,7 +391,7 @@ async def create_memory(
         # Create embeddings
         print("[homebrew api] Start embedding...")
         if app.state.llm == None:
-            app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
+            raise Exception("No Ai loaded.")
         db_client = embedding.get_vectordb_client(app)
         embed_form = {
             "collection_name": collection_name,
@@ -579,9 +629,7 @@ async def update_memory(
             )
             # Create text embeddings
             if app.state.llm == None:
-                app.state.llm = text_llama_index.load_text_model(
-                    app.state.path_to_model
-                )
+                raise Exception("No Ai loaded.")
             form = {
                 "collection_name": collection_name,
                 "document_name": document_name,
@@ -638,7 +686,7 @@ def delete_documents(
             include=["metadatas"],
         )
         if app.state.llm == None:
-            app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
+            raise Exception("No Ai loaded.")
         # Delete all files and references associated with embedded docs
         for document in documents:
             document_metadata = document["metadata"]
@@ -786,14 +834,9 @@ def get_settings():
     }
 
 
-# Save [domain] app settings
+# Save app settings
 @app.post("/v1/persist/settings")
-def save_settings(
-    domain: str = Depends(classes.get_domain_param),
-    body: classes.SaveSettingsRequest = None,
-) -> classes.GenericEmptyResponse:
-    new_data = body.data
-
+def save_settings(data: dict) -> classes.GenericEmptyResponse:
     # Paths
     file_name = "app.json"
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
@@ -811,15 +854,19 @@ def save_settings(
         existing_data = {}
 
     # Update the existing data with the new variables
-    existing_data[domain] = new_data
+    for key, val in data.items():
+        existing_data[key] = val
 
     # Save the updated data to the file, this will overwrite all values in the key's dict.
     with open(file_path, "w") as file:
         json.dump(existing_data, file, indent=2)
 
+    # Save to memory
+    app.state.settings = existing_data
+
     return {
         "success": True,
-        "message": f"Saved {domain} settings to {file_path}",
+        "message": f"Saved settings to {file_path}",
         "data": None,
     }
 

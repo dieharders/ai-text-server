@@ -267,6 +267,7 @@ def create_embedding(
         llama_debug = LlamaDebugHandler(print_trace_on_end=True)
         callback_manager = CallbackManager([llama_debug])
         # Create embedding service
+        # @TODO Pass in props from UI
         service_context = ServiceContext.from_defaults(
             embed_model=create_embed_model(),
             llm=llm,
@@ -347,7 +348,7 @@ def verify_response(response, service_context):
 
 
 # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
-def query_embedding(query: str, index):
+def query_embedding(query: str, index: VectorStoreIndex):
     print("[embedding api] Query Data")
     # system_prompt = sys_prompt or DEFAULT_SYSTEM_PROMPT
     # query_wrapper_prompt = PromptTemplate(
@@ -355,7 +356,7 @@ def query_embedding(query: str, index):
     # )
     streaming_response = index.as_query_engine(
         streaming=True,
-        similarity_top_k=3,
+        similarity_top_k=3,  # @TODO Pass this from the UI setting
     ).query(query)
     response_generator = streaming_response.response_gen
     # answer = response.response
