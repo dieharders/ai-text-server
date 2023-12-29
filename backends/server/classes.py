@@ -44,9 +44,7 @@ class ConnectResponse(BaseModel):
 class LoadInferenceRequest(BaseModel):
     modelId: str  # used to find the model config
     # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
-    n_gpu_layers: Optional[
-        int
-    ] = 0  # @TODO expose to users to adjust based on their hardware, default should be 0, -1 = all layers, 32 for our purposes
+    n_gpu_layers: Optional[int] = 0  # 32 for our purposes
     use_mmap: Optional[bool] = True
     use_mlock: Optional[bool] = False
     f16_kv: Optional[bool] = True
@@ -54,7 +52,7 @@ class LoadInferenceRequest(BaseModel):
     n_ctx: Optional[int] = 512  # 3900 for llama2
     n_batch: Optional[int] = 512
     n_threads: Optional[int] = None
-    offload_kqv: Optional[bool] = False  # @TODO Expose this to UI
+    offload_kqv: Optional[bool] = False
     verbose: Optional[bool] = False
 
     model_config = {

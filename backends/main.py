@@ -248,7 +248,6 @@ def load_text_inference(
                     "n_threads": data.n_threads,
                     "offload_kqv": data.offload_kqv,
                     "verbose": data.verbose,
-                    "offload_kqv": data.offload_kqv,
                 },
             }
         )
