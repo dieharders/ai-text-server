@@ -19,9 +19,6 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "name": "inference",  # @TODO Change to generate ?
                 "urlPath": "/v1/text/inference",
                 "method": "POST",
-                "promptTemplate": app.state.text_model_config[
-                    "promptTemplate"
-                ],  # @TODO Can remove once we store model configs in json files outside front-end code.
             },
             {
                 "name": "load",

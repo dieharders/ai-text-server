@@ -43,8 +43,6 @@ class ConnectResponse(BaseModel):
 # Load in the ai model to be used for inference.
 class LoadInferenceRequest(BaseModel):
     modelId: str  # used to find the model config
-    pathToModel: str
-    textModelConfig: dict
     # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
     n_gpu_layers: Optional[
         int
@@ -64,22 +62,7 @@ class LoadInferenceRequest(BaseModel):
             "examples": [
                 {
                     "modelId": "llama-2-13b-chat-ggml",
-                    "pathToModel": "C:\\homebrewai-app\\models\\llama-2-13b.GGUF",
-                    "textModelConfig": {
-                        "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-                        "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-                        "id": "llama2-13b",
-                        "numTimesRun": 0,
-                        "isFavorited": False,
-                        "validation": "success",
-                        "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-                        "size": 1200000,
-                        "endChunk": 13,
-                        "progress": 67,
-                        "tokenizerPath": "/some/path/to/tokenizer",
-                        "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-                    },
-                    "n_gpu_layers": 1,
+                    "n_gpu_layers": 0,
                     "use_mmap": True,
                     "use_mlock": False,
                     "f16_kv": True,
@@ -141,7 +124,6 @@ class ServicesApiResponse(BaseModel):
     }
 
 
-# @TODO Not all of these props need to be passed, some come from stored settings
 class InferenceRequest(BaseModel):
     # homebrew server specific args
     collectionNames: Optional[List[str]] = []
@@ -555,36 +537,86 @@ class GenericEmptyResponse(BaseModel):
 #     }
 
 
-# class StartInferenceResponse(BaseModel):
-#     success: bool
-#     message: str
-#     data: dict
+class Model_Metadata(BaseModel):
+    promptTemplate: str
+    savePath: str
+    id: str
+    numTimesRun: int
+    isFavorited: bool
+    validation: str
+    modified: str
+    size: int
+    endChunk: int
+    progress: int
+    tokenizerPath: str
+    checksum: str
 
-#     model_config = {
-#         "json_schema_extra": {
-#             "examples": [
-#                 {
-#                     "success": True,
-#                     "message": "AI text inference started.",
-#                     "data": {
-#                         "port": 8080,
-#                         "docs": "http://localhost:8080/docs",
-#                         "textModelConfig": {
-#                             "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-#                             "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-#                             "id": "llama2-13b",
-#                             "numTimesRun": 0,
-#                             "isFavorited": False,
-#                             "validation": "success",
-#                             "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-#                             "size": 1200000,
-#                             "endChunk": 13,
-#                             "progress": 67,
-#                             "tokenizerPath": "/some/path/to/tokenizer",
-#                             "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-#                         },
-#                     },
-#                 }
-#             ]
-#         }
-#     }
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
+                    "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
+                    "id": "llama2-13b",
+                    "numTimesRun": 0,
+                    "isFavorited": False,
+                    "validation": "success",
+                    "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
+                    "size": 1200000,
+                    "endChunk": 13,
+                    "progress": 67,
+                    "tokenizerPath": "/some/path/to/tokenizer",
+                    "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
+                }
+            ]
+        }
+    }
+
+
+class Model_Metadatas(BaseModel):
+    current_text_model: str
+    current_download_path: str
+    installed_text_models: Model_Metadata
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "current_text_model": "llama-2-13b-chat",
+                    "current_download_path": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                    "installed_text_models": [
+                        {
+                            "id": "llama-2-13b-chat",
+                            "savePath": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "numTimesRun": 0,
+                            "isFavorited": False,
+                            "validation": "success",
+                            "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
+                            "size": 7865956224,
+                            "endChunk": 1,
+                            "progress": 100,
+                            "tokenizerPath": "",
+                            "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class Model_Config(BaseModel):
+    id: str
+    name: str
+    type: str
+    provider: str
+    licenses: List[str]
+    description: str
+    fileSize: float
+    fileName: str
+    modelType: str
+    modelUrl: str
+    quantTypes: List[str]
+    downloadUrl: str
+    sha256: str
+    promptTemplate: str

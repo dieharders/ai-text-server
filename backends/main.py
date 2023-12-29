@@ -31,6 +31,8 @@ MEMORY_PATH = os.path.join(os.getcwd(), MEMORY_FOLDER)
 PARSED_DOCUMENT_PATH = os.path.join(MEMORY_PATH, PARSED_FOLDER)
 TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
+TEXT_MODEL_CONFIGS_PATH = os.path.join(os.getcwd(), "shared")
+MODEL_METADATAS_FILENAME = "model_metadatas.json"
 
 
 @asynccontextmanager
@@ -126,23 +128,47 @@ def connect() -> classes.ConnectResponse:
 
 @app.get("/v1/text/models")
 def get_text_model():
-    # llm = app.state.llm
-    model_config = app.state.text_model_config
+    try:
+        llm = app.state.llm
+        model_config = app.state.text_model_config
 
-    return {
-        "success": True,
-        "message": "",
-        "data": {
-            "id": model_config["id"],
-            "name": model_config["name"],
-            "path": model_config["savePath"],
-            "size": model_config["size"],
-            "type": model_config["type"],
-            "ownedBy": model_config["provider"],
-            "permissions": model_config["licenses"],
-            "promptTemplate": model_config["promptTemplate"],
-        },
-    }
+        if llm is not None and model_config:
+            name = model_config["name"]
+            model_id = model_config["id"]
+            metadata_file_path = os.path.join(
+                APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME
+            )
+            metadata = common.get_model_metadata(
+                model_id, APP_SETTINGS_PATH, metadata_file_path
+            )
+            return {
+                "success": True,
+                "message": f"Model {name} is already loaded.",
+                "data": {
+                    "id": model_id,
+                    "name": name,
+                    "path": metadata["savePath"],
+                    "size": metadata["size"],
+                    "type": model_config["type"],
+                    "ownedBy": model_config["provider"],
+                    "permissions": model_config["licenses"],
+                    "promptTemplate": model_config["promptTemplate"],
+                    # "systemPromptTemplate": settings["systemPromptTemplate"],
+                    # "systemPrompt": settings["systemPrompt"],
+                },
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No model is currently loaded.",
+                "data": {},
+            }
+    except (Exception, KeyError) as error:
+        return {
+            "success": False,
+            "message": f"Something went wrong: {error}",
+            "data": {},
+        }
 
 
 @app.post("/v1/text/load")
@@ -150,10 +176,24 @@ def load_text_inference(
     data: classes.LoadInferenceRequest,
 ) -> classes.LoadInferenceResponse:
     try:
-        # Store the current model's configuration for later reference
-        app.state.text_model_config = data.textModelConfig
         model_id = data.modelId
-        app.state.path_to_model = data.pathToModel
+        metadata_file_path = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
+        config_file_path = os.path.join(
+            TEXT_MODEL_CONFIGS_PATH, "text_model_configs.json"
+        )
+        # Get the install metadata
+        metadata = common.get_model_metadata(
+            model_id, APP_SETTINGS_PATH, metadata_file_path
+        )
+        # Get the config data
+        model_config = common.get_model_config(
+            model_id, TEXT_MODEL_CONFIGS_PATH, config_file_path
+        )
+        # Find the model save path
+        app.state.text_model_config = model_config
+        if "savePath" in metadata:
+            modelPath = metadata["savePath"]
+            app.state.path_to_model = modelPath
         # Save model init settings to disk
         save_settings(
             {
@@ -172,9 +212,9 @@ def load_text_inference(
                 },
             }
         )
-        print(f"[homebrew api] Path to model loaded: {data.pathToModel}")
+        print(f"[homebrew api] Model loaded from: {modelPath}")
         # Load the specified Ai model
-        if app.state.llm == None:
+        if app.state.llm is None:
             model_settings = app.state.settings["init"]
             generate_settings = {}
             app.state.llm = text_llama_index.load_text_model(
@@ -182,8 +222,8 @@ def load_text_inference(
             )
 
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
-    except KeyError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
+    except (Exception, KeyError):
+        raise HTTPException(status_code=400, detail="Something went wrong")
 
 
 # Use Llama Index to run queries on vector database embeddings or run normal chat inference.
@@ -841,28 +881,8 @@ def save_settings(data: dict) -> classes.GenericEmptyResponse:
     file_name = "app.json"
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
 
-    # Create folder/file
-    if not os.path.exists(APP_SETTINGS_PATH):
-        os.makedirs(APP_SETTINGS_PATH)
-
-    # Try to open the file (if it exists)
-    try:
-        with open(file_path, "r") as file:
-            existing_data = json.load(file)
-    except FileNotFoundError:
-        # If the file doesn't exist yet, create an empty dictionary
-        existing_data = {}
-
-    # Update the existing data with the new variables
-    for key, val in data.items():
-        existing_data[key] = val
-
-    # Save the updated data to the file, this will overwrite all values in the key's dict.
-    with open(file_path, "w") as file:
-        json.dump(existing_data, file, indent=2)
-
     # Save to memory
-    app.state.settings = existing_data
+    app.state.settings = common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
 
     return {
         "success": True,

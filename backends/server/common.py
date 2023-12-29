@@ -1,9 +1,13 @@
 import re
 import os
+import json
 import glob
 import httpx
 import subprocess
-from typing import List, Tuple
+from typing import Any, List, Tuple
+from server.classes import Model_Metadata, Model_Metadatas, Model_Config
+
+INSTALLED_TEXT_MODELS = "installed_text_models"
 
 
 def kill_text_inference(app):
@@ -162,3 +166,63 @@ def dedupe_substrings(input_string):
 
     # Return as space seperated
     return " ".join(result)
+
+
+def get_settings_file(folderpath: str, filepath: str):
+    # Check if folder exists
+    if not os.path.exists(folderpath):
+        raise Exception("Folder does not exist.")
+
+    # Try to open the file (if it exists)
+    loaded_data = {}
+    try:
+        with open(filepath, "r") as file:
+            loaded_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist, fail
+        raise Exception("File does not exist.")
+
+    return loaded_data
+
+
+def save_settings_file(folderpath: str, filepath: str, data: Any):
+    # Create folder/file
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    # Try to open the file (if it exists)
+    try:
+        with open(filepath, "r") as file:
+            existing_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist yet, create an empty dictionary
+        existing_data = {}
+
+    # Update the existing data with the new variables
+    for key, val in data.items():
+        existing_data[key] = val
+
+    # Save the updated data to the file, this will overwrite all values in the key's dict.
+    with open(filepath, "w") as file:
+        json.dump(existing_data, file, indent=2)
+
+    return existing_data
+
+
+# Gets all the llm model file related metadata
+def get_model_metadata(id: str, folderpath: str, filepath: str) -> Model_Metadata:
+    metadata = {}
+    settings: Model_Metadatas = get_settings_file(folderpath, filepath)
+    models = settings[INSTALLED_TEXT_MODELS]
+    for item in models:
+        if item.get("id") == id:
+            metadata = item
+            break
+    return metadata
+
+
+# Gets the llm model configuration data
+def get_model_config(id: str, folderpath, filepath) -> Model_Config:
+    configs = get_settings_file(folderpath, filepath)
+    config = configs[id]
+    return config

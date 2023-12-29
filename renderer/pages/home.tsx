@@ -118,16 +118,16 @@ export default function Home() {
     storedPath && setSavePath(storedPath)
     currModelId && setCurrentTextModel(currModelId)
     // Load stored model from storage if found
-    if (storedPath && currModelId)
-      loadTextModelAction({
-        modelId: currModelId,
-        pathToModel: storedPath,
-        textModelConfig,
-      })
+    // if (storedPath && currModelId)
+    //   loadTextModelAction({
+    //     modelId: currModelId,
+    //     pathToModel: storedPath,
+    //     textModelConfig,
+    //   })
 
     // Set defaults if none found
     if (!storedPath) saveDefaultPath()
-  }, [loadTextModelAction])
+  }, [])
 
   return (
     <div className="xs:p-0 mb-32 flex min-h-screen flex-col items-center justify-between overflow-x-hidden lg:mb-0 lg:p-24">
@@ -169,7 +169,9 @@ export default function Home() {
           data={textModels}
           currentTextModel={currentTextModel}
           setCurrentTextModel={setCurrentTextModel}
-          loadTextModelAction={loadTextModelAction}
+          loadTextModelAction={() => {
+            //
+          }}
         />
       )}
     </div>

@@ -18,8 +18,8 @@ interface IProps {
 }
 
 // LocalStorage keys
-export const INSTALLED_TEXT_MODELS = 'installed-text-models'
-export const ITEM_CURRENT_MODEL = 'current-text-model'
+export const INSTALLED_TEXT_MODELS = 'installed_text_models'
+export const ITEM_CURRENT_MODEL = 'current_text_model'
 
 /**
  * List of curated text inference models
