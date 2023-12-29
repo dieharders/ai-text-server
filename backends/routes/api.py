@@ -31,6 +31,12 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/text/models",
                 "method": "GET",
             },
+            # Return a list of all currently installed models and their metadata
+            {
+                "name": "installed",
+                "urlPath": "/v1/text/installed",
+                "method": "GET",
+            },
             # llama.cpp offers native embedding
             {
                 "name": "embedding",

@@ -27,21 +27,21 @@ export default function Home() {
   const [savePath, setSavePath] = useState<string>('')
   const [currentTextModel, setCurrentTextModel] = useState<string>('')
 
-  const loadTextModelAction = useCallback(
-    (payload: { modelId: string; pathToModel: string; textModelConfig: any }) => {
-      fetch(`${HOMEBREW_BASE_PATH}/v1/text/load`, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      }).catch(err => {
-        console.log('[UI] Error loading model:', err)
-      })
-    },
-    [HOMEBREW_BASE_PATH],
-  )
+  // const loadTextModelAction = useCallback(
+  //   (payload: { modelId: string; pathToModel: string; textModelConfig: any }) => {
+  //     fetch(`${HOMEBREW_BASE_PATH}/v1/text/load`, {
+  //       method: 'POST',
+  //       headers: {
+  //         Accept: 'application/json',
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify(payload),
+  //     }).catch(err => {
+  //       console.log('[UI] Error loading model:', err)
+  //     })
+  //   },
+  //   [HOMEBREW_BASE_PATH],
+  // )
 
   // Company credits (built by)
   const renderCredits = () => {

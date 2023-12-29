@@ -537,7 +537,7 @@ class GenericEmptyResponse(BaseModel):
 #     }
 
 
-class Model_Metadata(BaseModel):
+class Text_Model_Metadata(BaseModel):
     promptTemplate: str
     savePath: str
     id: str
@@ -555,7 +555,6 @@ class Model_Metadata(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
                     "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
                     "id": "llama2-13b",
                     "numTimesRun": 0,
@@ -573,10 +572,10 @@ class Model_Metadata(BaseModel):
     }
 
 
-class Model_Metadatas(BaseModel):
+class Text_Model_Metadatas(BaseModel):
     current_text_model: str
     current_download_path: str
-    installed_text_models: Model_Metadata
+    installed_text_models: Text_Model_Metadata
 
     model_config = {
         "json_schema_extra": {
@@ -620,3 +619,43 @@ class Model_Config(BaseModel):
     downloadUrl: str
     sha256: str
     promptTemplate: str
+
+
+class Text_Model_Install_Settings(BaseModel):
+    id: str
+    name: str
+    savePath: str
+    size: int
+    type: str
+    ownedBy: str
+    permissions: List[str]
+    promptTemplate: str
+
+
+class Text_Model_Install_Settings_Response(BaseModel):
+    success: bool
+    message: str
+    data: List[Text_Model_Install_Settings]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "message": "Success",
+                    "data": [
+                        {
+                            "id": "llama-2-13b-chat",
+                            "name": "llama2",
+                            "savePath": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "size": 7865956224,
+                            "type": "llama",
+                            "ownedBy": "Meta",
+                            "permissions": ["MIT"],
+                            "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
+                        }
+                    ],
+                }
+            ]
+        }
+    }

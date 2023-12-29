@@ -5,7 +5,7 @@ import glob
 import httpx
 import subprocess
 from typing import Any, List, Tuple
-from server.classes import Model_Metadata, Model_Metadatas, Model_Config
+from server.classes import Text_Model_Metadata, Text_Model_Metadatas, Model_Config
 
 INSTALLED_TEXT_MODELS = "installed_text_models"
 
@@ -209,10 +209,10 @@ def save_settings_file(folderpath: str, filepath: str, data: Any):
     return existing_data
 
 
-# Gets all the llm model file related metadata
-def get_model_metadata(id: str, folderpath: str, filepath: str) -> Model_Metadata:
+# Gets all the previously installed model file related metadata
+def get_model_metadata(id: str, folderpath: str, filepath: str) -> Text_Model_Metadata:
     metadata = {}
-    settings: Model_Metadatas = get_settings_file(folderpath, filepath)
+    settings: Text_Model_Metadatas = get_settings_file(folderpath, filepath)
     models = settings[INSTALLED_TEXT_MODELS]
     for item in models:
         if item.get("id") == id:

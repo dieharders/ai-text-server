@@ -32,7 +32,11 @@ PARSED_DOCUMENT_PATH = os.path.join(MEMORY_PATH, PARSED_FOLDER)
 TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
 TEXT_MODEL_CONFIGS_PATH = os.path.join(os.getcwd(), "shared")
+TEXT_MODEL_CONFIGS_FILEPATH = os.path.join(
+    TEXT_MODEL_CONFIGS_PATH, "text_model_configs.json"
+)
 MODEL_METADATAS_FILENAME = "model_metadatas.json"
+MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 
 
 @asynccontextmanager
@@ -126,6 +130,49 @@ def connect() -> classes.ConnectResponse:
     }
 
 
+# Return a list of all currently installed models and their metadata
+@app.get("/v1/text/installed")
+def get_installed_models() -> classes.Text_Model_Install_Settings_Response:
+    try:
+        # Get installed models file
+        metadatas: classes.Text_Model_Metadatas = common.get_settings_file(
+            APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
+        )
+        # Get model configs file
+        configs: List[classes.Text_Model_Install_Settings] = common.get_settings_file(
+            TEXT_MODEL_CONFIGS_PATH, TEXT_MODEL_CONFIGS_FILEPATH
+        )
+        # Go thru each item in the installed list
+        results = []
+        for item in metadatas["installed_text_models"]:
+            config = configs[item["id"]]
+            model = {
+                "id": item["id"],
+                "name": config["name"],
+                "savePath": item["savePath"],
+                "size": item["size"],
+                "type": config["type"],
+                "ownedBy": config["provider"],
+                "permissions": config["licenses"],
+                "promptTemplate": config["promptTemplate"],
+                # "systemPromptTemplate": config["systemPromptTemplate"],
+                # "systemPrompt": config["systemPrompt"],
+            }
+            results.append(model)
+
+        return {
+            "success": True,
+            "message": "This is a list of all currently installed models.",
+            "data": results,
+        }
+    except Exception:
+        return {
+            "success": False,
+            "message": "Failed to find any installed models.",
+            "data": {},
+        }
+
+
 @app.get("/v1/text/models")
 def get_text_model():
     try:
@@ -135,11 +182,8 @@ def get_text_model():
         if llm is not None and model_config:
             name = model_config["name"]
             model_id = model_config["id"]
-            metadata_file_path = os.path.join(
-                APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME
-            )
             metadata = common.get_model_metadata(
-                model_id, APP_SETTINGS_PATH, metadata_file_path
+                model_id, APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
             )
             return {
                 "success": True,
@@ -177,17 +221,13 @@ def load_text_inference(
 ) -> classes.LoadInferenceResponse:
     try:
         model_id = data.modelId
-        metadata_file_path = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
-        config_file_path = os.path.join(
-            TEXT_MODEL_CONFIGS_PATH, "text_model_configs.json"
-        )
         # Get the install metadata
         metadata = common.get_model_metadata(
-            model_id, APP_SETTINGS_PATH, metadata_file_path
+            model_id, APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
         )
         # Get the config data
         model_config = common.get_model_config(
-            model_id, TEXT_MODEL_CONFIGS_PATH, config_file_path
+            model_id, TEXT_MODEL_CONFIGS_PATH, TEXT_MODEL_CONFIGS_FILEPATH
         )
         # Find the model save path
         app.state.text_model_config = model_config
