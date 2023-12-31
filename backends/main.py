@@ -155,8 +155,7 @@ def get_installed_models() -> classes.Text_Model_Install_Settings_Response:
                 "ownedBy": config["provider"],
                 "permissions": config["licenses"],
                 "promptTemplate": config["promptTemplate"],
-                # "systemPromptTemplate": config["systemPromptTemplate"],
-                # "systemPrompt": config["systemPrompt"],
+                "systemPrompt": config["systemPrompt"],
             }
             results.append(model)
 
@@ -174,7 +173,7 @@ def get_installed_models() -> classes.Text_Model_Install_Settings_Response:
 
 
 @app.get("/v1/text/models")
-def get_text_model():
+def get_text_model() -> classes.Text_Model_Response:
     try:
         llm = app.state.llm
         model_config = app.state.text_model_config
@@ -197,8 +196,7 @@ def get_text_model():
                     "ownedBy": model_config["provider"],
                     "permissions": model_config["licenses"],
                     "promptTemplate": model_config["promptTemplate"],
-                    # "systemPromptTemplate": settings["systemPromptTemplate"],
-                    # "systemPrompt": settings["systemPrompt"],
+                    "systemPrompt": model_config["systemPrompt"],
                 },
             }
         else:
@@ -485,8 +483,8 @@ async def create_memory(
             processed_file,
             app.state.storage_directory,
             embed_form,
-            app.state.llm,
             db_client,
+            app,
         )
     except (Exception, KeyError) as e:
         # Error
@@ -722,8 +720,8 @@ async def update_memory(
                 processed_file,
                 app.state.storage_directory,
                 form,
-                app.state.llm,
                 db,
+                app,
             )
         else:
             # Delete tmp files if exist
@@ -782,7 +780,7 @@ def delete_documents(
             collection.metadata["sources"] = sources_json
             collection.modify(metadata=collection.metadata)
             # Delete embeddings from llama-index @TODO Verify this works
-            index = embedding.load_embedding(app.state.llm, db, collection_id)
+            index = embedding.load_embedding(app, db, collection_id)
             index.delete(document_id)
         # Delete the embeddings from collection
         collection.delete(ids=document_ids)

@@ -508,35 +508,7 @@ class GenericEmptyResponse(BaseModel):
     }
 
 
-# class StartInferenceRequest(BaseModel):
-#     modelConfig: dict
-
-#     model_config = {
-#         "json_schema_extra": {
-#             "examples": [
-#                 {
-#                     "modelConfig": {
-#                         "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-#                         "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-#                         "id": "llama2-13b",
-#                         "numTimesRun": 0,
-#                         "isFavorited": False,
-#                         "validation": "success",
-#                         "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-#                         "size": 1200000,
-#                         "endChunk": 13,
-#                         "progress": 67,
-#                         "tokenizerPath": "/some/path/to/tokenizer",
-#                         "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-#                     },
-#                 }
-#             ]
-#         }
-#     }
-
-
 class Text_Model_Metadata(BaseModel):
-    promptTemplate: str
     savePath: str
     id: str
     numTimesRun: int
@@ -613,12 +585,15 @@ class Model_Config(BaseModel):
     fileName: str
     modelType: str
     modelUrl: str
+    context_window: int
     quantTypes: List[str]
     downloadUrl: str
     sha256: str
     promptTemplate: str
+    systemPrompt: str
 
 
+# This is a combination of model config and metadata
 class Text_Model_Install_Settings(BaseModel):
     id: str
     name: str
@@ -628,6 +603,7 @@ class Text_Model_Install_Settings(BaseModel):
     ownedBy: str
     permissions: List[str]
     promptTemplate: str
+    systemPrompt: str
 
 
 class Text_Model_Install_Settings_Response(BaseModel):
@@ -651,8 +627,37 @@ class Text_Model_Install_Settings_Response(BaseModel):
                             "ownedBy": "Meta",
                             "permissions": ["MIT"],
                             "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
+                            "systemPrompt": "You are an AI assistant that answers questions in a friendly manner",
                         }
                     ],
+                }
+            ]
+        }
+    }
+
+
+class Text_Model_Response(BaseModel):
+    success: bool
+    message: str
+    data: Text_Model_Install_Settings
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "message": "Success",
+                    "data": {
+                        "id": "llama-2-13b-chat",
+                        "name": "llama2",
+                        "savePath": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                        "size": 7865956224,
+                        "type": "llama",
+                        "ownedBy": "Meta",
+                        "permissions": ["MIT"],
+                        "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
+                        "systemPrompt": "You are an AI assistant that answers questions in a friendly manner",
+                    },
                 }
             ]
         }

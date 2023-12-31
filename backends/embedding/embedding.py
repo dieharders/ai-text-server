@@ -19,8 +19,7 @@ from llama_index import (
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
 from llama_index.vector_stores import ChromaVectorStore
 from llama_index.storage.storage_context import StorageContext
-
-# from llama_index.prompts import PromptTemplate
+from llama_index.prompts import PromptTemplate
 from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
 
 # from llama_index.embeddings import HuggingFaceEmbedding
@@ -28,6 +27,7 @@ from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
 
 # @TODO Setup prompt templates in conjunction with llm when querying
 # @TODO Pass a template like this as a prop when creating embeddings
+# More templates found here: https://github.com/run-llama/llama_index/blob/main/llama_index/prompts/default_prompts.py
 DEFAULT_SYSTEM_PROMPT = """You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
 - Generate human readable output, avoid creating output with gibberish text.
 - Generate only the requested output, don't include any other language before or after the requested output.
@@ -35,6 +35,13 @@ DEFAULT_SYSTEM_PROMPT = """You are an AI assistant that answers questions in a f
 - Generate professional language typically used in business documents in North America.
 - Never generate offensive or foul language.
 """
+DEFAULT_PROMPT_TEMPLATE = (
+    "We have provided context information below. \n"
+    "---------------------\n"
+    "{context_str}"
+    "\n---------------------\n"
+    "Given this information, please answer the question: {query_str}\n"
+)
 
 
 # Define a specific embedding method
@@ -206,8 +213,8 @@ def create_embedding(
     processed_file: dict,
     storage_directory: str,
     form: Any,
-    llm: Type[LlamaCPP],
     db: Type[ClientAPI],
+    app,
 ):
     try:
         # File attributes
@@ -267,15 +274,17 @@ def create_embedding(
         llama_debug = LlamaDebugHandler(print_trace_on_end=True)
         callback_manager = CallbackManager([llama_debug])
         # Create embedding service
-        # @TODO Pass in props from UI
+        llm: Type[LlamaCPP] = app.state.llm
         service_context = ServiceContext.from_defaults(
             embed_model=create_embed_model(),
             llm=llm,
-            context_window=3900,
             callback_manager=callback_manager,
+            # KWargs @TODO Pass in props from UI
             chunk_size=512,
             chunk_overlap=20,
-            chunk_size_limit=512,
+            # Prompt templating @TODO Do we rly need to define templates for embeddings?
+            system_prompt=app.state.settings["call"].systemPrompt,
+            query_wrapper_prompt=app.state.settings["call"].promptTemplate,
         )
         # Create a vector db
         print("[embedding api] Creating index...")
@@ -350,10 +359,6 @@ def verify_response(response, service_context):
 # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
 def query_embedding(query: str, index: VectorStoreIndex):
     print("[embedding api] Query Data")
-    # system_prompt = sys_prompt or DEFAULT_SYSTEM_PROMPT
-    # query_wrapper_prompt = PromptTemplate(
-    #     f"[INST]<<SYS>>\n{system_prompt}<</SYS>>\n\n{query}[/INST] "
-    # )
     streaming_response = index.as_query_engine(
         streaming=True,
         similarity_top_k=3,  # @TODO Pass this from the UI setting
@@ -365,7 +370,7 @@ def query_embedding(query: str, index: VectorStoreIndex):
 
 # Load embedding index from disk
 def load_embedding(
-    llm: Type[LlamaCPP],
+    app,
     db: Type[ClientAPI],
     collection_name: str,
 ):
@@ -373,8 +378,22 @@ def load_embedding(
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
     # Create embedding service
+    llm: Type[LlamaCPP] = app.state.llm
+    systemPrompt: str = app.state.settings["call"].systemPrompt
+    promptTemplate: str = app.state.settings["call"].promptTemplate
+    system_prompt = systemPrompt or DEFAULT_SYSTEM_PROMPT
+    query_wrapper_prompt = PromptTemplate(promptTemplate or DEFAULT_PROMPT_TEMPLATE)
     service_context = ServiceContext.from_defaults(
-        llm=llm, embed_model=create_embed_model(), callback_manager=callback_manager
+        llm=llm,
+        embed_model=create_embed_model(),
+        callback_manager=callback_manager,
+        # Prompt helper kwargs
+        context_window=app.state.settings["init"].n_ctx,
+        # num_output=0, # @TODO Provide this from settings
+        # Prompt templating
+        system_prompt=system_prompt,
+        query_wrapper_prompt=query_wrapper_prompt,
+        # prompt_helper={},  # @TODO helps deal with LLM context window token limitations
     )
     # You MUST get() with the same embedding function you supplied while creating the collection.
     chroma_collection = db.get_or_create_collection(collection_name)

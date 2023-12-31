@@ -125,7 +125,11 @@ def query_memory(query: str, collection_names: List[str], app, db, options):
     # Update the LLM settings
     app.state.llm.generate_kwargs.update(options)
     # Load the vector index
-    indexDB = embedding.load_embedding(app.state.llm, db, collection_name)
+    indexDB = embedding.load_embedding(
+        app,
+        db,
+        collection_name,
+    )
     # Stream the response
     token_generator = embedding.query_embedding(query, indexDB)
     return token_streamer(token_generator)
