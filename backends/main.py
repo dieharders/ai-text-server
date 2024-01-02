@@ -156,6 +156,7 @@ def get_installed_models() -> classes.Text_Model_Install_Settings_Response:
                 "permissions": config["licenses"],
                 "promptTemplate": config["promptTemplate"],
                 "systemPrompt": config["systemPrompt"],
+                "n_ctx": config["context_window"],
             }
             results.append(model)
 
@@ -172,7 +173,8 @@ def get_installed_models() -> classes.Text_Model_Install_Settings_Response:
         }
 
 
-@app.get("/v1/text/models")
+# Gets the currently loaded model
+@app.get("/v1/text/model")
 def get_text_model() -> classes.Text_Model_Response:
     try:
         llm = app.state.llm
@@ -197,6 +199,7 @@ def get_text_model() -> classes.Text_Model_Response:
                     "permissions": model_config["licenses"],
                     "promptTemplate": model_config["promptTemplate"],
                     "systemPrompt": model_config["systemPrompt"],
+                    "n_ctx": model_config["context_window"],
                 },
             }
         else:

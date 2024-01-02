@@ -27,8 +27,8 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
             },
             # Return the currently loaded model and its settings
             {
-                "name": "models",
-                "urlPath": "/v1/text/models",
+                "name": "model",
+                "urlPath": "/v1/text/model",
                 "method": "GET",
             },
             # Return a list of all currently installed models and their metadata

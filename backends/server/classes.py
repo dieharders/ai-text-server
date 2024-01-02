@@ -604,6 +604,7 @@ class Text_Model_Install_Settings(BaseModel):
     permissions: List[str]
     promptTemplate: str
     systemPrompt: str
+    n_ctx: int
 
 
 class Text_Model_Install_Settings_Response(BaseModel):
@@ -628,6 +629,7 @@ class Text_Model_Install_Settings_Response(BaseModel):
                             "permissions": ["MIT"],
                             "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
                             "systemPrompt": "You are an AI assistant that answers questions in a friendly manner",
+                            "n_ctx": 3900,
                         }
                     ],
                 }
@@ -657,6 +659,7 @@ class Text_Model_Response(BaseModel):
                         "permissions": ["MIT"],
                         "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
                         "systemPrompt": "You are an AI assistant that answers questions in a friendly manner",
+                        "n_ctx": 3900,
                     },
                 }
             ]
