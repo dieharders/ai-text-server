@@ -192,7 +192,7 @@ def get_text_model() -> classes.Text_Model_Response:
                 "data": {
                     "id": model_id,
                     "name": name,
-                    "path": metadata["savePath"],
+                    "savePath": metadata["savePath"],
                     "size": metadata["size"],
                     "type": model_config["type"],
                     "ownedBy": model_config["provider"],

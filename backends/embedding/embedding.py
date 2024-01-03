@@ -275,6 +275,7 @@ def create_embedding(
         callback_manager = CallbackManager([llama_debug])
         # Create embedding service
         llm: Type[LlamaCPP] = app.state.llm
+        ragTemplate = app.state.settings["call"].ragPromptTemplate
         service_context = ServiceContext.from_defaults(
             embed_model=create_embed_model(),
             llm=llm,
@@ -284,7 +285,9 @@ def create_embedding(
             chunk_overlap=20,
             # Prompt templating @TODO Do we rly need to define templates for embeddings?
             system_prompt=app.state.settings["call"].systemPrompt,
-            query_wrapper_prompt=app.state.settings["call"].promptTemplate,
+            query_wrapper_prompt=PromptTemplate(
+                template=ragTemplate.text, prompt_type=ragTemplate.type
+            ),
         )
         # Create a vector db
         print("[embedding api] Creating index...")
@@ -380,9 +383,12 @@ def load_embedding(
     # Create embedding service
     llm: Type[LlamaCPP] = app.state.llm
     systemPrompt: str = app.state.settings["call"].systemPrompt
-    promptTemplate: str = app.state.settings["call"].promptTemplate
+    promptTemplate: str = app.state.settings["call"].ragPromptTemplate
     system_prompt = systemPrompt or DEFAULT_SYSTEM_PROMPT
-    query_wrapper_prompt = PromptTemplate(promptTemplate or DEFAULT_PROMPT_TEMPLATE)
+    query_wrapper_prompt = PromptTemplate(
+        template=promptTemplate.text or DEFAULT_PROMPT_TEMPLATE,
+        prompt_type=promptTemplate.type,
+    )
     service_context = ServiceContext.from_defaults(
         llm=llm,
         embed_model=create_embed_model(),
