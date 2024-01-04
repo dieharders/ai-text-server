@@ -35,7 +35,7 @@ TEXT_MODEL_CONFIGS_PATH = os.path.join(os.getcwd(), "shared")
 TEXT_MODEL_CONFIGS_FILEPATH = os.path.join(
     TEXT_MODEL_CONFIGS_PATH, "text_model_configs.json"
 )
-MODEL_METADATAS_FILENAME = "model_metadatas.json"
+MODEL_METADATAS_FILENAME = "installed_models.json"
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 
 

@@ -177,10 +177,16 @@ class InferenceRequest(BaseModel):
                     "stop": ["###", "[DONE]"],
                     "echo": False,
                     "model": "llama2",
-                    "seed": 1337,
+                    "grammar": None,
+                    "mirostat_tau": 5.0,
+                    "tfs_z": 1.0,
                     "top_k": 40,
-                    "top_p": 0.7,
-                    "repeat_penalty": 1.0,
+                    "top_p": 0.95,
+                    "min_p": 0.05,
+                    "seed": 1337,
+                    "repeat_penalty": 1.1,
+                    "presence_penalty": 0.0,
+                    "frequency_penalty": 0.0,
                 }
             ]
         }
@@ -543,7 +549,6 @@ class Text_Model_Metadata(BaseModel):
 
 
 class Text_Model_Metadatas(BaseModel):
-    current_text_model: str
     current_download_path: str
     installed_text_models: Text_Model_Metadata
 
@@ -551,7 +556,6 @@ class Text_Model_Metadatas(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "current_text_model": "llama-2-13b-chat",
                     "current_download_path": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
                     "installed_text_models": [
                         {
