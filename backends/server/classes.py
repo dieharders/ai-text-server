@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from typing import List, Optional
-from fastapi import Query
 
 
 class PingResponse(BaseModel):
@@ -122,13 +121,23 @@ class ServicesApiResponse(BaseModel):
     }
 
 
+class RagTemplateData(BaseModel):
+    id: str
+    name: str
+    text: str
+    type: Optional[str] = None
+
+
 class InferenceRequest(BaseModel):
     # homebrew server specific args
     collectionNames: Optional[List[str]] = []
     mode: Optional[str] = "completion"
+    systemPrompt: Optional[str] = None
+    promptTemplate: Optional[str] = None
+    ragPromptTemplate: Optional[RagTemplateData] = None
     # __call__ args
     prompt: str
-    # messages: Optional[List[str]] = None
+    messages: Optional[List[str]] = None
     stream: Optional[bool] = True
     # suffix: Optional[str] = ""
     temperature: Optional[float] = 0.0  # precise
@@ -169,8 +178,18 @@ class InferenceRequest(BaseModel):
                 {
                     "prompt": "Why does mass conservation break down?",
                     "collectionNames": ["science"],
-                    # Settings
                     "mode": "completion",  # completion | chat
+                    "systemPrompt": "You are a helpful Ai assistant.",
+                    "promptTemplate": "Answer this question: {{query_str}}",
+                    "ragPromptTemplate": {
+                        "id": "summary",
+                        "name": "Summary",
+                        "text": "This is a template: {query_str}",
+                    },
+                    "messages": [
+                        {"role": "user", "content": "What is meaning of life?"}
+                    ],
+                    # Settings
                     "stream": True,
                     "temperature": 0.2,
                     "max_tokens": 1024,

@@ -1,9 +1,10 @@
 import json
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from llama_index.llms import LlamaCPP
 from llama_index.llms.llama_utils import messages_to_prompt, completion_to_prompt
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
 from embedding import embedding
+from server import classes
 
 ###
 # Llama-Index allows us to search embeddings in a db and perform queries on them.
@@ -60,6 +61,7 @@ def load_text_model(
             "n_batch": settings["n_batch"],
             "n_threads": settings["n_threads"],
             "offload_kqv": settings["offload_kqv"],
+            "chat_format": "llama-2",  # @TODO Load from model_configs.chat_format
             # "torch_dtype": torch.float16,
             # "load_in_8bit": True,
         }
@@ -67,7 +69,7 @@ def load_text_model(
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
 
-    # @TODO Can we set update these without needing to unload model?
+    # @TODO Can we update these without needing to unload model?
     # From: https://docs.llamaindex.ai/en/stable/examples/llm/llama_2_llama_cpp.html
     llm = LlamaCPP(
         # Provide a url to download a model from
@@ -85,7 +87,7 @@ def load_text_model(
         generate_kwargs=generate_kwargs,
         # kwargs to pass to __init__()
         model_kwargs=model_kwargs,
-        # Transform inputs into Llama2 format
+        # Transform inputs into Llama2 format, swap out for other model's prompt template
         messages_to_prompt=messages_to_prompt,
         completion_to_prompt=completion_to_prompt,
         callback_manager=callback_manager,
@@ -116,7 +118,15 @@ def token_streamer(token_generator):
 
 
 # Search through a database of embeddings and return similiar documents for llm to use as context
-def query_memory(query: str, collection_names: List[str], app, db, options):
+def query_memory(
+    query: str,
+    ragPromptTemplate: classes.RagTemplateData,
+    systemPrompt: str,
+    collection_names: List[str],
+    app,
+    db,
+    options,
+):
     if app.state.llm == None:
         raise Exception("No Ai loaded.")
 
@@ -129,6 +139,13 @@ def query_memory(query: str, collection_names: List[str], app, db, options):
         app,
         db,
         collection_name,
+        query,
+        ragPromptTemplate,
+        systemPrompt,
+        options.get("max_tokens"),
+        app.state.settings["init"].get(
+            "n_ctx"
+        ),  # @TODO This should be passed in the client request
     )
     # Stream the response
     token_generator = embedding.query_embedding(query, indexDB)
@@ -136,13 +153,38 @@ def query_memory(query: str, collection_names: List[str], app, db, options):
 
 
 # Perform a normal text completion on a prompt
-def text_completion(prompt: str, app, options):
+def text_completion(
+    prompt: str, prompt_template: str, system_prompt: str, app, options
+):
     llm: LlamaCPP = app.state.llm
     if llm == None:
         raise Exception("No Ai loaded.")
 
+    # Format query from prompt template
+    query_str = prompt
+    if prompt_template:
+        query_str = prompt_template.replace("{{query_str}}", prompt)
+    # Format query to model spec, Inject system prompt into prompt
+    if system_prompt:
+        query_str = llm.completion_to_prompt(query_str, system_prompt)
     # Stream response
-    token_generator = llm.stream_complete(prompt, kwargs=options)
+    token_generator = llm.stream_complete(query_str, kwargs=options)
+    for token in token_generator:
+        # print(token.delta, end="", flush=True)
+        payload = {"event": "GENERATING_TOKENS", "data": f"{token.delta}"}
+        yield json.dumps(payload)
+
+
+# Perform a normal text chat conversation
+def text_chat(messages: Sequence[str], system_prompt, app, options):
+    llm: LlamaCPP = app.state.llm
+    if llm == None:
+        raise Exception("No Ai loaded.")
+
+    # Format messages
+    messages = llm.messages_to_prompt(messages, system_prompt)
+    # Stream response
+    token_generator = llm.stream_chat(messages, kwargs=options)
     for token in token_generator:
         # print(token.delta, end="", flush=True)
         payload = {"event": "GENERATING_TOKENS", "data": f"{token.delta}"}

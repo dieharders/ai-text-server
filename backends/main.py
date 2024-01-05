@@ -271,8 +271,12 @@ def load_text_inference(
 async def text_inference(payload: classes.InferenceRequest):
     try:
         prompt = payload.prompt
+        messages = payload.messages
         collection_names = payload.collectionNames
         mode = payload.mode
+        prompt_template = payload.promptTemplate
+        rag_prompt_template = payload.ragPromptTemplate
+        system_prompt = payload.systemPrompt
         options = dict(
             stream=payload.stream,
             temperature=payload.temperature,
@@ -306,18 +310,30 @@ async def text_inference(payload: classes.InferenceRequest):
             return EventSourceResponse(
                 text_llama_index.query_memory(
                     prompt,
+                    rag_prompt_template,
+                    system_prompt,
                     collection_names,
                     app,
                     embedding.get_vectordb_client(app),
                     options,
                 ),
             )
-        else:
+        elif mode == "completion":
             return EventSourceResponse(
-                text_llama_index.text_completion(prompt, app, options)
+                text_llama_index.text_completion(
+                    prompt, prompt_template, system_prompt, app, options
+                )
             )
-    except KeyError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
+        elif mode == "chat":
+            return EventSourceResponse(
+                text_llama_index.text_chat(messages, system_prompt, app, options)
+            )
+        else:
+            raise Exception("Check 'mode' is provided.")
+    except (KeyError, Exception) as err:
+        raise HTTPException(
+            status_code=400, detail=f"Something went wrong. Reason: {err}"
+        )
 
 
 # Pre-process supplied files into a text format and save to disk for embedding later.

@@ -21,14 +21,13 @@ from llama_index.vector_stores import ChromaVectorStore
 from llama_index.storage.storage_context import StorageContext
 from llama_index.prompts import PromptTemplate
 from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
-
-# from llama_index.embeddings import HuggingFaceEmbedding
-
+from server import classes
 
 # @TODO Setup prompt templates in conjunction with llm when querying
 # @TODO Pass a template like this as a prop when creating embeddings
 # More templates found here: https://github.com/run-llama/llama_index/blob/main/llama_index/prompts/default_prompts.py
-DEFAULT_SYSTEM_PROMPT = """You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
+DEFAULT_SYSTEM_PROMPT = """
+You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
 - Generate human readable output, avoid creating output with gibberish text.
 - Generate only the requested output, don't include any other language before or after the requested output.
 - Never say thank you, that you are happy to help, that you are an AI agent, etc. Just answer directly.
@@ -376,30 +375,41 @@ def load_embedding(
     app,
     db: Type[ClientAPI],
     collection_name: str,
+    query_string: Optional[str] = "",
+    rag_prompt_template: Optional[classes.RagTemplateData] = None,
+    system_prompt: Optional[str] = None,
+    num_output: int = 256,
+    context_window: int = 2000,
 ):
     # Debugging
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
-    # Create embedding service
+    # Construct args
     llm: Type[LlamaCPP] = app.state.llm
-    systemPrompt: str = app.state.settings["call"]["systemPrompt"]
-    promptTemplate: str = app.state.settings["call"]["ragPromptTemplate"]
-    system_prompt = systemPrompt or DEFAULT_SYSTEM_PROMPT
+    promptTemplateText = rag_prompt_template.text or DEFAULT_PROMPT_TEMPLATE
+    system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
     query_wrapper_prompt = PromptTemplate(
-        template=promptTemplate.get("text") or DEFAULT_PROMPT_TEMPLATE,
-        prompt_type=promptTemplate.get("type"),
+        template=promptTemplateText,
+        prompt_type=rag_prompt_template.type,
     )
+    completion_template = query_wrapper_prompt.format(
+        context_str="", query_str=query_string
+    )
+    chat_template = query_wrapper_prompt.format_messages(
+        context_str="", query_str=query_string
+    )
+    # Create service
     service_context = ServiceContext.from_defaults(
         llm=llm,
-        embed_model=create_embed_model(),
+        embed_model=create_embed_model(),  # "local:BAAI/bge-base-en-v1.5"
         callback_manager=callback_manager,
         # Prompt helper kwargs
-        context_window=app.state.settings["init"].get("n_ctx"),
-        # num_output=0, # @TODO Provide this from settings
+        context_window=context_window,
+        num_output=num_output,
+        # prompt_helper={},  # @TODO helps deal with LLM context window token limitations
         # Prompt templating
         system_prompt=system_prompt,
-        query_wrapper_prompt=query_wrapper_prompt,
-        # prompt_helper={},  # @TODO helps deal with LLM context window token limitations
+        query_wrapper_prompt=completion_template,
     )
     # You MUST get() with the same embedding function you supplied while creating the collection.
     chroma_collection = db.get_or_create_collection(collection_name)
