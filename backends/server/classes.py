@@ -1,6 +1,12 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+DEFAULT_TEMPERATURE = 0.2
+DEFAULT_CONTEXT_WINDOW = 2000
+DEFAULT_SEED = 1337
+DEFAULT_MAX_TOKENS = 0  # 0 means we should calc it
+DEFAULT_MODE = "completion"
+
 
 class PingResponse(BaseModel):
     success: bool
@@ -39,20 +45,49 @@ class ConnectResponse(BaseModel):
     }
 
 
-# Load in the ai model to be used for inference.
-class LoadInferenceRequest(BaseModel):
-    modelId: str  # used to find the model config
-    # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
+class LoadTextInferenceInit(BaseModel):
     n_gpu_layers: Optional[int] = 0  # 32 for our purposes
     use_mmap: Optional[bool] = True
     use_mlock: Optional[bool] = False
     f16_kv: Optional[bool] = True
-    seed: Optional[int] = 1337
-    n_ctx: Optional[int] = 512  # 3900 for llama2
+    seed: Optional[int] = DEFAULT_SEED
+    n_ctx: Optional[int] = DEFAULT_CONTEXT_WINDOW
     n_batch: Optional[int] = 512
     n_threads: Optional[int] = None
     offload_kqv: Optional[bool] = False
     verbose: Optional[bool] = False
+
+
+class LoadTextInferenceCall(BaseModel):
+    stream: Optional[bool] = True
+    stop: Optional[List[str]] = [
+        # "\n",
+        # "###",
+        "[DONE]",
+    ]
+    echo: Optional[bool] = False
+    model: Optional[str] = "local"
+    mirostat_tau: Optional[float] = 5.0
+    tfs_z: Optional[float] = 1.0
+    top_k: Optional[int] = 40
+    top_p: Optional[float] = 0.95
+    min_p: Optional[float] = 0.05
+    repeat_penalty: Optional[float] = 1.1
+    presence_penalty: Optional[float] = 0.0
+    frequency_penalty: Optional[float] = 0.0
+    temperature: Optional[float] = DEFAULT_TEMPERATURE
+    grammar: Optional[dict] = None
+    max_tokens: Optional[int] = DEFAULT_MAX_TOKENS
+
+
+# Load in the ai model to be used for inference
+class LoadInferenceRequest(BaseModel):
+    modelId: str  # used to find the model config
+    mode: Optional[str] = DEFAULT_MODE
+    # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
+    init: LoadTextInferenceInit
+    # __call__ args
+    call: LoadTextInferenceCall
 
     model_config = {
         "json_schema_extra": {
@@ -129,9 +164,12 @@ class RagTemplateData(BaseModel):
 
 
 class InferenceRequest(BaseModel):
+    # __init__ args
+    n_ctx: Optional[int] = DEFAULT_CONTEXT_WINDOW
+    seed: Optional[int] = DEFAULT_SEED
     # homebrew server specific args
     collectionNames: Optional[List[str]] = []
-    mode: Optional[str] = "completion"
+    mode: Optional[str] = DEFAULT_MODE
     systemPrompt: Optional[str] = None
     promptTemplate: Optional[str] = None
     ragPromptTemplate: Optional[RagTemplateData] = None
@@ -141,9 +179,7 @@ class InferenceRequest(BaseModel):
     stream: Optional[bool] = True
     # suffix: Optional[str] = ""
     temperature: Optional[float] = 0.0  # precise
-    max_tokens: Optional[
-        int
-    ] = 128  # this should prob be a factor (ctx/8) of the context window. Providing a few back and forth convo before limit is reached.
+    max_tokens: Optional[int] = DEFAULT_MAX_TOKENS
     stop: Optional[List[str]] = [
         # "\n",
         # "###",
@@ -163,7 +199,6 @@ class InferenceRequest(BaseModel):
     top_k: Optional[int] = 40
     top_p: Optional[float] = 0.95
     min_p: Optional[float] = 0.05
-    seed: Optional[int] = 1337
     repeat_penalty: Optional[float] = 1.1
     presence_penalty: Optional[
         float
@@ -193,6 +228,7 @@ class InferenceRequest(BaseModel):
                     "stream": True,
                     "temperature": 0.2,
                     "max_tokens": 1024,
+                    "n_ctx": 2000,
                     "stop": ["###", "[DONE]"],
                     "echo": False,
                     "model": "llama2",
@@ -617,23 +653,20 @@ class Model_Config(BaseModel):
 
 
 # This is a combination of model config and metadata
-class Text_Model_Install_Settings(BaseModel):
-    id: str
-    name: str
-    savePath: str
-    size: int
-    type: str
-    ownedBy: str
-    permissions: List[str]
-    promptTemplate: str
-    systemPrompt: str
-    n_ctx: int
+class Text_Model_Install_Setting(BaseModel):
+    id: Optional[str] = ""
+    name: Optional[str] = ""
+    savePath: Optional[str] = ""
+    size: Optional[int] = None
+    type: Optional[str] = ""
+    ownedBy: Optional[str] = ""
+    permissions: Optional[List[str]] = None
 
 
 class Text_Model_Install_Settings_Response(BaseModel):
     success: bool
     message: str
-    data: List[Text_Model_Install_Settings]
+    data: List[Text_Model_Install_Setting]
 
     model_config = {
         "json_schema_extra": {
@@ -650,9 +683,6 @@ class Text_Model_Install_Settings_Response(BaseModel):
                             "type": "llama",
                             "ownedBy": "Meta",
                             "permissions": ["MIT"],
-                            "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-                            "systemPrompt": "You are an AI assistant that answers questions in a friendly manner",
-                            "n_ctx": 3900,
                         }
                     ],
                 }
@@ -664,7 +694,7 @@ class Text_Model_Install_Settings_Response(BaseModel):
 class Text_Model_Response(BaseModel):
     success: bool
     message: str
-    data: Text_Model_Install_Settings
+    data: Text_Model_Install_Setting
 
     model_config = {
         "json_schema_extra": {
@@ -680,9 +710,6 @@ class Text_Model_Response(BaseModel):
                         "type": "llama",
                         "ownedBy": "Meta",
                         "permissions": ["MIT"],
-                        "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-                        "systemPrompt": "You are an AI assistant that answers questions in a friendly manner",
-                        "n_ctx": 3900,
                     },
                 }
             ]

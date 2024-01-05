@@ -1,10 +1,10 @@
 import json
-from typing import List, Optional, Sequence
+from typing import List, Sequence
 from llama_index.llms import LlamaCPP
 from llama_index.llms.llama_utils import messages_to_prompt, completion_to_prompt
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
 from embedding import embedding
-from server import classes
+from server import common, classes
 
 ###
 # Llama-Index allows us to search embeddings in a db and perform queries on them.
@@ -14,57 +14,52 @@ from server import classes
 
 # High level llama-cpp-python object wrapped in class from LlamaIndex
 def load_text_model(
-    path_to_model,
-    settings: Optional[dict] = None,
-    options: Optional[dict] = None,
+    path_to_model: str,
+    mode: str,
+    init_settings: classes.LoadTextInferenceInit,  # init settings
+    gen_settings: classes.LoadTextInferenceCall,  # generation settings
 ):
-    DEFAULT_CONTEXT_WINDOW = 3900
-    DEFAULT_MAX_TOKENS = 128
-    DEFAULT_TEMPERATURE = 0.2
+    n_ctx = init_settings.n_ctx
+    if n_ctx <= 0:
+        n_ctx = 2000  # fallback
+    seed = init_settings.seed
+    temperature = gen_settings.temperature
+    m_tokens = gen_settings.max_tokens or 0  # fallback
+    max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
 
     generate_kwargs = {
-        "stream": options.get("stream", True),
-        "stop": options.get(
-            "stop",
-            [
-                # "\n",
-                # "###",
-                "[DONE]",
-            ],
-        ),
-        "echo": options.get("echo", False),
-        "model": options.get("model", "local"),
-        "mirostat_tau": options.get("mirostat_tau", 5.0),
-        "tfs_z": options.get("tfs_z", 1.0),
-        "top_k": options.get("top_k", 40),
-        "top_p": options.get("top_p", 0.95),
-        "min_p": options.get("min_p", 0.05),
-        "repeat_penalty": options.get("repeat_penalty", 1.1),
-        "presence_penalty": options.get("presence_penalty", 0.0),
-        "frequency_penalty": options.get("frequency_penalty", 0.0),
-        "temperature": options.get("temperature", DEFAULT_TEMPERATURE),
-        "seed": options.get("seed", 1337),
-        "grammar": options.get("grammar", None),
-        "max_tokens": options.get("max_tokens", DEFAULT_MAX_TOKENS),
+        "stream": gen_settings.stream,
+        "stop": gen_settings.stop,
+        "echo": gen_settings.echo,
+        "model": gen_settings.model,
+        "mirostat_tau": gen_settings.mirostat_tau,
+        "tfs_z": gen_settings.tfs_z,
+        "top_k": gen_settings.top_k,
+        "top_p": gen_settings.top_p,
+        "min_p": gen_settings.min_p,
+        "repeat_penalty": gen_settings.repeat_penalty,
+        "presence_penalty": gen_settings.presence_penalty,
+        "frequency_penalty": gen_settings.frequency_penalty,
+        "temperature": temperature,
+        "seed": seed,
+        "grammar": gen_settings.grammar,
+        "max_tokens": max_tokens,
     }
 
-    model_kwargs = {}
-    if bool(settings):
-        model_kwargs = {
-            # 32, n_gpu_layers should be exposed to users to adjust based on their hardware
-            "n_gpu_layers": settings["n_gpu_layers"],
-            "use_mmap": settings["use_mmap"],
-            "use_mlock": settings["use_mlock"],
-            "f16_kv": settings["f16_kv"],
-            "seed": settings["seed"],
-            "n_ctx": settings["n_ctx"],
-            "n_batch": settings["n_batch"],
-            "n_threads": settings["n_threads"],
-            "offload_kqv": settings["offload_kqv"],
-            "chat_format": "llama-2",  # @TODO Load from model_configs.chat_format
-            # "torch_dtype": torch.float16,
-            # "load_in_8bit": True,
-        }
+    model_kwargs = {
+        "n_gpu_layers": init_settings.n_gpu_layers,
+        "use_mmap": init_settings.use_mmap,
+        "use_mlock": init_settings.use_mlock,
+        "f16_kv": init_settings.f16_kv,
+        "seed": seed,
+        "n_ctx": n_ctx,
+        "n_batch": init_settings.n_batch,
+        "n_threads": init_settings.n_threads,
+        "offload_kqv": init_settings.offload_kqv,
+        "chat_format": "llama-2",  # @TODO Load from model_configs.chat_format
+        # "torch_dtype": torch.float16,
+        # "load_in_8bit": True,
+    }
 
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
@@ -77,12 +72,11 @@ def load_text_model(
         # Or, you can set the path to a pre-downloaded model instead of model_url
         model_path=path_to_model,
         # Both max_new_tokens and temperature will override their generate_kwargs counterparts
-        max_new_tokens=options.get("max_tokens", DEFAULT_MAX_TOKENS),
-        temperature=options.get("temperature", DEFAULT_TEMPERATURE),
-        # query_wrapper_prompt=query_wrapper_prompt,
+        max_new_tokens=max_tokens,
+        temperature=temperature,
         # llama2 has a context window of 4096 tokens, but we set it lower to allow for some wiggle room.
         # Note, this sets n_ctx in the model_kwargs below, so you don't need to pass it there.
-        context_window=options.get("n_ctx", DEFAULT_CONTEXT_WINDOW),
+        context_window=n_ctx,
         # kwargs to pass to __call__()
         generate_kwargs=generate_kwargs,
         # kwargs to pass to __init__()
@@ -120,12 +114,12 @@ def token_streamer(token_generator):
 # Search through a database of embeddings and return similiar documents for llm to use as context
 def query_memory(
     query: str,
-    ragPromptTemplate: classes.RagTemplateData,
-    systemPrompt: str,
+    rag_prompt_template: classes.RagTemplateData,
+    system_prompt: str,
     collection_names: List[str],
     app,
     db,
-    options,
+    options: dict,
 ):
     if app.state.llm == None:
         raise Exception("No Ai loaded.")
@@ -133,22 +127,22 @@ def query_memory(
     # @TODO We can do filtering based on doc/collection name, metadata, etc via LlamaIndex.
     collection_name = collection_names[0]  # Only take the first collection for now
     # Update the LLM settings
+    n_ctx = options.get("n_ctx") - 100  # for llama-index
+    max_tokens = options.get("max_tokens")
+    # Remove n_ctx from options
+    del options["n_ctx"]
     app.state.llm.generate_kwargs.update(options)
     # Load the vector index
     indexDB = embedding.load_embedding(
         app,
         db,
         collection_name,
-        query,
-        ragPromptTemplate,
-        systemPrompt,
-        options.get("max_tokens"),
-        app.state.settings["init"].get(
-            "n_ctx"
-        ),  # @TODO This should be passed in the client request
+        max_tokens,
+        n_ctx,
+        system_prompt,
     )
     # Stream the response
-    token_generator = embedding.query_embedding(query, indexDB)
+    token_generator = embedding.query_embedding(query, rag_prompt_template, indexDB)
     return token_streamer(token_generator)
 
 

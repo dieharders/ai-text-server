@@ -154,9 +154,6 @@ def get_installed_models() -> classes.Text_Model_Install_Settings_Response:
                 "type": config["type"],
                 "ownedBy": config["provider"],
                 "permissions": config["licenses"],
-                "promptTemplate": config["promptTemplate"],
-                "systemPrompt": config["systemPrompt"],
-                "n_ctx": config["context_window"],
             }
             results.append(model)
 
@@ -208,7 +205,7 @@ def get_text_model() -> classes.Text_Model_Response:
                 "message": "No model is currently loaded.",
                 "data": {},
             }
-    except (Exception, KeyError) as error:
+    except (Exception, KeyError, HTTPException) as error:
         return {
             "success": False,
             "message": f"Something went wrong: {error}",
@@ -222,6 +219,7 @@ def load_text_inference(
 ) -> classes.LoadInferenceResponse:
     try:
         model_id = data.modelId
+        mode = data.mode
         # Get the install metadata
         metadata = common.get_model_metadata(
             model_id, APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
@@ -235,35 +233,20 @@ def load_text_inference(
         if "savePath" in metadata:
             modelPath = metadata["savePath"]
             app.state.path_to_model = modelPath
-        # Save model init settings to disk
-        save_settings(
-            {
-                "init": {
-                    "n_gpu_layers": data.n_gpu_layers,
-                    "use_mmap": data.use_mmap,
-                    "use_mlock": data.use_mlock,
-                    "f16_kv": data.f16_kv,
-                    "seed": data.seed,
-                    "n_ctx": data.n_ctx,
-                    "n_batch": data.n_batch,
-                    "n_threads": data.n_threads,
-                    "offload_kqv": data.offload_kqv,
-                    "verbose": data.verbose,
-                },
-            }
-        )
+
         print(f"[homebrew api] Model loaded from: {modelPath}")
+
         # Load the specified Ai model
         if app.state.llm is None:
-            model_settings = app.state.settings["init"]
-            generate_settings = {}
+            model_settings = data.init
+            generate_settings = data.call
             app.state.llm = text_llama_index.load_text_model(
-                app.state.path_to_model, model_settings, generate_settings
+                app.state.path_to_model, mode, model_settings, generate_settings
             )
 
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
-    except (Exception, KeyError):
-        raise HTTPException(status_code=400, detail="Something went wrong")
+    except (Exception, KeyError) as error:
+        raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
 
 
 # Use Llama Index to run queries on vector database embeddings or run normal chat inference.
@@ -277,10 +260,14 @@ async def text_inference(payload: classes.InferenceRequest):
         prompt_template = payload.promptTemplate
         rag_prompt_template = payload.ragPromptTemplate
         system_prompt = payload.systemPrompt
+        m_tokens = payload.max_tokens or 0  # fallback
+        n_ctx = payload.n_ctx
+        max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
         options = dict(
             stream=payload.stream,
             temperature=payload.temperature,
-            max_tokens=payload.max_tokens,
+            n_ctx=n_ctx,
+            max_tokens=max_tokens,
             stop=payload.stop,
             echo=payload.echo,
             model=payload.model,

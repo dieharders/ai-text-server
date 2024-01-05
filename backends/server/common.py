@@ -8,6 +8,28 @@ from typing import Any, List, Tuple
 from server.classes import Text_Model_Metadata, Text_Model_Metadatas, Model_Config
 
 INSTALLED_TEXT_MODELS = "installed_text_models"
+DEFAULT_MAX_TOKENS = 128
+
+
+# This will return a context window that is suited for a particular mode.
+# This impacts how long a conversation you can have before the context_window limit is reached (and issues/hallucinations begin) for a given Ai model.
+def calc_max_tokens(max_tokens: int, context_window: int, mode: str):
+    system_msg_buffer = 100
+    # Use what is provided, otherwise calculate a value
+    if max_tokens > 0:
+        return max_tokens
+    if mode == "completion":
+        # Cant be too high or it fails
+        context_buffer = context_window // 2
+        # Largest possible since every request is a one-off response
+        return context_window - context_buffer - system_msg_buffer
+    else:
+        # should prob be a factor (ctx/8) of the context window. Providing a few back and forth convo before limit is reached.
+        context_factor = 8
+        result = (context_window // context_factor) - system_msg_buffer
+        if result <= 0:
+            result = DEFAULT_MAX_TOKENS
+        return result
 
 
 def kill_text_inference(app):
