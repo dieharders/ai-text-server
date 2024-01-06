@@ -617,7 +617,7 @@ class GenericEmptyResponse(BaseModel):
     }
 
 
-class Text_Model_Metadata(BaseModel):
+class InstalledTextModelMetadata(BaseModel):
     savePath: str
     id: str
     numTimesRun: int
@@ -651,9 +651,9 @@ class Text_Model_Metadata(BaseModel):
     }
 
 
-class Text_Model_Metadatas(BaseModel):
+class InstalledTextModelsData(BaseModel):
     current_download_path: str
-    installed_text_models: Text_Model_Metadata
+    installed_text_models: List[InstalledTextModelMetadata]
 
     model_config = {
         "json_schema_extra": {
@@ -681,7 +681,7 @@ class Text_Model_Metadatas(BaseModel):
     }
 
 
-class Model_Config(BaseModel):
+class ModelConfig(BaseModel):
     id: str
     name: str
     type: str
@@ -696,12 +696,10 @@ class Model_Config(BaseModel):
     quantTypes: List[str]
     downloadUrl: str
     sha256: str
-    promptTemplate: str
-    systemPrompt: str
 
 
 # This is a combination of model config and metadata
-class Text_Model_Install_Setting(BaseModel):
+class TextModelInstallSetting(BaseModel):
     id: Optional[str] = ""
     name: Optional[str] = ""
     savePath: Optional[str] = ""
@@ -711,10 +709,10 @@ class Text_Model_Install_Setting(BaseModel):
     permissions: Optional[List[str]] = None
 
 
-class Text_Model_Install_Settings_Response(BaseModel):
+class TextModelInstallSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: List[Text_Model_Install_Setting]
+    data: List[TextModelInstallSetting]
 
     model_config = {
         "json_schema_extra": {
@@ -739,10 +737,10 @@ class Text_Model_Install_Settings_Response(BaseModel):
     }
 
 
-class Text_Model_Response(BaseModel):
+class InstalledTextModelResponse(BaseModel):
     success: bool
     message: str
-    data: Text_Model_Install_Setting
+    data: TextModelInstallSetting
 
     model_config = {
         "json_schema_extra": {

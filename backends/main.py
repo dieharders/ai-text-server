@@ -132,10 +132,10 @@ def connect() -> classes.ConnectResponse:
 
 # Return a list of all currently installed models and their metadata
 @app.get("/v1/text/installed")
-def get_installed_models() -> classes.Text_Model_Install_Settings_Response:
+def get_installed_models() -> classes.TextModelInstallSettingsResponse:
     try:
         # Get installed models file
-        metadatas: classes.Text_Model_Metadatas = common.get_settings_file(
+        metadatas: classes.InstalledTextModelsData = common.get_settings_file(
             APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
         )
         # Get model configs file
@@ -170,9 +170,9 @@ def get_installed_models() -> classes.Text_Model_Install_Settings_Response:
         }
 
 
-# Gets the currently loaded model
+# Gets the currently loaded model and its installation metadata
 @app.get("/v1/text/model")
-def get_text_model() -> classes.Text_Model_Response:
+def get_text_model() -> classes.InstalledTextModelResponse:
     try:
         llm = app.state.llm
         model_config = app.state.text_model_config

@@ -5,7 +5,11 @@ import glob
 import httpx
 import subprocess
 from typing import Any, List, Tuple
-from server.classes import Text_Model_Metadata, Text_Model_Metadatas, Model_Config
+from server.classes import (
+    InstalledTextModelMetadata,
+    InstalledTextModelsData,
+    ModelConfig,
+)
 
 INSTALLED_TEXT_MODELS = "installed_text_models"
 DEFAULT_MAX_TOKENS = 128
@@ -231,10 +235,13 @@ def save_settings_file(folderpath: str, filepath: str, data: Any):
     return existing_data
 
 
-# Gets all the previously installed model file related metadata
-def get_model_metadata(id: str, folderpath: str, filepath: str) -> Text_Model_Metadata:
+# Return metadata for the currently loaded model
+def get_model_metadata(
+    id: str, folderpath: str, filepath: str
+) -> InstalledTextModelMetadata:
     metadata = {}
-    settings: Text_Model_Metadatas = get_settings_file(folderpath, filepath)
+    # Gets all the previously installed model metadata
+    settings: InstalledTextModelsData = get_settings_file(folderpath, filepath)
     models = settings[INSTALLED_TEXT_MODELS]
     for item in models:
         if item.get("id") == id:
@@ -244,7 +251,7 @@ def get_model_metadata(id: str, folderpath: str, filepath: str) -> Text_Model_Me
 
 
 # Gets the llm model configuration data
-def get_model_config(id: str, folderpath, filepath) -> Model_Config:
+def get_model_config(id: str, folderpath, filepath) -> ModelConfig:
     configs = get_settings_file(folderpath, filepath)
     config = configs[id]
     return config
