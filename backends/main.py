@@ -194,9 +194,6 @@ def get_text_model() -> classes.Text_Model_Response:
                     "type": model_config["type"],
                     "ownedBy": model_config["provider"],
                     "permissions": model_config["licenses"],
-                    "promptTemplate": model_config["promptTemplate"],
-                    "systemPrompt": model_config["systemPrompt"],
-                    "n_ctx": model_config["context_window"],
                 },
             }
         else:
