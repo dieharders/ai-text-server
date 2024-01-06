@@ -548,51 +548,51 @@ class WipeMemoriesResponse(BaseModel):
 
 
 class AppSettingsInitData(BaseModel):
-    preset: str | None
-    n_ctx: int | None
-    seed: int | None
-    n_threads: int | None
-    n_batch: int | None
-    offload_kqv: bool | None
-    n_gpu_layers: int | None
-    f16_kv: bool | None
-    use_mlock: bool | None
-    use_mmap: bool | None
-    verbose: bool | None
+    preset: Optional[str] = None
+    n_ctx: Optional[int] = None
+    seed: Optional[int] = None
+    n_threads: Optional[int] = None
+    n_batch: Optional[int] = None
+    offload_kqv: Optional[bool] = None
+    n_gpu_layers: Optional[int] = None
+    f16_kv: Optional[bool] = None
+    use_mlock: Optional[bool] = None
+    use_mmap: Optional[bool] = None
+    verbose: Optional[bool] = None
 
 
 class AppSettingsCallData(BaseModel):
-    preset: float | None
-    systemPrompt: str | None
-    promptTemplate: str | None
-    ragPromptTemplate: RagTemplateData | None
-    temperature: float | None
-    top_k: int | None
-    top_p: float | None
-    stop: List[str] | None
-    max_tokens: int | None
-    repeat_penalty: float | None
-    stream: bool | None
-    echo: bool | None
+    preset: Optional[float] = None
+    systemPrompt: Optional[str] = None
+    promptTemplate: Optional[str] = None
+    ragPromptTemplate: Optional[RagTemplateData] = None
+    temperature: Optional[float] = None
+    top_k: Optional[int] = None
+    top_p: Optional[float] = None
+    stop: Optional[List[str]] = None
+    max_tokens: Optional[int] = None
+    repeat_penalty: Optional[float] = None
+    stream: Optional[bool] = None
+    echo: Optional[bool] = None
     # Yet to be used params
-    # model: str | None
-    # mirostat_tau: float | None
-    # tfs_z: float | None
-    # min_p: float | None
-    # presence_penalty: float | None
-    # frequency_penalty: float | None
-    # grammar: dict | None
+    # model: str = None
+    # mirostat_tau: float = None
+    # tfs_z: float = None
+    # min_p: float = None
+    # presence_penalty: float = None
+    # frequency_penalty: float = None
+    # grammar: dict = None
 
 
 class SettingsResponseData(BaseModel):
-    init: AppSettingsInitData
-    call: AppSettingsCallData
+    init: Optional[AppSettingsInitData] = None
+    call: Optional[AppSettingsCallData] = None
 
 
 class GetSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: SettingsResponseData | None
+    data: Optional[SettingsResponseData] = None
 
 
 class SaveSettingsRequest(BaseModel):
