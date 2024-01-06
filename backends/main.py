@@ -881,7 +881,7 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
 
 # Get all app settings
 @app.get("/v1/persist/settings")
-def get_settings():
+def get_settings() -> classes.GetSettingsResponse:
     # Paths
     file_name = "app.json"
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)

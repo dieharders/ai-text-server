@@ -15,11 +15,13 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
         "name": "textInference",
         "port": app.state.PORT_HOMEBREW_API,
         "endpoints": [
+            # Generate a text response from Ai engine
             {
                 "name": "inference",  # @TODO Change to generate ?
                 "urlPath": "/v1/text/inference",
                 "method": "POST",
             },
+            # Load the specified Ai model into memory
             {
                 "name": "load",
                 "urlPath": "/v1/text/load",
@@ -76,11 +78,13 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
         "name": "storage",
         "port": app.state.PORT_HOMEBREW_API,
         "endpoints": [
+            # Get all app settings
             {
                 "name": "getSettings",
                 "urlPath": "/v1/persist/settings",
                 "method": "GET",
             },
+            # Save app settings
             {
                 "name": "saveSettings",
                 "urlPath": "/v1/persist/settings",
