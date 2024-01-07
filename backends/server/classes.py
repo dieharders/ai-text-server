@@ -60,11 +60,7 @@ class LoadTextInferenceInit(BaseModel):
 
 class LoadTextInferenceCall(BaseModel):
     stream: Optional[bool] = True
-    stop: Optional[List[str]] = [
-        # "\n",
-        # "###",
-        "[DONE]",
-    ]
+    stop: Optional[List[str]] = None
     echo: Optional[bool] = False
     model: Optional[str] = "local"
     mirostat_tau: Optional[float] = 5.0
@@ -82,7 +78,8 @@ class LoadTextInferenceCall(BaseModel):
 
 # Load in the ai model to be used for inference
 class LoadInferenceRequest(BaseModel):
-    modelId: str  # used to find the model config
+    modelPath: str
+    modelId: str
     mode: Optional[str] = DEFAULT_MODE
     # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
     init: LoadTextInferenceInit
@@ -93,17 +90,9 @@ class LoadInferenceRequest(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
+                    "modelPath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
                     "modelId": "llama-2-13b-chat-ggml",
-                    "n_gpu_layers": 0,
-                    "use_mmap": True,
-                    "use_mlock": False,
-                    "f16_kv": True,
-                    "seed": 1337,
-                    "n_ctx": 512,
-                    "n_batch": 512,
-                    "n_threads": None,
-                    "offload_kqv": False,
-                    "verbose": False,
+                    "mode": "completion",
                 }
             ]
         }
@@ -180,11 +169,9 @@ class InferenceRequest(BaseModel):
     # suffix: Optional[str] = ""
     temperature: Optional[float] = 0.0  # precise
     max_tokens: Optional[int] = DEFAULT_MAX_TOKENS
-    stop: Optional[List[str]] = [
-        # "\n",
-        # "###",
-        "[DONE]",
-    ]  # A list of strings to stop generation when encountered
+    stop: Optional[
+        List[str]
+    ] = None  # A list of strings to stop generation when encountered
     echo: Optional[bool] = False
     model: Optional[
         str
@@ -547,6 +534,7 @@ class WipeMemoriesResponse(BaseModel):
     }
 
 
+# @TODO Extend from LoadTextInferenceInit
 class AppSettingsInitData(BaseModel):
     preset: Optional[str] = None
     n_ctx: Optional[int] = None
@@ -651,7 +639,7 @@ class InstalledTextModelMetadata(BaseModel):
     }
 
 
-class InstalledTextModelsData(BaseModel):
+class InstalledTextModel(BaseModel):
     current_download_path: str
     installed_text_models: List[InstalledTextModelMetadata]
 
@@ -659,11 +647,11 @@ class InstalledTextModelsData(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "current_download_path": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                    "current_download_path": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
                     "installed_text_models": [
                         {
                             "id": "llama-2-13b-chat",
-                            "savePath": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
                             "numTimesRun": 0,
                             "isFavorited": False,
                             "validation": "success",
@@ -683,37 +671,40 @@ class InstalledTextModelsData(BaseModel):
 
 class ModelConfig(BaseModel):
     id: str
-    name: str
-    type: str
-    provider: str
-    licenses: List[str]
-    description: str
-    fileSize: float
+    name: Optional[str] = None
+    type: Optional[str] = None
+    provider: Optional[str] = None
+    licenses: Optional[List[str]] = None
+    description: Optional[str] = None
+    fileSize: Optional[float] = None
     fileName: str
-    modelType: str
-    modelUrl: str
-    context_window: int
-    quantTypes: List[str]
+    modelType: Optional[str] = None
+    modelUrl: Optional[str] = None
+    context_window: Optional[int] = None
+    quantTypes: Optional[List[str]] = None
     downloadUrl: str
-    sha256: str
+    sha256: Optional[str] = None
 
 
 # This is a combination of model config and metadata
-class TextModelInstallSetting(BaseModel):
-    id: Optional[str] = ""
-    name: Optional[str] = ""
-    savePath: Optional[str] = ""
+class TextModelInstallMetadata(BaseModel):
+    id: Optional[str] = None
+    savePath: Optional[str] = None
+    numTimesRun: Optional[int] = None
+    isFavorited: Optional[bool] = None
+    validation: Optional[str] = None
+    modified: Optional[str] = None
     size: Optional[int] = None
-    type: Optional[str] = ""
-    ownedBy: Optional[str] = ""
-    permissions: Optional[List[str]] = None
-    context_window: Optional[int] = None
+    endChunk: Optional[int] = None
+    progress: Optional[float] = None
+    tokenizerPath: Optional[str] = None
+    checksum: Optional[str] = None
 
 
-class TextModelInstallSettingsResponse(BaseModel):
+class TextModelInstallMetadataResponse(BaseModel):
     success: bool
     message: str
-    data: List[TextModelInstallSetting]
+    data: List[TextModelInstallMetadata]
 
     model_config = {
         "json_schema_extra": {
@@ -724,13 +715,16 @@ class TextModelInstallSettingsResponse(BaseModel):
                     "data": [
                         {
                             "id": "llama-2-13b-chat",
-                            "name": "llama2",
-                            "savePath": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "numTimesRun": 0,
+                            "isFavorited": False,
+                            "validation": "success",
+                            "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
                             "size": 7865956224,
-                            "type": "llama",
-                            "ownedBy": "Meta",
-                            "permissions": ["MIT"],
-                            "context_window": 4000,
+                            "endChunk": 1,
+                            "progress": 100,
+                            "tokenizerPath": "",
+                            "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
                         }
                     ],
                 }
@@ -742,7 +736,7 @@ class TextModelInstallSettingsResponse(BaseModel):
 class InstalledTextModelResponse(BaseModel):
     success: bool
     message: str
-    data: TextModelInstallSetting
+    data: TextModelInstallMetadata
 
     model_config = {
         "json_schema_extra": {
@@ -752,12 +746,16 @@ class InstalledTextModelResponse(BaseModel):
                     "message": "Success",
                     "data": {
                         "id": "llama-2-13b-chat",
-                        "name": "llama2",
-                        "savePath": "C:\\Users\\cybro\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                        "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                        "numTimesRun": 0,
+                        "isFavorited": False,
+                        "validation": "success",
+                        "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
                         "size": 7865956224,
-                        "type": "llama",
-                        "ownedBy": "Meta",
-                        "permissions": ["MIT"],
+                        "endChunk": 1,
+                        "progress": 100,
+                        "tokenizerPath": "",
+                        "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
                     },
                 }
             ]

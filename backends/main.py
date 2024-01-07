@@ -31,10 +31,6 @@ MEMORY_PATH = os.path.join(os.getcwd(), MEMORY_FOLDER)
 PARSED_DOCUMENT_PATH = os.path.join(MEMORY_PATH, PARSED_FOLDER)
 TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
-TEXT_MODEL_CONFIGS_PATH = os.path.join(os.getcwd(), "shared")
-TEXT_MODEL_CONFIGS_FILEPATH = os.path.join(
-    TEXT_MODEL_CONFIGS_PATH, "text_model_configs.json"
-)
 MODEL_METADATAS_FILENAME = "installed_models.json"
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 
@@ -51,7 +47,7 @@ async def lifespan(application: FastAPI):
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
-    application.state.text_model_config = {}
+    application.state.model_id = ""
     app.state.settings = {}
 
     yield
@@ -132,31 +128,16 @@ def connect() -> classes.ConnectResponse:
 
 # Return a list of all currently installed models and their metadata
 @app.get("/v1/text/installed")
-def get_installed_models() -> classes.TextModelInstallSettingsResponse:
+def get_installed_models() -> classes.TextModelInstallMetadataResponse:
     try:
         # Get installed models file
-        metadatas: classes.InstalledTextModelsData = common.get_settings_file(
+        metadatas: classes.InstalledTextModel = common.get_settings_file(
             APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
-        )
-        # Get model configs file
-        configs: List[classes.ModelConfig] = common.get_settings_file(
-            TEXT_MODEL_CONFIGS_PATH, TEXT_MODEL_CONFIGS_FILEPATH
         )
         # Go thru each item in the installed list
         results = []
         for item in metadatas["installed_text_models"]:
-            config = configs[item["id"]]
-            model = {
-                "id": item["id"],
-                "name": config["name"],
-                "savePath": item["savePath"],
-                "size": item["size"],
-                "type": config["type"],
-                "ownedBy": config["provider"],
-                "permissions": config["licenses"],
-                "context_window": config["context_window"],
-            }
-            results.append(model)
+            results.append(item)
 
         return {
             "success": True,
@@ -176,23 +157,17 @@ def get_installed_models() -> classes.TextModelInstallSettingsResponse:
 def get_text_model() -> classes.InstalledTextModelResponse:
     try:
         llm = app.state.llm
-        model_config = app.state.text_model_config
+        model_id = app.state.model_id
 
-        if llm is not None and model_config:
-            name = model_config["name"]
-            model_id = model_config["id"]
+        if llm is not None:
             metadata = common.get_model_metadata(
                 model_id, APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
             )
+            name = metadata["name"]
             return {
                 "success": True,
                 "message": f"Model {name} is already loaded.",
-                "data": {
-                    "id": model_id,
-                    "name": name,
-                    "savePath": metadata["savePath"],
-                    "size": metadata["size"],
-                },
+                "data": metadata,
             }
         else:
             return {
@@ -208,6 +183,7 @@ def get_text_model() -> classes.InstalledTextModelResponse:
         }
 
 
+# Start Text Inference service
 @app.post("/v1/text/load")
 def load_text_inference(
     data: classes.LoadInferenceRequest,
@@ -215,19 +191,10 @@ def load_text_inference(
     try:
         model_id = data.modelId
         mode = data.mode
-        # Get the install metadata
-        metadata = common.get_model_metadata(
-            model_id, APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
-        )
-        # Get the config data
-        model_config = common.get_model_config(
-            model_id, TEXT_MODEL_CONFIGS_PATH, TEXT_MODEL_CONFIGS_FILEPATH
-        )
-        # Find the model save path
-        app.state.text_model_config = model_config
-        if "savePath" in metadata:
-            modelPath = metadata["savePath"]
-            app.state.path_to_model = modelPath
+        modelPath = data.modelPath
+        # Record model's save path
+        app.state.model_id = model_id
+        app.state.path_to_model = modelPath
 
         print(f"[homebrew api] Model loaded from: {modelPath}")
 
@@ -236,7 +203,7 @@ def load_text_inference(
             model_settings = data.init
             generate_settings = data.call
             app.state.llm = text_llama_index.load_text_model(
-                app.state.path_to_model, mode, model_settings, generate_settings
+                modelPath, mode, model_settings, generate_settings
             )
 
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
@@ -280,8 +247,8 @@ async def text_inference(payload: classes.InferenceRequest):
 
         if not app.state.path_to_model:
             raise Exception("No path to model provided.")
-        if not app.state.text_model_config:
-            raise Exception("No model config exists.")
+        if not app.state.llm:
+            raise Exception("No LLM exists.")
 
         # Call LLM
         if len(collection_names):
