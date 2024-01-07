@@ -707,6 +707,7 @@ class TextModelInstallSetting(BaseModel):
     type: Optional[str] = ""
     ownedBy: Optional[str] = ""
     permissions: Optional[List[str]] = None
+    context_window: Optional[int] = None
 
 
 class TextModelInstallSettingsResponse(BaseModel):
@@ -729,6 +730,7 @@ class TextModelInstallSettingsResponse(BaseModel):
                             "type": "llama",
                             "ownedBy": "Meta",
                             "permissions": ["MIT"],
+                            "context_window": 4000,
                         }
                     ],
                 }

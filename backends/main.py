@@ -139,7 +139,7 @@ def get_installed_models() -> classes.TextModelInstallSettingsResponse:
             APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
         )
         # Get model configs file
-        configs: List[classes.Text_Model_Install_Settings] = common.get_settings_file(
+        configs: List[classes.ModelConfig] = common.get_settings_file(
             TEXT_MODEL_CONFIGS_PATH, TEXT_MODEL_CONFIGS_FILEPATH
         )
         # Go thru each item in the installed list
@@ -154,6 +154,7 @@ def get_installed_models() -> classes.TextModelInstallSettingsResponse:
                 "type": config["type"],
                 "ownedBy": config["provider"],
                 "permissions": config["licenses"],
+                "context_window": config["context_window"],
             }
             results.append(model)
 
@@ -191,9 +192,6 @@ def get_text_model() -> classes.InstalledTextModelResponse:
                     "name": name,
                     "savePath": metadata["savePath"],
                     "size": metadata["size"],
-                    "type": model_config["type"],
-                    "ownedBy": model_config["provider"],
-                    "permissions": model_config["licenses"],
                 },
             }
         else:
