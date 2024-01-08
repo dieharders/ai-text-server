@@ -19,15 +19,12 @@ from llama_index import (
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler
 from llama_index.vector_stores import ChromaVectorStore
 from llama_index.storage.storage_context import StorageContext
-
-# from llama_index.prompts import PromptTemplate
+from llama_index.prompts import PromptTemplate
 from llama_index.evaluation import FaithfulnessEvaluator  # ResponseEvaluator
+from server import classes
 
-# from llama_index.embeddings import HuggingFaceEmbedding
 
-
-# @TODO Setup prompt templates in conjunction with llm when querying
-# @TODO Pass a template like this as a prop when creating embeddings
+# More templates found here: https://github.com/run-llama/llama_index/blob/main/llama_index/prompts/default_prompts.py
 DEFAULT_SYSTEM_PROMPT = """You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
 - Generate human readable output, avoid creating output with gibberish text.
 - Generate only the requested output, don't include any other language before or after the requested output.
@@ -35,6 +32,13 @@ DEFAULT_SYSTEM_PROMPT = """You are an AI assistant that answers questions in a f
 - Generate professional language typically used in business documents in North America.
 - Never generate offensive or foul language.
 """
+DEFAULT_PROMPT_TEMPLATE = (
+    "We have provided context information below. \n"
+    "---------------------\n"
+    "{context_str}"
+    "\n---------------------\n"
+    "Given this information, please answer the question: {query_str}\n"
+)
 
 
 # Define a specific embedding method
@@ -206,8 +210,8 @@ def create_embedding(
     processed_file: dict,
     storage_directory: str,
     form: Any,
-    llm: Type[LlamaCPP],
     db: Type[ClientAPI],
+    app,
 ):
     try:
         # File attributes
@@ -267,14 +271,21 @@ def create_embedding(
         llama_debug = LlamaDebugHandler(print_trace_on_end=True)
         callback_manager = CallbackManager([llama_debug])
         # Create embedding service
+        llm: Type[LlamaCPP] = app.state.llm
+        # ragTemplate = app.state.settings["call"]["ragPromptTemplate"]
         service_context = ServiceContext.from_defaults(
             embed_model=create_embed_model(),
             llm=llm,
-            context_window=3900,
             callback_manager=callback_manager,
+            # KWargs @TODO Pass in props from UI
             chunk_size=512,
             chunk_overlap=20,
-            chunk_size_limit=512,
+            # Prompt templating - Only needed for embeddings that are not VectorStoreIndex and SummaryIndex
+            # These should be loaded from passed args in request not from settings
+            # system_prompt=app.state.settings["call"]["systemPrompt"],
+            # query_wrapper_prompt=PromptTemplate(
+            #     template=ragTemplate.get("text"), prompt_type=ragTemplate.get("type")
+            # ),
         )
         # Create a vector db
         print("[embedding api] Creating index...")
@@ -347,15 +358,28 @@ def verify_response(response, service_context):
 
 
 # Query Data, note top_k is set to 3 so it will use the top 3 nodes it finds in vector index
-def query_embedding(query: str, index):
+def query_embedding(
+    query: str, prompt_template_str: classes.RagTemplateData, index: VectorStoreIndex
+):
     print("[embedding api] Query Data")
-    # system_prompt = sys_prompt or DEFAULT_SYSTEM_PROMPT
-    # query_wrapper_prompt = PromptTemplate(
-    #     f"[INST]<<SYS>>\n{system_prompt}<</SYS>>\n\n{query}[/INST] "
-    # )
+    custom_qa_prompt = PromptTemplate(
+        template=prompt_template_str.text, prompt_type=prompt_template_str.type
+    )
+    # Used when no good response is returned and we want to further "handle" the answer before its delivered to user.
+    # @TODO Hardcoded for now, Set this from passed args in request
+    refine_template_str = (
+        "The original question is as follows: {query_str}\nWe have provided an"
+        " existing answer: {existing_answer}\nWe have the opportunity to refine"
+        " the existing answer (only if needed) with some more context"
+        " below.\n------------\n{context_msg}\n------------\nUsing both the new"
+        " context and your own knowledge, update or repeat the existing answer.\n"
+    )
+    custom_refine_prompt = PromptTemplate(refine_template_str)
     streaming_response = index.as_query_engine(
         streaming=True,
-        similarity_top_k=3,
+        text_qa_template=custom_qa_prompt,
+        refine_template=custom_refine_prompt,
+        similarity_top_k=3,  # @TODO Pass this from the UI setting
     ).query(query)
     response_generator = streaming_response.response_gen
     # answer = response.response
@@ -364,16 +388,44 @@ def query_embedding(query: str, index):
 
 # Load embedding index from disk
 def load_embedding(
-    llm: Type[LlamaCPP],
+    app,
     db: Type[ClientAPI],
     collection_name: str,
+    # query_string: Optional[str] = "",
+    # rag_prompt_template: Optional[classes.RagTemplateData] = None,
+    num_output: Optional[int] = 0,
+    context_window: Optional[int] = 2000,
+    system_prompt: Optional[str] = None,
 ):
     # Debugging
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
-    # Create embedding service
+    # Construct args
+    llm: Type[LlamaCPP] = app.state.llm
+    sys_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
+    # promptTemplateText = rag_prompt_template.text or DEFAULT_PROMPT_TEMPLATE
+    # query_wrapper_prompt = PromptTemplate(
+    #     template=promptTemplateText,
+    #     prompt_type=rag_prompt_template.type,
+    # )
+    # completion_template = query_wrapper_prompt.format(
+    #     context_str="", query_str=query_string
+    # )
+    # chat_template = query_wrapper_prompt.format_messages(
+    #     context_str="", query_str=query_string
+    # )
+    # Create service
     service_context = ServiceContext.from_defaults(
-        llm=llm, embed_model=create_embed_model(), callback_manager=callback_manager
+        llm=llm,
+        embed_model=create_embed_model(),  # "local:BAAI/bge-base-en-v1.5"
+        callback_manager=callback_manager,
+        # Prompt helper kwargs
+        context_window=context_window,
+        num_output=num_output,
+        # prompt_helper={},  # @TODO helps deal with LLM context window token limitations
+        # Prompt templating
+        system_prompt=sys_prompt,
+        # query_wrapper_prompt=promptTemplateText,
     )
     # You MUST get() with the same embedding function you supplied while creating the collection.
     chroma_collection = db.get_or_create_collection(collection_name)

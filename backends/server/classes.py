@@ -1,6 +1,12 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+DEFAULT_TEMPERATURE = 0.2
+DEFAULT_CONTEXT_WINDOW = 2000
+DEFAULT_SEED = 1337
+DEFAULT_MAX_TOKENS = 0  # 0 means we should calc it
+DEFAULT_MODE = "completion"
+
 
 class PingResponse(BaseModel):
     success: bool
@@ -29,39 +35,64 @@ class ConnectResponse(BaseModel):
                 {
                     "success": True,
                     "message": "Connected to api server on port 8008.",
-                    "data": {"docs": "http://localhost:8008/docs"},
+                    "data": {
+                        "docs": "http://localhost:8008/docs",
+                        "version": "0.2.0",
+                    },
                 }
             ]
         }
     }
 
 
-# Load in the ai model to be used for inference.
+class LoadTextInferenceInit(BaseModel):
+    n_gpu_layers: Optional[int] = 0  # 32 for our purposes
+    use_mmap: Optional[bool] = True
+    use_mlock: Optional[bool] = False
+    f16_kv: Optional[bool] = True
+    seed: Optional[int] = DEFAULT_SEED
+    n_ctx: Optional[int] = DEFAULT_CONTEXT_WINDOW
+    n_batch: Optional[int] = 512
+    n_threads: Optional[int] = None
+    offload_kqv: Optional[bool] = False
+    verbose: Optional[bool] = False
+
+
+class LoadTextInferenceCall(BaseModel):
+    stream: Optional[bool] = True
+    stop: Optional[List[str]] = None
+    echo: Optional[bool] = False
+    model: Optional[str] = "local"
+    mirostat_tau: Optional[float] = 5.0
+    tfs_z: Optional[float] = 1.0
+    top_k: Optional[int] = 40
+    top_p: Optional[float] = 0.95
+    min_p: Optional[float] = 0.05
+    repeat_penalty: Optional[float] = 1.1
+    presence_penalty: Optional[float] = 0.0
+    frequency_penalty: Optional[float] = 0.0
+    temperature: Optional[float] = DEFAULT_TEMPERATURE
+    grammar: Optional[dict] = None
+    max_tokens: Optional[int] = DEFAULT_MAX_TOKENS
+
+
+# Load in the ai model to be used for inference
 class LoadInferenceRequest(BaseModel):
+    modelPath: str
     modelId: str
-    pathToModel: str
-    textModelConfig: dict
+    mode: Optional[str] = DEFAULT_MODE
+    # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
+    init: LoadTextInferenceInit
+    # __call__ args
+    call: LoadTextInferenceCall
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
+                    "modelPath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
                     "modelId": "llama-2-13b-chat-ggml",
-                    "pathToModel": "C:\\homebrewai-app\\models\\llama-2-13b.GGUF",
-                    "textModelConfig": {
-                        "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-                        "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-                        "id": "llama2-13b",
-                        "numTimesRun": 0,
-                        "isFavorited": False,
-                        "validation": "success",
-                        "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-                        "size": 1200000,
-                        "endChunk": 13,
-                        "progress": 67,
-                        "tokenizerPath": "/some/path/to/tokenizer",
-                        "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-                    },
+                    "mode": "completion",
                 }
             ]
         }
@@ -114,10 +145,54 @@ class ServicesApiResponse(BaseModel):
     }
 
 
+class RagTemplateData(BaseModel):
+    id: str
+    name: str
+    text: str
+    type: Optional[str] = None
+
+
 class InferenceRequest(BaseModel):
-    prompt: str
+    # __init__ args
+    n_ctx: Optional[int] = DEFAULT_CONTEXT_WINDOW
+    seed: Optional[int] = DEFAULT_SEED
+    # homebrew server specific args
     collectionNames: Optional[List[str]] = []
-    mode: Optional[str] = "completion"
+    mode: Optional[str] = DEFAULT_MODE
+    systemPrompt: Optional[str] = None
+    promptTemplate: Optional[str] = None
+    ragPromptTemplate: Optional[RagTemplateData] = None
+    # __call__ args
+    prompt: str
+    messages: Optional[List[str]] = None
+    stream: Optional[bool] = True
+    # suffix: Optional[str] = ""
+    temperature: Optional[float] = 0.0  # precise
+    max_tokens: Optional[int] = DEFAULT_MAX_TOKENS
+    stop: Optional[
+        List[str]
+    ] = None  # A list of strings to stop generation when encountered
+    echo: Optional[bool] = False
+    model: Optional[
+        str
+    ] = "local"  # The name to use for the model in the completion object
+    grammar: Optional[dict] = None  # A grammar to use for constrained sampling
+    mirostat_tau: Optional[
+        float
+    ] = 5.0  # A higher value corresponds to more surprising or less predictable text, while a lower value corresponds to less surprising or more predictable text.
+    tfs_z: Optional[
+        float
+    ] = 1.0  # Tail Free Sampling - https://www.trentonbricken.com/Tail-Free-Sampling/
+    top_k: Optional[int] = 40
+    top_p: Optional[float] = 0.95
+    min_p: Optional[float] = 0.05
+    repeat_penalty: Optional[float] = 1.1
+    presence_penalty: Optional[
+        float
+    ] = 0.0  # The penalty to apply to tokens based on their presence in the prompt
+    frequency_penalty: Optional[
+        float
+    ] = 0.0  # The penalty to apply to tokens based on their frequency in the prompt
 
     model_config = {
         "json_schema_extra": {
@@ -125,7 +200,35 @@ class InferenceRequest(BaseModel):
                 {
                     "prompt": "Why does mass conservation break down?",
                     "collectionNames": ["science"],
-                    "mode": "completion",
+                    "mode": "completion",  # completion | chat
+                    "systemPrompt": "You are a helpful Ai assistant.",
+                    "promptTemplate": "Answer this question: {{query_str}}",
+                    "ragPromptTemplate": {
+                        "id": "summary",
+                        "name": "Summary",
+                        "text": "This is a template: {query_str}",
+                    },
+                    "messages": [
+                        {"role": "user", "content": "What is meaning of life?"}
+                    ],
+                    # Settings
+                    "stream": True,
+                    "temperature": 0.2,
+                    "max_tokens": 1024,
+                    "n_ctx": 2000,
+                    "stop": ["###", "[DONE]"],
+                    "echo": False,
+                    "model": "llama2",
+                    "grammar": None,
+                    "mirostat_tau": 5.0,
+                    "tfs_z": 1.0,
+                    "top_k": 40,
+                    "top_p": 0.95,
+                    "min_p": 0.05,
+                    "seed": 1337,
+                    "repeat_penalty": 1.1,
+                    "presence_penalty": 0.0,
+                    "frequency_penalty": 0.0,
                 }
             ]
         }
@@ -414,6 +517,7 @@ class DeleteCollectionResponse(BaseModel):
         }
     }
 
+
 class WipeMemoriesResponse(BaseModel):
     success: bool
     message: str
@@ -428,63 +532,232 @@ class WipeMemoriesResponse(BaseModel):
             ]
         }
     }
-# class StartInferenceRequest(BaseModel):
-#     modelConfig: dict
-
-#     model_config = {
-#         "json_schema_extra": {
-#             "examples": [
-#                 {
-#                     "modelConfig": {
-#                         "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-#                         "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-#                         "id": "llama2-13b",
-#                         "numTimesRun": 0,
-#                         "isFavorited": False,
-#                         "validation": "success",
-#                         "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-#                         "size": 1200000,
-#                         "endChunk": 13,
-#                         "progress": 67,
-#                         "tokenizerPath": "/some/path/to/tokenizer",
-#                         "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-#                     },
-#                 }
-#             ]
-#         }
-#     }
 
 
-# class StartInferenceResponse(BaseModel):
-#     success: bool
-#     message: str
-#     data: dict
+# @TODO Extend from LoadTextInferenceInit
+class AppSettingsInitData(BaseModel):
+    preset: Optional[str] = None
+    n_ctx: Optional[int] = None
+    seed: Optional[int] = None
+    n_threads: Optional[int] = None
+    n_batch: Optional[int] = None
+    offload_kqv: Optional[bool] = None
+    n_gpu_layers: Optional[int] = None
+    f16_kv: Optional[bool] = None
+    use_mlock: Optional[bool] = None
+    use_mmap: Optional[bool] = None
+    verbose: Optional[bool] = None
 
-#     model_config = {
-#         "json_schema_extra": {
-#             "examples": [
-#                 {
-#                     "success": True,
-#                     "message": "AI text inference started.",
-#                     "data": {
-#                         "port": 8080,
-#                         "docs": "http://localhost:8080/docs",
-#                         "textModelConfig": {
-#                             "promptTemplate": "Instructions:{{PROMPT}}\n\n### Response:",
-#                             "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
-#                             "id": "llama2-13b",
-#                             "numTimesRun": 0,
-#                             "isFavorited": False,
-#                             "validation": "success",
-#                             "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-#                             "size": 1200000,
-#                             "endChunk": 13,
-#                             "progress": 67,
-#                             "tokenizerPath": "/some/path/to/tokenizer",
-#                             "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
-#                         },
-#                     },
-#                 }
-#             ]
-#         }
-#     }
+
+class AppSettingsCallData(BaseModel):
+    preset: Optional[float] = None
+    systemPrompt: Optional[str] = None
+    promptTemplate: Optional[str] = None
+    ragPromptTemplate: Optional[RagTemplateData] = None
+    temperature: Optional[float] = None
+    top_k: Optional[int] = None
+    top_p: Optional[float] = None
+    stop: Optional[List[str]] = None
+    max_tokens: Optional[int] = None
+    repeat_penalty: Optional[float] = None
+    stream: Optional[bool] = None
+    echo: Optional[bool] = None
+    # Yet to be used params
+    # model: str = None
+    # mirostat_tau: float = None
+    # tfs_z: float = None
+    # min_p: float = None
+    # presence_penalty: float = None
+    # frequency_penalty: float = None
+    # grammar: dict = None
+
+
+class SettingsResponseData(BaseModel):
+    init: Optional[AppSettingsInitData] = None
+    call: Optional[AppSettingsCallData] = None
+
+
+class GetSettingsResponse(BaseModel):
+    success: bool
+    message: str
+    data: Optional[SettingsResponseData] = None
+
+
+class SaveSettingsRequest(BaseModel):
+    data: dict
+
+
+class GenericEmptyResponse(BaseModel):
+    success: bool
+    message: str
+    data: None
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "This is a message",
+                    "success": True,
+                    "data": None,
+                }
+            ]
+        }
+    }
+
+
+class InstalledTextModelMetadata(BaseModel):
+    savePath: str
+    id: str
+    numTimesRun: int
+    isFavorited: bool
+    validation: str
+    modified: str
+    size: int
+    endChunk: int
+    progress: int
+    tokenizerPath: str
+    checksum: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
+                    "id": "llama2-13b",
+                    "numTimesRun": 0,
+                    "isFavorited": False,
+                    "validation": "success",
+                    "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
+                    "size": 1200000,
+                    "endChunk": 13,
+                    "progress": 67,
+                    "tokenizerPath": "/some/path/to/tokenizer",
+                    "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
+                }
+            ]
+        }
+    }
+
+
+class InstalledTextModel(BaseModel):
+    current_download_path: str
+    installed_text_models: List[InstalledTextModelMetadata]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "current_download_path": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                    "installed_text_models": [
+                        {
+                            "id": "llama-2-13b-chat",
+                            "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "numTimesRun": 0,
+                            "isFavorited": False,
+                            "validation": "success",
+                            "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
+                            "size": 7865956224,
+                            "endChunk": 1,
+                            "progress": 100,
+                            "tokenizerPath": "",
+                            "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class ModelConfig(BaseModel):
+    id: str
+    name: Optional[str] = None
+    type: Optional[str] = None
+    provider: Optional[str] = None
+    licenses: Optional[List[str]] = None
+    description: Optional[str] = None
+    fileSize: Optional[float] = None
+    fileName: str
+    modelType: Optional[str] = None
+    modelUrl: Optional[str] = None
+    context_window: Optional[int] = None
+    quantTypes: Optional[List[str]] = None
+    downloadUrl: str
+    sha256: Optional[str] = None
+
+
+# This is a combination of model config and metadata
+class TextModelInstallMetadata(BaseModel):
+    id: Optional[str] = None
+    savePath: Optional[str] = None
+    numTimesRun: Optional[int] = None
+    isFavorited: Optional[bool] = None
+    validation: Optional[str] = None
+    modified: Optional[str] = None
+    size: Optional[int] = None
+    endChunk: Optional[int] = None
+    progress: Optional[float] = None
+    tokenizerPath: Optional[str] = None
+    checksum: Optional[str] = None
+
+
+class TextModelInstallMetadataResponse(BaseModel):
+    success: bool
+    message: str
+    data: List[TextModelInstallMetadata]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "message": "Success",
+                    "data": [
+                        {
+                            "id": "llama-2-13b-chat",
+                            "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "numTimesRun": 0,
+                            "isFavorited": False,
+                            "validation": "success",
+                            "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
+                            "size": 7865956224,
+                            "endChunk": 1,
+                            "progress": 100,
+                            "tokenizerPath": "",
+                            "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class InstalledTextModelResponse(BaseModel):
+    success: bool
+    message: str
+    data: TextModelInstallMetadata
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "message": "Success",
+                    "data": {
+                        "id": "llama-2-13b-chat",
+                        "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                        "numTimesRun": 0,
+                        "isFavorited": False,
+                        "validation": "success",
+                        "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
+                        "size": 7865956224,
+                        "endChunk": 1,
+                        "progress": 100,
+                        "tokenizerPath": "",
+                        "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
+                    },
+                }
+            ]
+        }
+    }

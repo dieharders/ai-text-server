@@ -1,9 +1,44 @@
 import re
 import os
+import json
 import glob
 import httpx
 import subprocess
-from typing import List, Tuple
+from typing import Any, List, Tuple
+from server.classes import (
+    InstalledTextModelMetadata,
+    InstalledTextModel,
+    ModelConfig,
+    DEFAULT_CONTEXT_WINDOW,
+)
+
+INSTALLED_TEXT_MODELS = "installed_text_models"
+DEFAULT_MAX_TOKENS = 128
+
+
+# This will return a context window that is suited for a particular mode.
+# This impacts how long a conversation you can have before the context_window limit is reached (and issues/hallucinations begin) for a given Ai model.
+def calc_max_tokens(
+    max_tokens: int = 0,
+    context_window: int = DEFAULT_CONTEXT_WINDOW,
+    mode: str = "completion",
+):
+    system_msg_buffer = 100
+    # Use what is provided, otherwise calculate a value
+    if max_tokens > 0:
+        return max_tokens
+    if mode == "completion":
+        # Cant be too high or it fails
+        context_buffer = context_window // 2
+        # Largest possible since every request is a one-off response
+        return context_window - context_buffer - system_msg_buffer
+    else:
+        # should prob be a factor (ctx/8) of the context window. Providing a few back and forth convo before limit is reached.
+        context_factor = 8
+        result = (context_window // context_factor) - system_msg_buffer
+        if result <= 0:
+            result = DEFAULT_MAX_TOKENS
+        return result
 
 
 def kill_text_inference(app):
@@ -162,3 +197,66 @@ def dedupe_substrings(input_string):
 
     # Return as space seperated
     return " ".join(result)
+
+
+def get_settings_file(folderpath: str, filepath: str):
+    # Check if folder exists
+    if not os.path.exists(folderpath):
+        raise Exception("Folder does not exist.")
+
+    # Try to open the file (if it exists)
+    loaded_data = {}
+    try:
+        with open(filepath, "r") as file:
+            loaded_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist, fail
+        raise Exception("File does not exist.")
+
+    return loaded_data
+
+
+def save_settings_file(folderpath: str, filepath: str, data: Any):
+    # Create folder/file
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    # Try to open the file (if it exists)
+    try:
+        with open(filepath, "r") as file:
+            existing_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist yet, create an empty dictionary
+        existing_data = {}
+
+    # Update the existing data with the new variables
+    for key, val in data.items():
+        existing_data[key] = val
+
+    # Save the updated data to the file, this will overwrite all values in the key's dict.
+    with open(filepath, "w") as file:
+        json.dump(existing_data, file, indent=2)
+
+    return existing_data
+
+
+# Return metadata for the currently loaded model
+def get_model_metadata(
+    id: str, folderpath: str, filepath: str
+) -> InstalledTextModelMetadata:
+    metadata = {}
+    # Gets all the previously installed model metadata
+    settings: InstalledTextModel = get_settings_file(folderpath, filepath)
+    models = settings[INSTALLED_TEXT_MODELS]
+    for item in models:
+        if item.get("id") == id:
+            metadata = item
+            break
+    return metadata
+
+
+# Gets the llm model configuration data
+def get_model_config(id: str, folderpath, filepath) -> ModelConfig:
+    configs = get_settings_file(folderpath, filepath)
+    config = configs[id]
+    return config

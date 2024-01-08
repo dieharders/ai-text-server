@@ -6,7 +6,7 @@ import textModels from '@/models/models'
 import { getTextModelConfig } from '@/utils/localStorage'
 
 // Local Storage keys
-export const CURRENT_DOWNLOAD_PATH = 'current-download-path'
+export const CURRENT_DOWNLOAD_PATH = 'current_download_path'
 
 const cStyles = 'border-gray-300 dark:border-zinc-700 dark:bg-zinc-800/80 dark:from-inherit'
 

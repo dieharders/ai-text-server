@@ -10,21 +10,33 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
     app = request.app
     data = []
 
-    # Return text inference services available from Homebrew
+    # Return text inference services
     text_inference_api = {
         "name": "textInference",
         "port": app.state.PORT_HOMEBREW_API,
         "endpoints": [
+            # Generate a text response from Ai engine
             {
-                "name": "inference",
+                "name": "inference",  # @TODO Change to generate ?
                 "urlPath": "/v1/text/inference",
                 "method": "POST",
-                "promptTemplate": app.state.text_model_config["promptTemplate"],
+            },
+            # Load the specified Ai model into memory
+            {
+                "name": "load",
+                "urlPath": "/v1/text/load",
+                "method": "POST",
             },
             # Return the currently loaded model and its settings
             {
-                "name": "models",
-                "urlPath": "/v1/text/models",
+                "name": "model",
+                "urlPath": "/v1/text/model",
+                "method": "GET",
+            },
+            # Return a list of all currently installed models and their metadata
+            {
+                "name": "installed",
+                "urlPath": "/v1/text/installed",
                 "method": "GET",
             },
             # llama.cpp offers native embedding
@@ -61,7 +73,28 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
     }
     data.append(text_inference_api)
 
-    # Return services that are ready now
+    # Return persistent file storage services
+    storage_api = {
+        "name": "storage",
+        "port": app.state.PORT_HOMEBREW_API,
+        "endpoints": [
+            # Get all app settings
+            {
+                "name": "getSettings",
+                "urlPath": "/v1/persist/settings",
+                "method": "GET",
+            },
+            # Save app settings
+            {
+                "name": "saveSettings",
+                "urlPath": "/v1/persist/settings",
+                "method": "POST",
+            },
+        ],
+    }
+    data.append(storage_api)
+
+    # Return search over local files services
     memory_api = {
         "name": "memory",
         "port": app.state.PORT_HOMEBREW_API,

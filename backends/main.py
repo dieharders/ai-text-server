@@ -22,13 +22,17 @@ from server import common, classes
 from routes import router as endpoint_router
 
 VECTOR_DB_FOLDER = "chromadb"
-VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
 TMP_FOLDER = "tmp"
+APP_SETTINGS_FOLDER = "settings"
+VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
 MEMORY_PATH = os.path.join(os.getcwd(), MEMORY_FOLDER)
 PARSED_DOCUMENT_PATH = os.path.join(MEMORY_PATH, PARSED_FOLDER)
 TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
+APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
+MODEL_METADATAS_FILENAME = "installed_models.json"
+MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 
 
 @asynccontextmanager
@@ -43,7 +47,8 @@ async def lifespan(application: FastAPI):
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
-    application.state.text_model_config = None
+    application.state.model_id = ""
+    app.state.settings = {}
 
     yield
 
@@ -101,80 +106,179 @@ def ping() -> classes.PingResponse:
 # Tell client we are ready to accept requests
 @app.get("/v1/connect")
 def connect() -> classes.ConnectResponse:
+    # Read the version from package.json file
+    try:
+        file_path = os.path.join(os.getcwd(), "package.json")
+        with open(file_path, "r") as file:
+            loaded_data = json.load(file)
+            version = loaded_data["version"]
+    except FileNotFoundError:
+        # If the file doesn't exist
+        version = "0"
+
     return {
         "success": True,
         "message": f"Connected to api server on port {app.PORT_HOMEBREW_API}. Refer to 'http://localhost:{app.PORT_HOMEBREW_API}/docs' for api docs.",
         "data": {
             "docs": f"http://localhost:{app.PORT_HOMEBREW_API}/docs",
+            "version": version,
         },
     }
 
 
-@app.get("/v1/text/models")
-def get_text_model():
-    # llm = app.state.llm
-    model_config = app.state.text_model_config
+# Return a list of all currently installed models and their metadata
+@app.get("/v1/text/installed")
+def get_installed_models() -> classes.TextModelInstallMetadataResponse:
+    try:
+        # Get installed models file
+        metadatas: classes.InstalledTextModel = common.get_settings_file(
+            APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
+        )
 
-    return {
-        "success": True,
-        "message": "",
-        "data": {
-            "id": model_config["id"],
-            "name": model_config["name"],
-            "path": model_config["savePath"],
-            "size": model_config["size"],
-            "type": model_config["type"],
-            "ownedBy": model_config["provider"],
-            "permissions": model_config["licenses"],
-            "promptTemplate": model_config["promptTemplate"],
-        },
-    }
+        return {
+            "success": True,
+            "message": "This is a list of all currently installed models.",
+            "data": metadatas["installed_text_models"],
+        }
+    except Exception:
+        return {
+            "success": False,
+            "message": "Failed to find any installed models.",
+            "data": {},
+        }
 
 
+# Gets the currently loaded model and its installation metadata
+@app.get("/v1/text/model")
+def get_text_model() -> classes.InstalledTextModelResponse:
+    try:
+        llm = app.state.llm
+        model_id = app.state.model_id
+
+        if llm is not None:
+            metadata = common.get_model_metadata(
+                model_id, APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
+            )
+            name = metadata["name"]
+            return {
+                "success": True,
+                "message": f"Model {name} is already loaded.",
+                "data": metadata,
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No model is currently loaded.",
+                "data": {},
+            }
+    except (Exception, KeyError, HTTPException) as error:
+        return {
+            "success": False,
+            "message": f"Something went wrong: {error}",
+            "data": {},
+        }
+
+
+# Start Text Inference service
 @app.post("/v1/text/load")
 def load_text_inference(
     data: classes.LoadInferenceRequest,
 ) -> classes.LoadInferenceResponse:
     try:
-        # Store the current model's configuration for later reference
-        app.state.text_model_config = data.textModelConfig
         model_id = data.modelId
-        app.state.path_to_model = data.pathToModel
-        print(f"[homebrew api] Path to model loaded: {data.pathToModel}")
-        # Logic to load the specified ai model here...
+        mode = data.mode
+        modelPath = data.modelPath
+        # Record model's save path
+        app.state.model_id = model_id
+        app.state.path_to_model = modelPath
+
+        print(f"[homebrew api] Model loaded from: {modelPath}")
+
+        # Load the specified Ai model
+        if app.state.llm is None:
+            model_settings = data.init
+            generate_settings = data.call
+            app.state.llm = text_llama_index.load_text_model(
+                modelPath, mode, model_settings, generate_settings
+            )
+
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
-    except KeyError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
+    except (Exception, KeyError) as error:
+        raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
 
 
-# Use Llama Index to run queries on vector database embeddings.
+# Use Llama Index to run queries on vector database embeddings or run normal chat inference.
 @app.post("/v1/text/inference")
 async def text_inference(payload: classes.InferenceRequest):
     try:
         prompt = payload.prompt
+        messages = payload.messages
         collection_names = payload.collectionNames
         mode = payload.mode
-
-        print(
-            f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
+        prompt_template = payload.promptTemplate
+        rag_prompt_template = payload.ragPromptTemplate
+        system_prompt = payload.systemPrompt
+        m_tokens = payload.max_tokens
+        n_ctx = payload.n_ctx
+        max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
+        options = dict(
+            stream=payload.stream,
+            temperature=payload.temperature,
+            n_ctx=n_ctx,
+            max_tokens=max_tokens,
+            stop=payload.stop,
+            echo=payload.echo,
+            model=payload.model,
+            grammar=payload.grammar,
+            mirostat_tau=payload.mirostat_tau,
+            tfs_z=payload.tfs_z,
+            top_k=payload.top_k,
+            top_p=payload.top_p,
+            min_p=payload.min_p,
+            seed=payload.seed,
+            repeat_penalty=payload.repeat_penalty,
+            presence_penalty=payload.presence_penalty,
+            frequency_penalty=payload.frequency_penalty,
         )
 
         if not app.state.path_to_model:
             raise Exception("No path to model provided.")
-        if not app.state.text_model_config:
-            raise Exception("No model config exists.")
+        if not app.state.llm:
+            raise Exception("No LLM exists.")
 
         # Call LLM
         if len(collection_names):
+            print(
+                f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
+            )
+
             return EventSourceResponse(
                 text_llama_index.query_memory(
-                    prompt, collection_names, app, embedding.get_vectordb_client(app)
+                    prompt,
+                    rag_prompt_template,
+                    system_prompt,
+                    collection_names,
+                    app,
+                    embedding.get_vectordb_client(app),
+                    options,
                 ),
             )
+        elif mode == "completion":
+            return EventSourceResponse(
+                text_llama_index.text_completion(
+                    prompt, prompt_template, system_prompt, app, options
+                )
+            )
+        elif mode == "chat":
+            return EventSourceResponse(
+                text_llama_index.text_chat(messages, system_prompt, app, options)
+            )
         else:
-            return EventSourceResponse(text_llama_index.text_completion(prompt, app))
-    except KeyError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format: missing key")
+            raise Exception("Check 'mode' is provided.")
+    except (KeyError, Exception) as err:
+        raise HTTPException(
+            status_code=400, detail=f"Something went wrong. Reason: {err}"
+        )
 
 
 # Pre-process supplied files into a text format and save to disk for embedding later.
@@ -328,7 +432,7 @@ async def create_memory(
         # Create embeddings
         print("[homebrew api] Start embedding...")
         if app.state.llm == None:
-            app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
+            raise Exception("No Ai loaded.")
         db_client = embedding.get_vectordb_client(app)
         embed_form = {
             "collection_name": collection_name,
@@ -343,8 +447,8 @@ async def create_memory(
             processed_file,
             app.state.storage_directory,
             embed_form,
-            app.state.llm,
             db_client,
+            app,
         )
     except (Exception, KeyError) as e:
         # Error
@@ -566,9 +670,7 @@ async def update_memory(
             )
             # Create text embeddings
             if app.state.llm == None:
-                app.state.llm = text_llama_index.load_text_model(
-                    app.state.path_to_model
-                )
+                raise Exception("No Ai loaded.")
             form = {
                 "collection_name": collection_name,
                 "document_name": document_name,
@@ -582,8 +684,8 @@ async def update_memory(
                 processed_file,
                 app.state.storage_directory,
                 form,
-                app.state.llm,
                 db,
+                app,
             )
         else:
             # Delete tmp files if exist
@@ -625,7 +727,7 @@ def delete_documents(
             include=["metadatas"],
         )
         if app.state.llm == None:
-            app.state.llm = text_llama_index.load_text_model(app.state.path_to_model)
+            raise Exception("No Ai loaded.")
         # Delete all files and references associated with embedded docs
         for document in documents:
             document_metadata = document["metadata"]
@@ -642,7 +744,7 @@ def delete_documents(
             collection.metadata["sources"] = sources_json
             collection.modify(metadata=collection.metadata)
             # Delete embeddings from llama-index @TODO Verify this works
-            index = embedding.load_embedding(app.state.llm, db, collection_id)
+            index = embedding.load_embedding(app, db, collection_id)
             index.delete(document_id)
         # Delete the embeddings from collection
         collection.delete(ids=document_ids)
@@ -736,6 +838,58 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
             "success": False,
             "message": e,
         }
+
+
+# Get all app settings
+@app.get("/v1/persist/settings")
+def get_settings() -> classes.GetSettingsResponse:
+    # Paths
+    file_name = "app.json"
+    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+
+    # Check if folder exists
+    if not os.path.exists(APP_SETTINGS_PATH):
+        return {
+            "success": False,
+            "message": f"Failed to return settings. Folder does not exist.",
+            "data": None,
+        }
+
+    # Try to open the file (if it exists)
+    loaded_data = {}
+    try:
+        with open(file_path, "r") as file:
+            loaded_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist, fail
+        return {
+            "success": False,
+            "message": f"Failed to return settings. File does not exist.",
+            "data": None,
+        }
+
+    return {
+        "success": True,
+        "message": f"Returned app settings",
+        "data": loaded_data,
+    }
+
+
+# Save app settings
+@app.post("/v1/persist/settings")
+def save_settings(data: dict) -> classes.GenericEmptyResponse:
+    # Paths
+    file_name = "app.json"
+    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+
+    # Save to memory
+    app.state.settings = common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
+
+    return {
+        "success": True,
+        "message": f"Saved settings to {file_path}",
+        "data": None,
+    }
 
 
 # Methods...
