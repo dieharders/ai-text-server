@@ -222,7 +222,7 @@ async def text_inference(payload: classes.InferenceRequest):
         prompt_template = payload.promptTemplate
         rag_prompt_template = payload.ragPromptTemplate
         system_prompt = payload.systemPrompt
-        m_tokens = payload.max_tokens or 0  # fallback
+        m_tokens = payload.max_tokens
         n_ctx = payload.n_ctx
         max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
         options = dict(

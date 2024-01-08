@@ -19,13 +19,16 @@ def load_text_model(
     init_settings: classes.LoadTextInferenceInit,  # init settings
     gen_settings: classes.LoadTextInferenceCall,  # generation settings
 ):
-    n_ctx = init_settings.n_ctx
+    n_ctx = init_settings.n_ctx or classes.DEFAULT_CONTEXT_WINDOW
     if n_ctx <= 0:
-        n_ctx = 2000  # fallback
+        n_ctx = classes.DEFAULT_CONTEXT_WINDOW
     seed = init_settings.seed
     temperature = gen_settings.temperature
-    m_tokens = gen_settings.max_tokens or 0  # fallback
+    m_tokens = gen_settings.max_tokens
     max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
+    n_threads = init_settings.n_threads  # None means auto calc
+    if n_threads == -1:
+        n_threads = None
 
     generate_kwargs = {
         "stream": gen_settings.stream,
@@ -54,7 +57,7 @@ def load_text_model(
         "seed": seed,
         "n_ctx": n_ctx,
         "n_batch": init_settings.n_batch,
-        "n_threads": init_settings.n_threads,
+        "n_threads": n_threads,
         "offload_kqv": init_settings.offload_kqv,
         "chat_format": "llama-2",  # @TODO Load from model_configs.chat_format
         # "torch_dtype": torch.float16,

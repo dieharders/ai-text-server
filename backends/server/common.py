@@ -9,6 +9,7 @@ from server.classes import (
     InstalledTextModelMetadata,
     InstalledTextModel,
     ModelConfig,
+    DEFAULT_CONTEXT_WINDOW,
 )
 
 INSTALLED_TEXT_MODELS = "installed_text_models"
@@ -17,7 +18,11 @@ DEFAULT_MAX_TOKENS = 128
 
 # This will return a context window that is suited for a particular mode.
 # This impacts how long a conversation you can have before the context_window limit is reached (and issues/hallucinations begin) for a given Ai model.
-def calc_max_tokens(max_tokens: int, context_window: int, mode: str):
+def calc_max_tokens(
+    max_tokens: int = 0,
+    context_window: int = DEFAULT_CONTEXT_WINDOW,
+    mode: str = "completion",
+):
     system_msg_buffer = 100
     # Use what is provided, otherwise calculate a value
     if max_tokens > 0:
