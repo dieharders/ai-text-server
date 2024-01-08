@@ -134,15 +134,11 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
         metadatas: classes.InstalledTextModel = common.get_settings_file(
             APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
         )
-        # Go thru each item in the installed list
-        results = []
-        for item in metadatas["installed_text_models"]:
-            results.append(item)
 
         return {
             "success": True,
             "message": "This is a list of all currently installed models.",
-            "data": results,
+            "data": metadatas["installed_text_models"],
         }
     except Exception:
         return {
