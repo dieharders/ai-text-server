@@ -247,7 +247,7 @@ async def text_inference(payload: classes.InferenceRequest):
             raise Exception("No LLM exists.")
 
         # Call LLM
-        if len(collection_names):
+        if collection_names is not None and len(collection_names) > 0:
             print(
                 f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
             )

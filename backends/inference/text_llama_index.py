@@ -6,6 +6,8 @@ from llama_index.callbacks import CallbackManager, LlamaDebugHandler
 from embedding import embedding
 from server import common, classes
 
+QUERY_INPUT = "{query_str}"
+
 ###
 # Llama-Index allows us to search embeddings in a db and perform queries on them.
 # It wraps llama-cpp-python so we can run inference from here as well.
@@ -160,7 +162,7 @@ def text_completion(
     # Format query from prompt template
     query_str = prompt
     if prompt_template:
-        query_str = prompt_template.replace("{{query_str}}", prompt)
+        query_str = prompt_template.replace(QUERY_INPUT, prompt)
     # Format query to model spec, Inject system prompt into prompt
     if system_prompt:
         query_str = llm.completion_to_prompt(query_str, system_prompt)
