@@ -60,7 +60,7 @@ class LoadTextInferenceInit(BaseModel):
 
 class LoadTextInferenceCall(BaseModel):
     stream: Optional[bool] = True
-    stop: Optional[List[str]] = None
+    stop: Optional[List[str]] = []
     echo: Optional[bool] = False
     model: Optional[str] = "local"
     mirostat_tau: Optional[float] = 5.0
@@ -171,7 +171,7 @@ class InferenceRequest(BaseModel):
     max_tokens: Optional[int] = DEFAULT_MAX_TOKENS
     stop: Optional[
         List[str]
-    ] = None  # A list of strings to stop generation when encountered
+    ] = []  # A list of strings to stop generation when encountered
     echo: Optional[bool] = False
     model: Optional[
         str
@@ -202,7 +202,7 @@ class InferenceRequest(BaseModel):
                     "collectionNames": ["science"],
                     "mode": "completion",  # completion | chat
                     "systemPrompt": "You are a helpful Ai assistant.",
-                    "promptTemplate": "Answer this question: {{query_str}}",
+                    "promptTemplate": "Answer this question: {query_str}",
                     "ragPromptTemplate": {
                         "id": "summary",
                         "name": "Summary",
@@ -557,7 +557,7 @@ class AppSettingsCallData(BaseModel):
     temperature: Optional[float] = None
     top_k: Optional[int] = None
     top_p: Optional[float] = None
-    stop: Optional[List[str]] = None
+    stop: Optional[List[str]] = []
     max_tokens: Optional[int] = None
     repeat_penalty: Optional[float] = None
     stream: Optional[bool] = None
