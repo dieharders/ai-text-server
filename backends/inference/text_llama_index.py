@@ -1,4 +1,5 @@
 import json
+import torch
 from typing import List, Sequence
 from llama_index.llms import LlamaCPP
 from llama_index.llms.llama_utils import messages_to_prompt, completion_to_prompt
@@ -62,7 +63,7 @@ def load_text_model(
         "n_threads": n_threads,
         "offload_kqv": init_settings.offload_kqv,
         "chat_format": "llama-2",  # @TODO Load from model_configs.chat_format
-        # "torch_dtype": torch.float16,
+        "torch_dtype": torch.float16,  # if using CUDA (reduces memory usage)
         # "load_in_8bit": True,
     }
 

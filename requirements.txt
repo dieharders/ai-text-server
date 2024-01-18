@@ -9,8 +9,7 @@ starlette_context==0.3.6
 pyinstaller==5.13.0 # this needs security update
 python-multipart==0.0.6
 # For text inference
-llama-cpp-python==0.2.14 # update to get Vision
-# llama-cpp-python[server]
+llama-cpp-python==0.2.27
 # For embedding querying
 llama-index==0.8.62
 # For embeddings creation and storage
