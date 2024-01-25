@@ -51,3 +51,4 @@ next-env.d.ts
 /memories
 /chromadb
 /settings
+/embed_models

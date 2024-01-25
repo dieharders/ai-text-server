@@ -244,36 +244,53 @@ async def text_inference(payload: classes.InferenceRequest):
         if not app.state.path_to_model:
             raise Exception("No path to model provided.")
         if not app.state.llm:
-            raise Exception("No LLM exists.")
+            raise Exception("No LLM loaded.")
 
-        # Call LLM
+        # Call LLM with context loaded via llama-index/vector store
         if collection_names is not None and len(collection_names) > 0:
             print(
                 f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
             )
 
-            return EventSourceResponse(
-                text_llama_index.query_memory(
-                    prompt,
-                    rag_prompt_template,
-                    system_prompt,
-                    collection_names,
-                    app,
-                    embedding.get_vectordb_client(app),
-                    options,
-                ),
+            # Only take the first collection for now
+            collection_name = collection_names[0]
+            # Update the LLM settings
+            n_ctx = options.get("n_ctx") - 100  # for llama-index
+            max_tokens = options.get("max_tokens")
+            # Remove n_ctx from options
+            del options["n_ctx"]
+            # Update LLM generation options
+            app.state.llm.generate_kwargs.update(options)
+
+            # Load the vector index
+            indexDB = embedding.load_embedding(
+                app,
+                collection_name,
+                max_tokens,
+                n_ctx,
+                system_prompt,
             )
+
+            # Call query() on engine
+            response = text_llama_index.query_memory(
+                prompt,
+                rag_prompt_template,
+                indexDB,
+            )
+            return EventSourceResponse(response)
+        # Call LLM in completion mode
         elif mode == "completion":
             return EventSourceResponse(
                 text_llama_index.text_completion(
                     prompt, prompt_template, system_prompt, app, options
                 )
             )
+        # Call LLM in chat mode
         elif mode == "chat":
             return EventSourceResponse(
                 text_llama_index.text_chat(messages, system_prompt, app, options)
             )
-        else:
+        elif mode is None:
             raise Exception("Check 'mode' is provided.")
     except (KeyError, Exception) as err:
         raise HTTPException(
@@ -351,6 +368,7 @@ def create_memory_collection(
         db_client.create_collection(
             name=collection_name,
             metadata=metadata,
+            # embedding_function=custom_embed_function,
         )
         return {
             "success": True,
@@ -391,8 +409,6 @@ async def create_memory(
             raise Exception(
                 "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
             )
-        if not app.state.path_to_model:
-            raise Exception("No model path defined.")
 
         # Save temp files to disk first. The filename doesnt matter much.
         tmp_folder = TMP_DOCUMENT_PATH
@@ -431,8 +447,6 @@ async def create_memory(
 
         # Create embeddings
         print("[homebrew api] Start embedding...")
-        if app.state.llm == None:
-            raise Exception("No Ai loaded.")
         db_client = embedding.get_vectordb_client(app)
         embed_form = {
             "collection_name": collection_name,
@@ -460,7 +474,7 @@ async def create_memory(
         }
     else:
         msg = "A new memory has been added to the queue. It will be available for use shortly."
-        print(f"[homebrew api] {msg}")
+        print(f"[homebrew api] {msg}", flush=True)
         return {
             "success": True,
             "message": msg,
@@ -542,11 +556,12 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
         collection_id = params.collection_id
         document_ids = params.document_ids
         include = params.include
+        db = embedding.get_vectordb_client(app)
 
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=document_ids,
-            db=embedding.get_vectordb_client(app),
+            db=db,
             include=include,
         )
 
@@ -561,7 +576,8 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
+            "data": [],
         }
 
 
@@ -744,7 +760,7 @@ def delete_documents(
             collection.metadata["sources"] = sources_json
             collection.modify(metadata=collection.metadata)
             # Delete embeddings from llama-index @TODO Verify this works
-            index = embedding.load_embedding(app, db, collection_id)
+            index = embedding.load_embedding(app, collection_id)
             index.delete(document_id)
         # Delete the embeddings from collection
         collection.delete(ids=document_ids)

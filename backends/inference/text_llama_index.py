@@ -121,34 +121,11 @@ def token_streamer(token_generator):
 def query_memory(
     query: str,
     rag_prompt_template: classes.RagTemplateData,
-    system_prompt: str,
-    collection_names: List[str],
-    app,
-    db,
-    options: dict,
+    indexDB,
 ):
-    if app.state.llm == None:
-        raise Exception("No Ai loaded.")
-
-    # @TODO We can do filtering based on doc/collection name, metadata, etc via LlamaIndex.
-    collection_name = collection_names[0]  # Only take the first collection for now
-    # Update the LLM settings
-    n_ctx = options.get("n_ctx") - 100  # for llama-index
-    max_tokens = options.get("max_tokens")
-    # Remove n_ctx from options
-    del options["n_ctx"]
-    app.state.llm.generate_kwargs.update(options)
-    # Load the vector index
-    indexDB = embedding.load_embedding(
-        app,
-        db,
-        collection_name,
-        max_tokens,
-        n_ctx,
-        system_prompt,
-    )
     # Stream the response
-    token_generator = embedding.query_embedding(query, rag_prompt_template, indexDB)
+    res = embedding.query_embedding(query, rag_prompt_template, indexDB)
+    token_generator = res.response_gen
     return token_streamer(token_generator)
 
 
