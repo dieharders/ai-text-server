@@ -459,9 +459,7 @@ async def create_memory(
         background_tasks.add_task(
             embedding.create_embedding,
             processed_file,
-            app.state.storage_directory,
             embed_form,
-            db_client,
             app,
         )
     except (Exception, KeyError) as e:
@@ -556,12 +554,11 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
         collection_id = params.collection_id
         document_ids = params.document_ids
         include = params.include
-        db = embedding.get_vectordb_client(app)
 
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=document_ids,
-            db=db,
+            app=app,
             include=include,
         )
 
@@ -629,11 +626,10 @@ async def update_memory(
             )
 
         # Retrieve document data
-        db = embedding.get_vectordb_client(app)
         documents = embedding.get_document(
             collection_name=collection_name,
             document_ids=[document_id],
-            db=db,
+            app=app,
             include=["documents", "metadatas"],
         )
         if len(documents) >= 1:
@@ -698,9 +694,7 @@ async def update_memory(
             background_tasks.add_task(
                 embedding.create_embedding,
                 processed_file,
-                app.state.storage_directory,
                 form,
-                db,
                 app,
             )
         else:
@@ -739,7 +733,7 @@ def delete_documents(
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=document_ids,
-            db=db,
+            app=app,
             include=["metadatas"],
         )
         if app.state.llm == None:
@@ -773,7 +767,7 @@ def delete_documents(
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
         }
 
 
@@ -792,7 +786,7 @@ def delete_collection(
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=sources,
-            db=embedding.get_vectordb_client(app),
+            app=app,
             include=include,
         )
         for document in documents:

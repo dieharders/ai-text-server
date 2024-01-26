@@ -1,6 +1,5 @@
 import os
 import uuid
-import copy
 import json
 import re
 import hashlib
@@ -8,7 +7,7 @@ from datetime import datetime
 from typing import List, Optional
 from typing import Any, Type
 from chromadb import Documents, EmbeddingFunction, Embeddings, PersistentClient
-from chromadb.api import ClientAPI, Collection
+from chromadb.api import Collection
 from chromadb.config import Settings
 from chromadb.utils import embedding_functions
 from llama_index import (
@@ -34,7 +33,7 @@ from llama_index.embeddings import HuggingFaceEmbedding
 from llama_index.response_synthesizers import ResponseMode
 from transformers import AutoModel, AutoTokenizer
 from server import classes
-from .chunking import document_split
+from .chunking import heading_split
 
 
 # More templates found here: https://github.com/run-llama/llama_index/blob/main/llama_index/prompts/default_prompts.py
@@ -96,7 +95,6 @@ def load_files(file_path: str, sources_metadata: dict, checksum: str) -> List[Do
     nodes = reader.load_data()
     if len(nodes) == 0:
         raise Exception("No documents found.")
-    print(f"[embedding api] Loaded {len(nodes)} docs", flush=True)
 
     # Combine all text (loaders splits the file into several documents??)
     combined_text = ""
@@ -143,7 +141,7 @@ def get_document_chunks(collection_id, document: Document):
             nodes = docstore.get_nodes(json.loads(node_ids), False)
             for n in nodes:
                 print(
-                    f"Document {name}: chunk text::\n\n{n.text}\n\n-------\n",
+                    f"Document: '{name}' | chunked text:\n\n{n.text}\n\n",
                     flush=True,
                 )
                 chunk_list.append(n)
@@ -232,9 +230,10 @@ def create_parsed_filename(collection_name: str, document_name: str):
 def get_document(
     collection_name: str,
     document_ids: List[str],
-    db: Type[ClientAPI],
+    app: Any,
     include: Optional[List[str]] = None,
 ):
+    db = get_vectordb_client(app)
     collection: Type[Collection] = db.get_collection(collection_name)
 
     if include == None:
@@ -337,10 +336,8 @@ def pre_process_documents(
 # Create a vector embedding for the given document.
 def create_embedding(
     processed_file: dict,
-    storage_directory: str,
     form: Any,
-    db: Type[ClientAPI],
-    app,
+    app: Any,
 ):
     try:
         # File attributes
@@ -384,6 +381,7 @@ def create_embedding(
         # Create/load a vector store
         print("[embedding api] Transforming data...", flush=True)
         # You MUST use the same embedding function to create as you do to get collection.
+        db = get_vectordb_client(app)
         chroma_collection: Type[Collection] = db.get_or_create_collection(
             collection_name
         )
@@ -393,12 +391,14 @@ def create_embedding(
         # Split documents text into chunks
         print("[embedding api] Chunking documents...", flush=True)
         llm: Type[LlamaCPP] = app.state.llm
-        parser = document_split()
+        parser = heading_split()
         chunks = parser.get_nodes_from_documents(documents)
         print(
             f"[embedding api] Loaded {len(documents)} document(s), {len(chunks)} chunk(s)",
             flush=True,
         )
+        for ichunk, ch in enumerate(chunks):
+            print(f"[embedding api] Chunk ({ichunk}):\n\n{ch}")
 
         # Create document embeddings from chunks
         service_context = ServiceContext.from_defaults(
@@ -460,6 +460,7 @@ def create_embedding(
         )
 
         # Save index to disk. We can read from disk later without needing to re-construct.
+        storage_directory = app.state.storage_directory
         vector_index.storage_context.persist(
             persist_dir=os.path.join(storage_directory, collection_name)
         )
@@ -530,7 +531,7 @@ def query_embedding(
 
     # top_k is set to 3 so it will use the top 3 nodes it finds in vector index
     num_results = 3
-    response_mode = ResponseMode.COMPACT
+    response_mode = ResponseMode.TREE_SUMMARIZE  # default, ResponseMode.COMPACT
 
     # Call query() in query mode
     query_engine = index.as_query_engine(

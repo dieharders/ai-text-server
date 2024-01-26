@@ -6,19 +6,21 @@ from typing import List
 from PIL import Image
 from langchain.text_splitter import (
     CharacterTextSplitter,
-    MarkdownTextSplitter,
     RecursiveCharacterTextSplitter,
     Language,
 )
 from llama_index.text_splitter import SentenceSplitter
 from llama_index import SimpleDirectoryReader
-from llama_index.node_parser import LangchainNodeParser
+from llama_index.node_parser import (
+    LangchainNodeParser,
+    MarkdownNodeParser,
+)
 
 # Unstructured lib helps make your data LLM ready - unstructured.io
 # from unstructured.partition.pdf import partition_pdf
 # from unstructured.staging.base import elements_to_json
 
-OUTPUT_PDF_IMAGES_PATH = "pdfImages/"
+OUTPUT_PDF_IMAGES_PATH = "memories/parsed/pdfImages/"
 
 
 # Helpers
@@ -124,11 +126,24 @@ def code_split(text: str):
 
 
 # Recommended for markdown or code documents
-def document_split():
-    text_splitter = LangchainNodeParser(
-        MarkdownTextSplitter(chunk_size=250, chunk_overlap=20)
+def markdown_document_split():
+    return LangchainNodeParser(
+        MarkdownNodeParser(
+            chunk_size=500,
+            chunk_overlap=0,
+            keep_separator=True,
+            # length_function=length_function,
+        )
     )
-    return text_splitter
+
+
+# Split along major headings (h2) then by whole sentences
+def heading_split():
+    return SentenceSplitter(
+        paragraph_separator="\n## ",
+        chunk_size=250,
+        chunk_overlap=0,
+    )
 
 
 def pdf_split(folder_path: str, filename: str):
