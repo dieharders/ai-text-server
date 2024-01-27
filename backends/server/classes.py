@@ -1,8 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-# from llama_index.response_synthesizers import ResponseMode
-
 DEFAULT_TEMPERATURE = 0.2
 DEFAULT_CONTEXT_WINDOW = 2000
 DEFAULT_SEED = 1337
@@ -195,6 +193,8 @@ class InferenceRequest(BaseModel):
     frequency_penalty: Optional[
         float
     ] = 0.0  # The penalty to apply to tokens based on their frequency in the prompt
+    similarity_top_k: Optional[int] = None
+    response_mode: Optional[str] = None
 
     model_config = {
         "json_schema_extra": {
@@ -231,6 +231,8 @@ class InferenceRequest(BaseModel):
                     "repeat_penalty": 1.1,
                     "presence_penalty": 0.0,
                     "frequency_penalty": 0.0,
+                    "similarity_top_k": 1,
+                    "response_mode": "COMPACT",
                 }
             ]
         }
@@ -763,3 +765,8 @@ class InstalledTextModelResponse(BaseModel):
             ]
         }
     }
+
+
+class ContextRetrievalOptions(BaseModel):
+    response_mode: Optional[str] = None
+    similarity_top_k: Optional[int] = None

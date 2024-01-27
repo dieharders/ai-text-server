@@ -20,6 +20,7 @@ from inference import text_llama_index
 from embedding import embedding
 from server import common, classes
 from routes import router as endpoint_router
+from llama_index.response_synthesizers import ResponseMode
 
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
@@ -224,7 +225,6 @@ async def text_inference(payload: classes.InferenceRequest):
         options = dict(
             stream=payload.stream,
             temperature=payload.temperature,
-            n_ctx=n_ctx,
             max_tokens=max_tokens,
             stop=payload.stop,
             echo=payload.echo,
@@ -254,11 +254,12 @@ async def text_inference(payload: classes.InferenceRequest):
 
             # Only take the first collection for now
             collection_name = collection_names[0]
-            # Update the LLM settings
-            n_ctx = options.get("n_ctx") - 100  # for llama-index
-            max_tokens = options.get("max_tokens")
-            # Remove n_ctx from options
-            del options["n_ctx"]
+            # Set LLM settings
+            retrieval_n_ctx = n_ctx - 100
+            retrieval_options = dict(
+                similarity_top_k=payload.similarity_top_k or 1,
+                response_mode=payload.response_mode or ResponseMode.COMPACT,
+            )
             # Update LLM generation options
             app.state.llm.generate_kwargs.update(options)
 
@@ -267,7 +268,7 @@ async def text_inference(payload: classes.InferenceRequest):
                 app,
                 collection_name,
                 max_tokens,
-                n_ctx,
+                retrieval_n_ctx,
                 system_prompt,
             )
 
@@ -276,10 +277,12 @@ async def text_inference(payload: classes.InferenceRequest):
                 prompt,
                 rag_prompt_template,
                 indexDB,
+                options=retrieval_options,
             )
             return EventSourceResponse(response)
         # Call LLM in completion mode
         elif mode == "completion":
+            options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_completion(
                     prompt, prompt_template, system_prompt, app, options
@@ -287,6 +290,7 @@ async def text_inference(payload: classes.InferenceRequest):
             )
         # Call LLM in chat mode
         elif mode == "chat":
+            options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_chat(messages, system_prompt, app, options)
             )

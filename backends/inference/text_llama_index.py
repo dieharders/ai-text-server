@@ -122,9 +122,10 @@ def query_memory(
     query: str,
     rag_prompt_template: classes.RagTemplateData,
     indexDB,
+    options: classes.ContextRetrievalOptions,
 ):
     # Stream the response
-    res = embedding.query_embedding(query, rag_prompt_template, indexDB)
+    res = embedding.query_embedding(query, rag_prompt_template, indexDB, options)
     token_generator = res.response_gen
     return token_streamer(token_generator)
 

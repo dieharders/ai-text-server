@@ -525,6 +525,7 @@ def query_embedding(
     query: str,
     prompt_template_str: classes.RagTemplateData,
     index: VectorStoreIndex,
+    options: classes.ContextRetrievalOptions,
 ):
     print("[embedding api] Query Data", flush=True)
     custom_qa_prompt = PromptTemplate(
@@ -541,10 +542,6 @@ def query_embedding(
     )
     custom_refine_prompt = PromptTemplate(refine_template_str)
 
-    # top_k is set to 3 so it will use the top 3 nodes it finds in vector index
-    num_results = 3
-    response_mode = ResponseMode.TREE_SUMMARIZE  # default, ResponseMode.COMPACT
-
     # Call query() in query mode
     query_engine = index.as_query_engine(
         streaming=True,
@@ -553,8 +550,8 @@ def query_embedding(
         # simple_template=simple_template,
         text_qa_template=custom_qa_prompt,
         refine_template=custom_refine_prompt,
-        similarity_top_k=num_results,  # @TODO Pass this from the UI setting
-        response_mode=response_mode,
+        similarity_top_k=options["similarity_top_k"],
+        response_mode=options["response_mode"],
     )
     # OR in chat mode
     # chat_engine = index.as_chat_engine(...)
