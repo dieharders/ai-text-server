@@ -33,7 +33,7 @@ from llama_index.embeddings import HuggingFaceEmbedding
 from llama_index.response_synthesizers import ResponseMode
 from transformers import AutoModel, AutoTokenizer
 from server import classes
-from .chunking import heading_split
+from .chunking import markdown_heading_split, markdown_document_split
 
 
 # More templates found here: https://github.com/run-llama/llama_index/blob/main/llama_index/prompts/default_prompts.py
@@ -53,9 +53,15 @@ DEFAULT_PROMPT_TEMPLATE = (
 )
 
 embed_model = None
-embed_model_name = "BAAI/bge-large-en"
+embedding_model_names = dict(BAAI="BAAI/bge-large-en", GTE="thenlper/gte-base")
+embed_model_name = embedding_model_names["GTE"]  # name on Huggingface
 embed_model_folder_name = "embed_models"
 embed_model_cache_dir = os.path.join(os.getcwd(), embed_model_folder_name)
+# @TODO This string list will need to be served to the client so they know what is supported...
+CHUNKING_STRATEGIES = {
+    "MARKDOWN_HEADING_SPLIT": markdown_heading_split,
+    "MARKDOWN_DOCUMENT_SPLIT": markdown_document_split,
+}
 
 # Helpers
 
@@ -336,7 +342,7 @@ def pre_process_documents(
 # Create a vector embedding for the given document.
 def create_embedding(
     processed_file: dict,
-    form: Any,
+    form: dict,
     app: Any,
 ):
     try:
@@ -352,6 +358,11 @@ def create_embedding(
         document_id: str = form["document_id"]
         description: str = form["description"]
         tags: str = form["tags"]
+        chunk_size: int = form["chunk_size"] or 300
+        chunk_overlap: int = form["chunk_overlap"] or 0
+        chunk_strategy: str = (
+            form["chunk_strategy"] or list(CHUNKING_STRATEGIES.keys())[0]
+        )
         # is_update = form["is_update"]
         if not document_id or not collection_name or not document_name:
             raise Exception("Missing input values.")
@@ -391,7 +402,8 @@ def create_embedding(
         # Split documents text into chunks
         print("[embedding api] Chunking documents...", flush=True)
         llm: Type[LlamaCPP] = app.state.llm
-        parser = heading_split()
+        text_splitter = CHUNKING_STRATEGIES[chunk_strategy]
+        parser = text_splitter(chunk_size, chunk_overlap)
         chunks = parser.get_nodes_from_documents(documents)
         print(
             f"[embedding api] Loaded {len(documents)} document(s), {len(chunks)} chunk(s)",

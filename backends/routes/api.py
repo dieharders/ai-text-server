@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Request
 from server import classes
+from embedding.embedding import CHUNKING_STRATEGIES
+from llama_index.response_synthesizers import ResponseMode
 
 router = APIRouter()
 
@@ -14,10 +16,13 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
     text_inference_api = {
         "name": "textInference",
         "port": app.state.PORT_HOMEBREW_API,
+        "configs": {
+            "ragResponseModes": list(ResponseMode.__members__.keys()),
+        },
         "endpoints": [
             # Generate a text response from Ai engine
             {
-                "name": "inference",  # @TODO Change to generate ?
+                "name": "inference",  # @TODO Change to "generate" ?
                 "urlPath": "/v1/text/inference",
                 "method": "POST",
             },
@@ -98,6 +103,9 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
     memory_api = {
         "name": "memory",
         "port": app.state.PORT_HOMEBREW_API,
+        "configs": {
+            "chunkingStrategies": list(CHUNKING_STRATEGIES.keys()),
+        },
         "endpoints": [
             {
                 "name": "addCollection",

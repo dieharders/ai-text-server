@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+# from llama_index.response_synthesizers import ResponseMode
+
 DEFAULT_TEMPERATURE = 0.2
 DEFAULT_CONTEXT_WINDOW = 2000
 DEFAULT_SEED = 1337
@@ -307,12 +309,15 @@ class AddCollectionResponse(BaseModel):
     }
 
 
-class AddDocumentRequest(BaseModel):
-    documentName: str
+class EmbedDocumentRequest(BaseModel):
     collectionName: str
+    documentName: str
     description: Optional[str] = ""
     tags: Optional[str] = ""
     urlPath: Optional[str] = ""
+    chunkSize: Optional[int] = None
+    chunkOverlap: Optional[int] = None
+    chunkStrategy: Optional[str] = None
 
 
 class AddDocumentResponse(BaseModel):
@@ -452,13 +457,10 @@ class FileExploreResponse(BaseModel):
     }
 
 
-class UpdateDocumentRequest(BaseModel):
-    collectionName: str
-    documentName: str
+class UpdateEmbeddedDocumentRequest(EmbedDocumentRequest):
     documentId: str
-    urlPath: Optional[str] = ""
     filePath: Optional[str] = ""
-    metadata: Optional[dict] = {}
+    metadata: Optional[dict]  # @TODO What data struct ?
 
 
 class UpdateDocumentResponse(BaseModel):

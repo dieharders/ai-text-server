@@ -38,13 +38,13 @@ def combine_sentences(sentences, buffer_size=1):
                 combined_sentence += sentences[j]["sentence"] + " "
 
         # Add the current sentence
-        combine_sentences += sentences[i]["sentence"]
+        combined_sentence += sentences[i]["sentence"]
 
         # Add sentences after current one, based on buffer
         for j in range(i + 1, i + 1 + buffer_size):
             if j < len(sentences):
                 # Add sentence to combined str
-                combine_sentences += " " + sentences[j]["sentence"]
+                combined_sentence += " " + sentences[j]["sentence"]
 
         # Then add everything to dict
         sentences[i]["combined_sentence"] = combined_sentence
@@ -59,91 +59,17 @@ def image_to_base64(image_path: str):
         return img_str.decode("utf-8")
 
 
-# Chunking strategies
-
-
-def split_chars(text: str):
-    text_splitter = CharacterTextSplitter(
-        chunk_size=35, chunk_overlap=4, seperator="", strip_whitespace=False
-    )
-    docs = text_splitter.create_documents([text])
-    result = []
-    for document in docs:
-        result.append(document.page_content)
-    return result
+# Document Splitters
 
 
 def split_sentence(file_path: str):
     documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
     if len(documents) == 0:
         raise Exception("No documents found.")
-    text_splitter = SentenceSplitter(chunk_size=200, chunk_overlap=15)
+    text_splitter = SentenceSplitter(chunk_size=550, chunk_overlap=15)
     #  nodes are chunks of the source document
     nodes = text_splitter.get_nodes_from_documents(documents)
     return nodes
-
-
-# Split by similarity (advanced)
-# This is handled in llama-index -> SemanticSplitterNodeParser: https://docs.llamaindex.ai/en/stable/module_guides/loading/node_parsers/modules.html#semanticsplitternodeparser
-# Output a pairwise sequence of chunks and embeddings List[{chunk: string, embedding: List[int]}]
-# Use this output to compare sentences together and find the largest discrepency (distance) in relationship
-# for determining when to break text off for chunks.
-def semantic_split(text: str):
-    # Split out all sentences
-    single_sentences_list = re.split(r"(?<=[.?!])\s+", text)
-    # Create a document data type with helpful metadata
-    sentences = [
-        {"sentence": x, "index": i} for i, x in enumerate(single_sentences_list)
-    ]
-    combined_sentences = combine_sentences(sentences)
-    return combined_sentences
-
-
-# Instruct an LLM to chunk the text (advanced)
-def agentic_split(text: str):
-    return text
-
-
-# Recommended for general use
-def recursive_char_split(text: str) -> List[str]:
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=450, chunk_overlap=0)
-    docs = text_splitter.create_documents([text])
-    result = []
-    for document in docs:
-        result.append(document.page_content)
-    return docs
-
-
-def code_split(text: str):
-    text_splitter = RecursiveCharacterTextSplitter.from_language(
-        language=Language.JS, chunk_size=65, chunk_overlap=0
-    )
-    docs = text_splitter.create_documents([text])
-    result = []
-    for document in docs:
-        result.append(document.page_content)
-    return
-
-
-# Recommended for markdown or code documents
-def markdown_document_split():
-    return LangchainNodeParser(
-        MarkdownNodeParser(
-            chunk_size=500,
-            chunk_overlap=0,
-            keep_separator=True,
-            # length_function=length_function,
-        )
-    )
-
-
-# Split along major headings (h2) then by whole sentences
-def heading_split():
-    return SentenceSplitter(
-        paragraph_separator="\n## ",
-        chunk_size=250,
-        chunk_overlap=0,
-    )
 
 
 def pdf_split(folder_path: str, filename: str):
@@ -188,3 +114,84 @@ def pdf_split(folder_path: str, filename: str):
 
     # @TODO Return all results combined
     return [table, image_summaries]
+
+
+# Text Splitters
+
+
+def split_chars(text: str):
+    text_splitter = CharacterTextSplitter(
+        chunk_size=35, chunk_overlap=4, seperator="", strip_whitespace=False
+    )
+    docs = text_splitter.create_documents([text])
+    result = []
+    for document in docs:
+        result.append(document.page_content)
+    return result
+
+
+# Split by similarity (advanced)
+# This is handled in llama-index -> SemanticSplitterNodeParser: https://docs.llamaindex.ai/en/stable/module_guides/loading/node_parsers/modules.html#semanticsplitternodeparser
+# Output a pairwise sequence of chunks and embeddings List[{chunk: string, embedding: List[int]}]
+# Use this output to compare sentences together and find the largest discrepency (distance) in relationship
+# for determining when to break text off for chunks.
+def semantic_split(text: str):
+    # Split out all sentences
+    single_sentences_list = re.split(r"(?<=[.?!])\s+", text)
+    # Create a document data type with helpful metadata
+    sentences = [
+        {"sentence": x, "index": i} for i, x in enumerate(single_sentences_list)
+    ]
+    combined_sentences = combine_sentences(sentences)
+    return combined_sentences
+
+
+# Instruct an LLM to chunk the text (advanced)
+def agentic_split(text: str):
+    return text
+
+
+# Recommended for general use
+def recursive_char_split(text: str) -> List[str]:
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=550, chunk_overlap=0)
+    docs = text_splitter.create_documents([text])
+    result = []
+    for document in docs:
+        result.append(document.page_content)
+    return docs
+
+
+def code_split(text: str):
+    text_splitter = RecursiveCharacterTextSplitter.from_language(
+        language=Language.JS, chunk_size=65, chunk_overlap=0
+    )
+    docs = text_splitter.create_documents([text])
+    result = []
+    for document in docs:
+        result.append(document.page_content)
+    return
+
+
+# Parsers
+
+
+# Recommended for markdown or code documents
+def markdown_document_split(chunk_size: int = 550, chunk_overlap: int = 0):
+    return LangchainNodeParser(
+        MarkdownNodeParser(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            keep_separator=True,
+            # length_function=length_function,
+        )
+    )
+
+
+# Split along major headings (h2) then by whole sentences
+def markdown_heading_split(chunk_size: int = 550, chunk_overlap: int = 0):
+    return SentenceSplitter(
+        # @TODO This seems to work for now, maybe expand on this later?
+        paragraph_separator="\n## ",
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )

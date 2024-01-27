@@ -387,7 +387,7 @@ def create_memory_collection(
 # finally add it as a document to specified collection.
 @app.post("/v1/memory/addDocument")
 async def create_memory(
-    form: classes.AddDocumentRequest = Depends(),
+    form: classes.EmbedDocumentRequest = Depends(),
     file: UploadFile = File(None),  # File(...) means required
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ) -> classes.AddDocumentResponse:
@@ -395,9 +395,12 @@ async def create_memory(
         document_name = form.documentName
         collection_name = form.collectionName
         description = form.description
-        url_path = form.urlPath
         tags = common.parse_valid_tags(form.tags)
+        url_path = form.urlPath
         tmp_input_file_path = ""
+        chunk_size = form.chunkSize
+        chunk_overlap = form.chunkOverlap
+        chunk_strategy = form.chunkStrategy
 
         if file == None and url_path == "":
             raise Exception("You must supply a file upload or url.")
@@ -447,7 +450,6 @@ async def create_memory(
 
         # Create embeddings
         print("[homebrew api] Start embedding...")
-        db_client = embedding.get_vectordb_client(app)
         embed_form = {
             "collection_name": collection_name,
             "document_name": document_name,
@@ -455,6 +457,9 @@ async def create_memory(
             "description": description,
             "tags": tags,
             "is_update": False,
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap,
+            "chunk_strategy": chunk_strategy,
         }
         background_tasks.add_task(
             embedding.create_embedding,
@@ -602,16 +607,20 @@ def explore_source_file(
 # Re-process and re-embed existing document(s) from /parsed directory or url link
 @app.post("/v1/memory/updateDocument")
 async def update_memory(
-    args: classes.UpdateDocumentRequest,
+    form: classes.UpdateEmbeddedDocumentRequest,
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ) -> classes.UpdateDocumentResponse:
     try:
-        collection_name = args.collectionName
-        document_id = args.documentId
-        document_name = args.documentName
-        metadata = args.metadata
-        url_path = args.urlPath
-        file_path = args.filePath
+        collection_name = form.collectionName
+        document_id = form.documentId
+        document_name = form.documentName
+        metadata = form.metadata  # @TODO Should we re-create this?
+        url_path = form.urlPath
+        file_path = form.filePath
+        # @TODO Load these from front-end
+        chunk_size = form.chunk_size
+        chunk_overlap = form.chunk_overlap
+        chunk_strategy = form.chunk_strategy
         document = None
         document_metadata = {}
 
@@ -690,6 +699,9 @@ async def update_memory(
                 "description": description,
                 "tags": updated_tags,
                 "is_update": True,
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap,
+                "chunk_strategy": chunk_strategy,
             }
             background_tasks.add_task(
                 embedding.create_embedding,
