@@ -113,7 +113,7 @@ def token_streamer(token_generator):
             yield json.dumps(payload)
     except (ValueError, UnicodeEncodeError, Exception) as e:
         msg = f"Error streaming tokens: {e}"
-        print(msg)
+        # print(msg)
         raise Exception(msg)
 
 

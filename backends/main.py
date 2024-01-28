@@ -343,6 +343,7 @@ def pre_process_documents(
         return {
             "success": False,
             "message": f"There was an internal server error uploading the file:\n{error}",
+            "data": {},
         }
 
 
@@ -516,7 +517,8 @@ def get_all_collections() -> classes.GetAllCollectionsResponse:
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
+            "data": [],
         }
 
 
@@ -552,7 +554,8 @@ def get_collection(
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
+            "data": {},
         }
 
 
@@ -822,7 +825,7 @@ def delete_collection(
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
         }
 
 
@@ -862,7 +865,7 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
         }
 
 
