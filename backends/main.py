@@ -624,10 +624,10 @@ async def update_memory(
         metadata = form.metadata  # @TODO Should we re-create this?
         url_path = form.urlPath
         file_path = form.filePath
-        # @TODO Load these from front-end
-        chunk_size = form.chunk_size
-        chunk_overlap = form.chunk_overlap
-        chunk_strategy = form.chunk_strategy
+        # @TODO Pass these from front-end
+        chunk_size = form.chunkSize
+        chunk_overlap = form.chunkOverlap
+        chunk_strategy = form.chunkStrategy
         document = None
         document_metadata = {}
 
@@ -697,8 +697,6 @@ async def update_memory(
                 output_folder_path=PARSED_DOCUMENT_PATH,
             )
             # Create text embeddings
-            if app.state.llm == None:
-                raise Exception("No Ai loaded.")
             form = {
                 "collection_name": collection_name,
                 "document_name": document_name,
@@ -755,8 +753,6 @@ def delete_documents(
             app=app,
             include=["metadatas"],
         )
-        if app.state.llm == None:
-            raise Exception("No Ai loaded.")
         # Delete all files and references associated with embedded docs
         for document in documents:
             document_metadata = document["metadata"]
@@ -833,8 +829,8 @@ def delete_collection(
 @app.get("/v1/memory/wipe")
 def wipe_all_memories() -> classes.WipeMemoriesResponse:
     try:
-        db = embedding.get_vectordb_client(app)
         # Delete all db values
+        db = embedding.get_vectordb_client(app)
         db.reset()
         # Delete all parsed documents/files in /memories
         if os.path.exists(TMP_DOCUMENT_PATH):
@@ -847,16 +843,20 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
             for f in files:
                 os.remove(f)  # del all .md files
             os.rmdir(PARSED_DOCUMENT_PATH)  # del folder
-        # Remove persisted vector storage folder
+        # Remove all vector storage collections and folders
         if os.path.exists(VECTOR_STORAGE_PATH):
             folders = glob.glob(f"{VECTOR_STORAGE_PATH}/*")
             for dir in folders:
-                if not "chroma." in dir:
+                if "chroma.sqlite3" not in dir:
                     files = glob.glob(f"{dir}/*")
                     for f in files:
                         os.remove(f)  # del files
-            os.rmdir(dir)  # del folder
+                    os.rmdir(dir)  # del collection folder
+        # Remove root vector storage folder and database file
+        # os.remove(os.path.join(app.state.storage_directory, "chroma.sqlite3"))
+        # os.rmdir(app.state.storage_directory)
 
+        # Acknowledge success
         return {
             "success": True,
             "message": "Successfully wiped all memories from Ai",
