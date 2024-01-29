@@ -11,13 +11,14 @@ router = APIRouter()
 def get_services_api(request: Request) -> classes.ServicesApiResponse:
     app = request.app
     data = []
+    rag_response_modes = list(ResponseMode.__members__.values())
 
     # Return text inference services
     text_inference_api = {
         "name": "textInference",
         "port": app.state.PORT_HOMEBREW_API,
         "configs": {
-            "ragResponseModes": list(ResponseMode.__members__.keys()),
+            "ragResponseModes": rag_response_modes,
         },
         "endpoints": [
             # Generate a text response from Ai engine

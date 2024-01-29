@@ -232,7 +232,7 @@ class InferenceRequest(BaseModel):
                     "presence_penalty": 0.0,
                     "frequency_penalty": 0.0,
                     "similarity_top_k": 1,
-                    "response_mode": "COMPACT",
+                    "response_mode": "compact",
                 }
             ]
         }
@@ -566,6 +566,8 @@ class AppSettingsCallData(BaseModel):
     repeat_penalty: Optional[float] = None
     stream: Optional[bool] = None
     echo: Optional[bool] = None
+    similarity_top_k: Optional[int] = None
+    response_mode: Optional[str] = None
     # Yet to be used params
     # model: str = None
     # mirostat_tau: float = None

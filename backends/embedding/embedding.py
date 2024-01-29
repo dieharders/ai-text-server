@@ -57,7 +57,7 @@ embedding_model_names = dict(BAAI="BAAI/bge-large-en", GTE="thenlper/gte-base")
 embed_model_name = embedding_model_names["GTE"]  # name on Huggingface
 embed_model_folder_name = "embed_models"
 embed_model_cache_dir = os.path.join(os.getcwd(), embed_model_folder_name)
-# @TODO This string list will need to be served to the client so they know what is supported...
+
 CHUNKING_STRATEGIES = {
     "MARKDOWN_HEADING_SPLIT": markdown_heading_split,
     "MARKDOWN_DOCUMENT_SPLIT": markdown_document_split,
