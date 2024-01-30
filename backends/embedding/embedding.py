@@ -363,6 +363,7 @@ def create_embedding(
         chunk_strategy: str = (
             form["chunk_strategy"] or list(CHUNKING_STRATEGIES.keys())[0]
         )
+        # @TODO Use this to set chunk_size, etc from doc metadata
         # is_update = form["is_update"]
         if not document_id or not collection_name or not document_name:
             raise Exception("Missing input values.")

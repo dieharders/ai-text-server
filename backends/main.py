@@ -624,7 +624,6 @@ async def update_memory(
         metadata = form.metadata  # @TODO Should we re-create this?
         url_path = form.urlPath
         file_path = form.filePath
-        # @TODO Pass these from front-end
         chunk_size = form.chunkSize
         chunk_overlap = form.chunkOverlap
         chunk_strategy = form.chunkStrategy
