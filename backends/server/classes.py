@@ -193,6 +193,8 @@ class InferenceRequest(BaseModel):
     frequency_penalty: Optional[
         float
     ] = 0.0  # The penalty to apply to tokens based on their frequency in the prompt
+    similarity_top_k: Optional[int] = None
+    response_mode: Optional[str] = None
 
     model_config = {
         "json_schema_extra": {
@@ -229,6 +231,8 @@ class InferenceRequest(BaseModel):
                     "repeat_penalty": 1.1,
                     "presence_penalty": 0.0,
                     "frequency_penalty": 0.0,
+                    "similarity_top_k": 1,
+                    "response_mode": "compact",
                 }
             ]
         }
@@ -307,12 +311,15 @@ class AddCollectionResponse(BaseModel):
     }
 
 
-class AddDocumentRequest(BaseModel):
-    documentName: str
+class EmbedDocumentRequest(BaseModel):
     collectionName: str
+    documentName: str
     description: Optional[str] = ""
     tags: Optional[str] = ""
     urlPath: Optional[str] = ""
+    chunkSize: Optional[int] = None
+    chunkOverlap: Optional[int] = None
+    chunkStrategy: Optional[str] = None
 
 
 class AddDocumentResponse(BaseModel):
@@ -452,13 +459,10 @@ class FileExploreResponse(BaseModel):
     }
 
 
-class UpdateDocumentRequest(BaseModel):
-    collectionName: str
-    documentName: str
+class UpdateEmbeddedDocumentRequest(EmbedDocumentRequest):
     documentId: str
-    urlPath: Optional[str] = ""
     filePath: Optional[str] = ""
-    metadata: Optional[dict] = {}
+    metadata: Optional[dict]  # @TODO What data struct ?
 
 
 class UpdateDocumentResponse(BaseModel):
@@ -562,6 +566,8 @@ class AppSettingsCallData(BaseModel):
     repeat_penalty: Optional[float] = None
     stream: Optional[bool] = None
     echo: Optional[bool] = None
+    similarity_top_k: Optional[int] = None
+    response_mode: Optional[str] = None
     # Yet to be used params
     # model: str = None
     # mirostat_tau: float = None
@@ -761,3 +767,8 @@ class InstalledTextModelResponse(BaseModel):
             ]
         }
     }
+
+
+class ContextRetrievalOptions(BaseModel):
+    response_mode: Optional[str] = None
+    similarity_top_k: Optional[int] = None

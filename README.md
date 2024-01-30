@@ -6,7 +6,7 @@ This project handles all requests from client chat apps using a single api. The 
 
 ## Introduction
 
-This is a hybrid Next.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
+This is a hybrid Node.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
 Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examples/with-electron)
 
@@ -18,6 +18,7 @@ Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examp
 - ✅ Provide easy to setup desktop installers
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
+- ✅ Advanced Settings: Fine tune how the model is loaded
 - ❌ Threads: Save/Retrieve chat message history
 
 ## Features (upcoming)

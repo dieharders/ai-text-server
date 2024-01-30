@@ -20,6 +20,7 @@ from inference import text_llama_index
 from embedding import embedding
 from server import common, classes
 from routes import router as endpoint_router
+from llama_index.response_synthesizers import ResponseMode
 
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
@@ -224,7 +225,6 @@ async def text_inference(payload: classes.InferenceRequest):
         options = dict(
             stream=payload.stream,
             temperature=payload.temperature,
-            n_ctx=n_ctx,
             max_tokens=max_tokens,
             stop=payload.stop,
             echo=payload.echo,
@@ -244,36 +244,57 @@ async def text_inference(payload: classes.InferenceRequest):
         if not app.state.path_to_model:
             raise Exception("No path to model provided.")
         if not app.state.llm:
-            raise Exception("No LLM exists.")
+            raise Exception("No LLM loaded.")
 
-        # Call LLM
+        # Call LLM with context loaded via llama-index/vector store
         if collection_names is not None and len(collection_names) > 0:
             print(
                 f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
             )
 
-            return EventSourceResponse(
-                text_llama_index.query_memory(
-                    prompt,
-                    rag_prompt_template,
-                    system_prompt,
-                    collection_names,
-                    app,
-                    embedding.get_vectordb_client(app),
-                    options,
-                ),
+            # Only take the first collection for now
+            collection_name = collection_names[0]
+            # Set LLM settings
+            retrieval_n_ctx = n_ctx - 100
+            retrieval_options = dict(
+                similarity_top_k=payload.similarity_top_k or 1,
+                response_mode=payload.response_mode or ResponseMode.COMPACT,
             )
+            # Update LLM generation options
+            app.state.llm.generate_kwargs.update(options)
+
+            # Load the vector index
+            indexDB = embedding.load_embedding(
+                app,
+                collection_name,
+                max_tokens,
+                retrieval_n_ctx,
+                system_prompt,
+            )
+
+            # Call query() on engine
+            response = text_llama_index.query_memory(
+                prompt,
+                rag_prompt_template,
+                indexDB,
+                options=retrieval_options,
+            )
+            return EventSourceResponse(response)
+        # Call LLM in completion mode
         elif mode == "completion":
+            options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_completion(
                     prompt, prompt_template, system_prompt, app, options
                 )
             )
+        # Call LLM in chat mode
         elif mode == "chat":
+            options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_chat(messages, system_prompt, app, options)
             )
-        else:
+        elif mode is None:
             raise Exception("Check 'mode' is provided.")
     except (KeyError, Exception) as err:
         raise HTTPException(
@@ -322,6 +343,7 @@ def pre_process_documents(
         return {
             "success": False,
             "message": f"There was an internal server error uploading the file:\n{error}",
+            "data": {},
         }
 
 
@@ -351,6 +373,7 @@ def create_memory_collection(
         db_client.create_collection(
             name=collection_name,
             metadata=metadata,
+            # embedding_function=custom_embed_function,
         )
         return {
             "success": True,
@@ -369,7 +392,7 @@ def create_memory_collection(
 # finally add it as a document to specified collection.
 @app.post("/v1/memory/addDocument")
 async def create_memory(
-    form: classes.AddDocumentRequest = Depends(),
+    form: classes.EmbedDocumentRequest = Depends(),
     file: UploadFile = File(None),  # File(...) means required
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ) -> classes.AddDocumentResponse:
@@ -377,9 +400,12 @@ async def create_memory(
         document_name = form.documentName
         collection_name = form.collectionName
         description = form.description
-        url_path = form.urlPath
         tags = common.parse_valid_tags(form.tags)
+        url_path = form.urlPath
         tmp_input_file_path = ""
+        chunk_size = form.chunkSize
+        chunk_overlap = form.chunkOverlap
+        chunk_strategy = form.chunkStrategy
 
         if file == None and url_path == "":
             raise Exception("You must supply a file upload or url.")
@@ -391,8 +417,6 @@ async def create_memory(
             raise Exception(
                 "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
             )
-        if not app.state.path_to_model:
-            raise Exception("No model path defined.")
 
         # Save temp files to disk first. The filename doesnt matter much.
         tmp_folder = TMP_DOCUMENT_PATH
@@ -431,9 +455,6 @@ async def create_memory(
 
         # Create embeddings
         print("[homebrew api] Start embedding...")
-        if app.state.llm == None:
-            raise Exception("No Ai loaded.")
-        db_client = embedding.get_vectordb_client(app)
         embed_form = {
             "collection_name": collection_name,
             "document_name": document_name,
@@ -441,13 +462,14 @@ async def create_memory(
             "description": description,
             "tags": tags,
             "is_update": False,
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap,
+            "chunk_strategy": chunk_strategy,
         }
         background_tasks.add_task(
             embedding.create_embedding,
             processed_file,
-            app.state.storage_directory,
             embed_form,
-            db_client,
             app,
         )
     except (Exception, KeyError) as e:
@@ -460,7 +482,7 @@ async def create_memory(
         }
     else:
         msg = "A new memory has been added to the queue. It will be available for use shortly."
-        print(f"[homebrew api] {msg}")
+        print(f"[homebrew api] {msg}", flush=True)
         return {
             "success": True,
             "message": msg,
@@ -495,7 +517,8 @@ def get_all_collections() -> classes.GetAllCollectionsResponse:
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
+            "data": [],
         }
 
 
@@ -531,7 +554,8 @@ def get_collection(
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
+            "data": {},
         }
 
 
@@ -546,7 +570,7 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=document_ids,
-            db=embedding.get_vectordb_client(app),
+            app=app,
             include=include,
         )
 
@@ -561,7 +585,8 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
+            "data": [],
         }
 
 
@@ -589,16 +614,19 @@ def explore_source_file(
 # Re-process and re-embed existing document(s) from /parsed directory or url link
 @app.post("/v1/memory/updateDocument")
 async def update_memory(
-    args: classes.UpdateDocumentRequest,
+    form: classes.UpdateEmbeddedDocumentRequest,
     background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
 ) -> classes.UpdateDocumentResponse:
     try:
-        collection_name = args.collectionName
-        document_id = args.documentId
-        document_name = args.documentName
-        metadata = args.metadata
-        url_path = args.urlPath
-        file_path = args.filePath
+        collection_name = form.collectionName
+        document_id = form.documentId
+        document_name = form.documentName
+        metadata = form.metadata  # @TODO Should we re-create this?
+        url_path = form.urlPath
+        file_path = form.filePath
+        chunk_size = form.chunkSize
+        chunk_overlap = form.chunkOverlap
+        chunk_strategy = form.chunkStrategy
         document = None
         document_metadata = {}
 
@@ -613,11 +641,10 @@ async def update_memory(
             )
 
         # Retrieve document data
-        db = embedding.get_vectordb_client(app)
         documents = embedding.get_document(
             collection_name=collection_name,
             document_ids=[document_id],
-            db=db,
+            app=app,
             include=["documents", "metadatas"],
         )
         if len(documents) >= 1:
@@ -669,8 +696,6 @@ async def update_memory(
                 output_folder_path=PARSED_DOCUMENT_PATH,
             )
             # Create text embeddings
-            if app.state.llm == None:
-                raise Exception("No Ai loaded.")
             form = {
                 "collection_name": collection_name,
                 "document_name": document_name,
@@ -678,13 +703,14 @@ async def update_memory(
                 "description": description,
                 "tags": updated_tags,
                 "is_update": True,
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap,
+                "chunk_strategy": chunk_strategy,
             }
             background_tasks.add_task(
                 embedding.create_embedding,
                 processed_file,
-                app.state.storage_directory,
                 form,
-                db,
                 app,
             )
         else:
@@ -723,11 +749,9 @@ def delete_documents(
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=document_ids,
-            db=db,
+            app=app,
             include=["metadatas"],
         )
-        if app.state.llm == None:
-            raise Exception("No Ai loaded.")
         # Delete all files and references associated with embedded docs
         for document in documents:
             document_metadata = document["metadata"]
@@ -744,7 +768,7 @@ def delete_documents(
             collection.metadata["sources"] = sources_json
             collection.modify(metadata=collection.metadata)
             # Delete embeddings from llama-index @TODO Verify this works
-            index = embedding.load_embedding(app, db, collection_id)
+            index = embedding.load_embedding(app, collection_id)
             index.delete(document_id)
         # Delete the embeddings from collection
         collection.delete(ids=document_ids)
@@ -757,7 +781,7 @@ def delete_documents(
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
         }
 
 
@@ -776,7 +800,7 @@ def delete_collection(
         documents = embedding.get_document(
             collection_name=collection_id,
             document_ids=sources,
-            db=embedding.get_vectordb_client(app),
+            app=app,
             include=include,
         )
         for document in documents:
@@ -796,7 +820,7 @@ def delete_collection(
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
         }
 
 
@@ -804,8 +828,8 @@ def delete_collection(
 @app.get("/v1/memory/wipe")
 def wipe_all_memories() -> classes.WipeMemoriesResponse:
     try:
-        db = embedding.get_vectordb_client(app)
         # Delete all db values
+        db = embedding.get_vectordb_client(app)
         db.reset()
         # Delete all parsed documents/files in /memories
         if os.path.exists(TMP_DOCUMENT_PATH):
@@ -818,16 +842,20 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
             for f in files:
                 os.remove(f)  # del all .md files
             os.rmdir(PARSED_DOCUMENT_PATH)  # del folder
-        # Remove persisted vector storage folder
+        # Remove all vector storage collections and folders
         if os.path.exists(VECTOR_STORAGE_PATH):
             folders = glob.glob(f"{VECTOR_STORAGE_PATH}/*")
             for dir in folders:
-                if not "chroma." in dir:
+                if "chroma.sqlite3" not in dir:
                     files = glob.glob(f"{dir}/*")
                     for f in files:
                         os.remove(f)  # del files
-            os.rmdir(dir)  # del folder
+                    os.rmdir(dir)  # del collection folder
+        # Remove root vector storage folder and database file
+        # os.remove(os.path.join(app.state.storage_directory, "chroma.sqlite3"))
+        # os.rmdir(app.state.storage_directory)
 
+        # Acknowledge success
         return {
             "success": True,
             "message": "Successfully wiped all memories from Ai",
@@ -836,7 +864,7 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
         print(f"[homebrew api] Error: {e}")
         return {
             "success": False,
-            "message": e,
+            "message": str(e),
         }
 
 

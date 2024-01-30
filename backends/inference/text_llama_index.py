@@ -1,4 +1,6 @@
+import os
 import json
+import torch
 from typing import List, Sequence
 from llama_index.llms import LlamaCPP
 from llama_index.llms.llama_utils import messages_to_prompt, completion_to_prompt
@@ -14,7 +16,47 @@ QUERY_INPUT = "{query_str}"
 ###
 
 
-# High level llama-cpp-python object wrapped in class from LlamaIndex
+# Return a model trained for instruction and RAG, a High level llama-cpp-python object wrapped in LlamaIndex class
+def load_text_retrieval_model(
+    options: dict,
+):
+    # @TODO "text_models" dir may need to be looked up from settings storage if user chose a different location.
+    PATH_TO_RETRIEVAL_MODEL = os.path.join(
+        os.getcwd(), "text_models", "zephyr-7b-beta.Q4_K_M.gguf"
+    )
+    if not os.path.isfile(PATH_TO_RETRIEVAL_MODEL):
+        print("[homebrew api] No embedding model exists.")
+        # @TODO Will need to await downloading model here if none exists
+        return None
+    llama_debug = LlamaDebugHandler(print_trace_on_end=True)
+    callback_manager = CallbackManager([llama_debug])
+    return LlamaCPP(
+        # Provide a url to download a model from
+        model_url=None,
+        # Or, you can set the path to a pre-downloaded model instead of model_url
+        model_path=PATH_TO_RETRIEVAL_MODEL,
+        # Both max_new_tokens and temperature will override their generate_kwargs counterparts
+        # @TODO this can be fixed value since we know the model
+        max_new_tokens=options["max_tokens"],
+        temperature=options["temperature"] or 0,
+        # We set this lower to allow for some wiggle room.
+        # Note, this sets n_ctx in the model_kwargs below, so you don't need to pass it there.
+        # @TODO this can be fixed since we know the model
+        context_window=options["n_ctx"],
+        # kwargs to pass to __call__()
+        generate_kwargs=options["generate_kwargs"],
+        # kwargs to pass to __init__()
+        model_kwargs=options["model_kwargs"],
+        # Transform inputs into Llama2 format
+        # @TODO swap out for other model's prompt format
+        messages_to_prompt=messages_to_prompt,
+        completion_to_prompt=completion_to_prompt,
+        callback_manager=callback_manager,
+        verbose=True,
+    )
+
+
+# High level llama-cpp-python object wrapped in LlamaIndex class
 def load_text_model(
     path_to_model: str,
     mode: str,
@@ -62,7 +104,7 @@ def load_text_model(
         "n_threads": n_threads,
         "offload_kqv": init_settings.offload_kqv,
         "chat_format": "llama-2",  # @TODO Load from model_configs.chat_format
-        # "torch_dtype": torch.float16,
+        "torch_dtype": torch.float16,  # if using CUDA (reduces memory usage)
         # "load_in_8bit": True,
     }
 
@@ -112,7 +154,7 @@ def token_streamer(token_generator):
             yield json.dumps(payload)
     except (ValueError, UnicodeEncodeError, Exception) as e:
         msg = f"Error streaming tokens: {e}"
-        print(msg)
+        # print(msg)
         raise Exception(msg)
 
 
@@ -120,34 +162,12 @@ def token_streamer(token_generator):
 def query_memory(
     query: str,
     rag_prompt_template: classes.RagTemplateData,
-    system_prompt: str,
-    collection_names: List[str],
-    app,
-    db,
-    options: dict,
+    indexDB,
+    options: classes.ContextRetrievalOptions,
 ):
-    if app.state.llm == None:
-        raise Exception("No Ai loaded.")
-
-    # @TODO We can do filtering based on doc/collection name, metadata, etc via LlamaIndex.
-    collection_name = collection_names[0]  # Only take the first collection for now
-    # Update the LLM settings
-    n_ctx = options.get("n_ctx") - 100  # for llama-index
-    max_tokens = options.get("max_tokens")
-    # Remove n_ctx from options
-    del options["n_ctx"]
-    app.state.llm.generate_kwargs.update(options)
-    # Load the vector index
-    indexDB = embedding.load_embedding(
-        app,
-        db,
-        collection_name,
-        max_tokens,
-        n_ctx,
-        system_prompt,
-    )
     # Stream the response
-    token_generator = embedding.query_embedding(query, rag_prompt_template, indexDB)
+    res = embedding.query_embedding(query, rag_prompt_template, indexDB, options)
+    token_generator = res.response_gen
     return token_streamer(token_generator)
 
 
