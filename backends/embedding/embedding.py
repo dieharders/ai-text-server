@@ -530,7 +530,7 @@ def query_embedding(
             "Given this information, please answer the question: {query_str}\n"
         )
         custom_qa_prompt = PromptTemplate(
-            template=DEFAULT_PROMPT_TEMPLATE, prompt_type="custom"
+            template=DEFAULT_PROMPT_TEMPLATE, prompt_type="custom_default"
         )
 
     # Used when no good response is returned and we want to further "handle" the answer before its delivered to user.
