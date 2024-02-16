@@ -35,23 +35,6 @@ from transformers import AutoModel, AutoTokenizer
 from server import classes
 from .chunking import markdown_heading_split, markdown_document_split
 
-
-# More templates found here: https://github.com/run-llama/llama_index/blob/main/llama_index/prompts/default_prompts.py
-DEFAULT_SYSTEM_PROMPT = """You are an AI assistant that answers questions in a friendly manner, based on the given source documents. Here are some rules you always follow:
-- Generate human readable output, avoid creating output with gibberish text.
-- Generate only the requested output, don't include any other language before or after the requested output.
-- Never say thank you, that you are happy to help, that you are an AI agent, etc. Just answer directly.
-- Generate professional language typically used in business documents in North America.
-- Never generate offensive or foul language.
-"""
-DEFAULT_PROMPT_TEMPLATE = (
-    "We have provided context information below. \n"
-    "---------------------\n"
-    "{context_str}"
-    "\n---------------------\n"
-    "Given this information, please answer the question: {query_str}\n"
-)
-
 embed_model = None
 embedding_model_names = dict(BAAI="BAAI/bge-large-en", GTE="thenlper/gte-base")
 embed_model_name = embedding_model_names["GTE"]  # name on Huggingface
@@ -524,26 +507,45 @@ def evaluate_response(response, service_context, query=""):
 # Query Private Data
 def query_embedding(
     query: str,
-    prompt_template_str: classes.RagTemplateData,
+    prompt_template: classes.RagTemplateData,
     index: VectorStoreIndex,
     options: classes.ContextRetrievalOptions,
 ):
-    print("[embedding api] Query Data", flush=True)
-    custom_qa_prompt = PromptTemplate(
-        template=prompt_template_str.text, prompt_type=prompt_template_str.type
+    print(
+        f"[embedding api] Query Data: {prompt_template.text} | {prompt_template.type}",
+        flush=True,
     )
+
+    # Create a prompt from a template
+    if prompt_template:
+        custom_qa_prompt = PromptTemplate(
+            template=prompt_template.text, prompt_type=prompt_template.type
+        )
+    else:
+        DEFAULT_PROMPT_TEMPLATE = (
+            "We have provided context information below.\n"
+            "---------------------\n"
+            "{context_str}"
+            "\n---------------------\n"
+            "Given this information, please answer the question: {query_str}\n"
+        )
+        custom_qa_prompt = PromptTemplate(
+            template=DEFAULT_PROMPT_TEMPLATE, prompt_type="custom_default"
+        )
+
     # Used when no good response is returned and we want to further "handle" the answer before its delivered to user.
     # @TODO Hardcoded for now, Set this from passed args in request
     refine_template_str = (
         "The original question is as follows: {query_str}\nWe have provided an"
         " existing answer: {existing_answer}\nWe have the opportunity to refine"
         " the existing answer (only if needed) with some more context"
-        " below.\n------------\n{context_msg}\n------------\nUsing both the new"
+        " below.\n------------\n{context_str}\n------------\nUsing both the new"
         " context and your own knowledge, update or repeat the existing answer.\n"
     )
     custom_refine_prompt = PromptTemplate(refine_template_str)
 
     # Call query() in query mode
+    print(f"custom_qa_prompt:{custom_qa_prompt}", flush=True)
     query_engine = index.as_query_engine(
         streaming=True,
         # service_context=service_context,
@@ -571,11 +573,6 @@ def query_embedding(
 def load_embedding(
     app,
     collection_name: str,
-    # query_string: Optional[str] = "",
-    # rag_prompt_template: Optional[classes.RagTemplateData] = None,
-    num_output: Optional[int] = 0,
-    context_window: Optional[int] = 2000,
-    system_prompt: Optional[str] = None,
 ):
     db = get_vectordb_client(app)
     persist_dir = get_collection_storage_dir(collection_name)
@@ -586,18 +583,6 @@ def load_embedding(
 
     # Construct args
     llm: Type[LlamaCPP] = app.state.llm
-    sys_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
-    # promptTemplateText = rag_prompt_template.text or DEFAULT_PROMPT_TEMPLATE
-    # query_wrapper_prompt = PromptTemplate(
-    #     template=promptTemplateText,
-    #     prompt_type=rag_prompt_template.type,
-    # )
-    # completion_template = query_wrapper_prompt.format(
-    #     context_str="", query_str=query_string
-    # )
-    # chat_template = query_wrapper_prompt.format_messages(
-    #     context_str="", query_str=query_string
-    # )
 
     # Create service
     service_context = ServiceContext.from_defaults(
@@ -605,14 +590,8 @@ def load_embedding(
         embed_model=create_embed_model(),
         callback_manager=callback_manager,
         # Prompt helper kwargs
-        context_window=context_window,
-        num_output=num_output,
-        # chunk_size=chunk_size,
         llama_logger=LlamaLogger,
         # prompt_helper={},  # @TODO helps deal with LLM context window token limitations
-        # Prompt templating
-        system_prompt=sys_prompt,
-        # query_wrapper_prompt=promptTemplateText,
     )
 
     # You MUST get() with the same embedding function you supplied while creating the collection.

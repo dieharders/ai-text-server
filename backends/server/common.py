@@ -245,11 +245,11 @@ def get_model_metadata(
     id: str, folderpath: str, filepath: str
 ) -> InstalledTextModelMetadata:
     metadata = {}
-    # Gets all the previously installed model metadata
+    # Gets all installation metadata
     settings: InstalledTextModel = get_settings_file(folderpath, filepath)
     models = settings[INSTALLED_TEXT_MODELS]
     for item in models:
-        if item.get("id") == id:
+        if item["id"] == id:
             metadata = item
             break
     return metadata

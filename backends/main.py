@@ -160,10 +160,9 @@ def get_text_model() -> classes.InstalledTextModelResponse:
             metadata = common.get_model_metadata(
                 model_id, APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
             )
-            name = metadata["name"]
             return {
                 "success": True,
-                "message": f"Model {name} is already loaded.",
+                "message": f"Model {model_id} is loaded.",
                 "data": metadata,
             }
         else:
@@ -218,7 +217,8 @@ async def text_inference(payload: classes.InferenceRequest):
         mode = payload.mode
         prompt_template = payload.promptTemplate
         rag_prompt_template = payload.ragPromptTemplate
-        system_prompt = payload.systemPrompt
+        system_message = payload.systemMessage
+        message_format = payload.messageFormat  # format wrapper for full prompt
         m_tokens = payload.max_tokens
         n_ctx = payload.n_ctx
         max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
@@ -255,7 +255,6 @@ async def text_inference(payload: classes.InferenceRequest):
             # Only take the first collection for now
             collection_name = collection_names[0]
             # Set LLM settings
-            retrieval_n_ctx = n_ctx - 100
             retrieval_options = dict(
                 similarity_top_k=payload.similarity_top_k or 1,
                 response_mode=payload.response_mode or ResponseMode.COMPACT,
@@ -264,35 +263,35 @@ async def text_inference(payload: classes.InferenceRequest):
             app.state.llm.generate_kwargs.update(options)
 
             # Load the vector index
-            indexDB = embedding.load_embedding(
-                app,
-                collection_name,
-                max_tokens,
-                retrieval_n_ctx,
-                system_prompt,
-            )
+            indexDB = embedding.load_embedding(app, collection_name)
 
-            # Call query() on engine
-            response = text_llama_index.query_memory(
-                prompt,
-                rag_prompt_template,
-                indexDB,
-                options=retrieval_options,
+            # Call LLM query engine
+            res = embedding.query_embedding(
+                prompt, rag_prompt_template, indexDB, retrieval_options
             )
+            token_generator = res.response_gen
+            response = text_llama_index.token_streamer(token_generator)
             return EventSourceResponse(response)
-        # Call LLM in completion mode
+        # Call LLM in raw completion mode
         elif mode == "completion":
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_completion(
-                    prompt, prompt_template, system_prompt, app, options
+                    prompt,
+                    prompt_template,
+                    system_message,
+                    message_format,
+                    app,
+                    options,
                 )
             )
-        # Call LLM in chat mode
+        # Call LLM in raw chat mode
         elif mode == "chat":
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
-                text_llama_index.text_chat(messages, system_prompt, app, options)
+                text_llama_index.text_chat(
+                    messages, system_message, message_format, app, options
+                )
             )
         elif mode is None:
             raise Exception("Check 'mode' is provided.")
