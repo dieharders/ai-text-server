@@ -159,7 +159,8 @@ class InferenceRequest(BaseModel):
     # homebrew server specific args
     collectionNames: Optional[List[str]] = []
     mode: Optional[str] = DEFAULT_MODE
-    systemPrompt: Optional[str] = None
+    systemMessage: Optional[str] = None
+    messageFormat: Optional[str] = None
     promptTemplate: Optional[str] = None
     ragPromptTemplate: Optional[RagTemplateData] = None
     # __call__ args
@@ -203,7 +204,8 @@ class InferenceRequest(BaseModel):
                     "prompt": "Why does mass conservation break down?",
                     "collectionNames": ["science"],
                     "mode": "completion",  # completion | chat
-                    "systemPrompt": "You are a helpful Ai assistant.",
+                    "systemMessage": "You are a helpful Ai assistant.",
+                    "messageFormat": "<system> {system_message}\n<user> {prompt}",
                     "promptTemplate": "Answer this question: {query_str}",
                     "ragPromptTemplate": {
                         "id": "summary",
@@ -555,7 +557,7 @@ class AppSettingsInitData(BaseModel):
 
 class AppSettingsCallData(BaseModel):
     preset: Optional[float] = None
-    systemPrompt: Optional[str] = None
+    systemMessage: Optional[str] = None
     promptTemplate: Optional[str] = None
     ragPromptTemplate: Optional[RagTemplateData] = None
     temperature: Optional[float] = None

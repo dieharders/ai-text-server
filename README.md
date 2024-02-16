@@ -125,10 +125,10 @@ Follow these steps to build llama-cpp-python for your hardware and platform.
 
 3. llama-cpp-python installation steps:
 
-```
-set CMAKE_ARGS=-DLLAMA_CUBLAS=on
-set FORCE_CMAKE=1
-pip install llama-cpp-python --force-reinstall --upgrade --no-cache-dir --verbose
+If on windows, run the following using "Command Prompt" commandline tool
+
+```cmd
+set FORCE_CMAKE=1 && set CMAKE_ARGS=-DLLAMA_CUBLAS=on && pip uninstall llama-cpp-python && pip install llama-cpp-python --force-reinstall --ignore-installed --upgrade --no-cache-dir --verbose
 ```
 
 - If CUDA is detected but you get `No CUDA toolset found` error, copy all files from:

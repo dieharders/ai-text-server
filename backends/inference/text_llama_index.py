@@ -1,19 +1,108 @@
-import os
-import json
-import torch
-from typing import List, Sequence
-from llama_index.llms import LlamaCPP
-from llama_index.llms.llama_utils import messages_to_prompt, completion_to_prompt
-from llama_index.callbacks import CallbackManager, LlamaDebugHandler
-from embedding import embedding
-from server import common, classes
-
-QUERY_INPUT = "{query_str}"
-
 ###
 # Llama-Index allows us to search embeddings in a db and perform queries on them.
 # It wraps llama-cpp-python so we can run inference from here as well.
 ###
+import os
+import json
+import torch
+from typing import List, Optional, Sequence
+from llama_index.llms import LlamaCPP
+from llama_index.core.llms.types import ChatMessage, MessageRole
+from llama_index.callbacks import CallbackManager, LlamaDebugHandler
+from server import common, classes
+
+# These generic helper funcs wont add End_of_seq tokens etc but construct the Prompt/Message
+# from llama_index.llms.generic_utils import messages_to_prompt
+
+QUERY_INPUT = "{query_str}"
+# More templates found here: https://github.com/run-llama/llama_index/blob/main/llama_index/prompts/default_prompts.py
+DEFAULT_SYSTEM_MESSAGE = """You are an AI assistant that answers questions in a friendly manner. Here are some rules you always follow:
+- Generate human readable output, avoid creating output with gibberish text.
+- Generate only the requested output, don't include any other language before or after the requested output.
+- Never say thank you, that you are happy to help, that you are an AI agent, etc. Just answer directly.
+"""
+
+# Helpers
+
+
+# Format the prompt for completion
+def completion_to_prompt(
+    completion: Optional[str] = "",
+    system_prompt: Optional[str] = None,
+    template_str: Optional[str] = None,  # Model specific template
+):
+    if not system_prompt or len(system_prompt.strip()) == 0:
+        system_prompt = DEFAULT_SYSTEM_MESSAGE
+
+    # print(
+    #     f"\nprompt:\n{completion}\n\nsystem_prompt:\n{system_prompt}template:\n{template_str}",
+    #     flush=True,
+    # )
+
+    # Format to default spec if no template supplied
+    if not template_str:
+        return f"{system_prompt.strip()} {completion.strip()}"
+
+    # Format to specified template
+    prompt_str = template_str.replace("{prompt}", completion.strip())
+    completion_str = prompt_str.replace("{system_message}", system_prompt.strip())
+    return completion_str
+
+
+# Format the prompt for chat conversations
+def messages_to_prompt(
+    messages: Sequence[ChatMessage],
+    system_prompt: Optional[str] = DEFAULT_SYSTEM_MESSAGE,
+    template: Optional[dict] = {},  # Model specific template
+) -> str:
+    # (end tokens, structure, etc)
+    # @TODO Pass these in from UI model_configs.json (values found in config.json of HF model card)
+    BOS = template["BOS"] or ""
+    EOS = template["EOS"] or ""
+    B_INST = template["B_INST"] or ""
+    E_INST = template["E_INST"] or ""
+    B_SYS = template["B_SYS"] or ""
+    E_SYS = template["E_SYS"] or ""
+
+    string_messages: List[str] = []
+    if messages[0].role == MessageRole.SYSTEM:
+        # pull out the system message (if it exists in messages)
+        system_message_str = messages[0].content or ""
+        messages = messages[1:]
+    else:
+        system_message_str = system_prompt
+
+    system_message_str = f"{B_SYS} {system_message_str.strip()} {E_SYS}"
+
+    for i in range(0, len(messages), 2):
+        # first message should always be a user
+        user_message = messages[i]
+        assert user_message.role == MessageRole.USER
+
+        if i == 0:
+            # make sure system prompt is included at the start
+            str_message = f"{BOS} {B_INST} {system_message_str} "
+        else:
+            # end previous user-assistant interaction
+            string_messages[-1] += f" {EOS}"
+            # no need to include system prompt
+            str_message = f"{BOS} {B_INST} "
+
+        # include user message content
+        str_message += f"{user_message.content} {E_INST}"
+
+        if len(messages) > (i + 1):
+            # if assistant message exists, add to str_message
+            assistant_message = messages[i + 1]
+            assert assistant_message.role == MessageRole.ASSISTANT
+            str_message += f" {assistant_message.content}"
+
+        string_messages.append(str_message)
+
+    return "".join(string_messages)
+
+
+# Methods
 
 
 # Return a model trained for instruction and RAG, a High level llama-cpp-python object wrapped in LlamaIndex class
@@ -36,7 +125,6 @@ def load_text_retrieval_model(
         # Or, you can set the path to a pre-downloaded model instead of model_url
         model_path=PATH_TO_RETRIEVAL_MODEL,
         # Both max_new_tokens and temperature will override their generate_kwargs counterparts
-        # @TODO this can be fixed value since we know the model
         max_new_tokens=options["max_tokens"],
         temperature=options["temperature"] or 0,
         # We set this lower to allow for some wiggle room.
@@ -47,8 +135,7 @@ def load_text_retrieval_model(
         generate_kwargs=options["generate_kwargs"],
         # kwargs to pass to __init__()
         model_kwargs=options["model_kwargs"],
-        # Transform inputs into Llama2 format
-        # @TODO swap out for other model's prompt format
+        # Transform inputs into model specific format
         messages_to_prompt=messages_to_prompt,
         completion_to_prompt=completion_to_prompt,
         callback_manager=callback_manager,
@@ -103,8 +190,8 @@ def load_text_model(
         "n_batch": init_settings.n_batch,
         "n_threads": n_threads,
         "offload_kqv": init_settings.offload_kqv,
-        "chat_format": "llama-2",  # @TODO Load from model_configs.chat_format
-        "torch_dtype": torch.float16,  # if using CUDA (reduces memory usage)
+        # "chat_format": "llama-2",  # @TODO Load from model_configs.chat_format
+        "torch_dtype": "auto",  # if using CUDA (reduces memory usage)
         # "load_in_8bit": True,
     }
 
@@ -128,7 +215,7 @@ def load_text_model(
         generate_kwargs=generate_kwargs,
         # kwargs to pass to __init__()
         model_kwargs=model_kwargs,
-        # Transform inputs into Llama2 format, swap out for other model's prompt template
+        # Transform inputs into model specific format
         messages_to_prompt=messages_to_prompt,
         completion_to_prompt=completion_to_prompt,
         callback_manager=callback_manager,
@@ -158,36 +245,30 @@ def token_streamer(token_generator):
         raise Exception(msg)
 
 
-# Search through a database of embeddings and return similiar documents for llm to use as context
-def query_memory(
-    query: str,
-    rag_prompt_template: classes.RagTemplateData,
-    indexDB,
-    options: classes.ContextRetrievalOptions,
-):
-    # Stream the response
-    res = embedding.query_embedding(query, rag_prompt_template, indexDB, options)
-    token_generator = res.response_gen
-    return token_streamer(token_generator)
-
-
 # Perform a normal text completion on a prompt
 def text_completion(
-    prompt: str, prompt_template: str, system_prompt: str, app, options
+    prompt_str: str,
+    prompt_template: str,
+    system_message: str,
+    message_format: str,
+    app,
+    options,
 ):
+    sys_message = system_message or ""
     llm: LlamaCPP = app.state.llm
     if llm == None:
         raise Exception("No Ai loaded.")
 
-    # Format query from prompt template
-    query_str = prompt
+    # Format prompt from template
+    prompt = prompt_str
     if prompt_template:
-        query_str = prompt_template.replace(QUERY_INPUT, prompt)
-    # Format query to model spec, Inject system prompt into prompt
-    if system_prompt:
-        query_str = llm.completion_to_prompt(query_str, system_prompt)
+        prompt = prompt_template.replace(QUERY_INPUT, prompt_str)
+
+    # Format to model spec, construct a message with system message and prompt
+    message = completion_to_prompt(prompt, sys_message, message_format)
+
     # Stream response
-    token_generator = llm.stream_complete(query_str, kwargs=options)
+    token_generator = llm.stream_complete(message, formatted=True, kwargs=options)
     for token in token_generator:
         # print(token.delta, end="", flush=True)
         payload = {"event": "GENERATING_TOKENS", "data": f"{token.delta}"}
@@ -195,15 +276,26 @@ def text_completion(
 
 
 # Perform a normal text chat conversation
-def text_chat(messages: Sequence[str], system_prompt, app, options):
+def text_chat(
+    messages: Sequence[str],
+    system_message: str,
+    message_format: str,
+    app,
+    options,
+):
     llm: LlamaCPP = app.state.llm
     if llm == None:
         raise Exception("No Ai loaded.")
 
-    # Format messages
-    messages = llm.messages_to_prompt(messages, system_prompt)
+    sys_message = system_message or ""
+    formatted_messages = messages
+
+    if message_format:
+        # Manually format to model spec, inject system message and prompt into query
+        formatted_messages = messages_to_prompt(messages, sys_message)
+
     # Stream response
-    token_generator = llm.stream_chat(messages, kwargs=options)
+    token_generator = llm.stream_chat(formatted_messages, kwargs=options)
     for token in token_generator:
         # print(token.delta, end="", flush=True)
         payload = {"event": "GENERATING_TOKENS", "data": f"{token.delta}"}
