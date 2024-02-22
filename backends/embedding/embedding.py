@@ -30,7 +30,7 @@ from llama_index.evaluation.faithfulness import FaithfulnessEvaluator, ResponseE
 from llama_index.ingestion import IngestionPipeline
 from llama_index.storage.docstore import SimpleDocumentStore
 from llama_index.embeddings import HuggingFaceEmbedding
-from llama_index.response_synthesizers import ResponseMode
+# from llama_index.response_synthesizers import ResponseMode
 from transformers import AutoModel, AutoTokenizer
 from server import classes
 from .chunking import markdown_heading_split, markdown_document_split

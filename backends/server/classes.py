@@ -580,6 +580,63 @@ class AppSettingsCallData(BaseModel):
     # grammar: dict = None
 
 
+class AttentionSettings(BaseModel):
+    mode: str = None
+
+class PerformanceSettings(BaseModel):
+  n_gpu_layers: int = None
+  use_mlock: bool = None
+  seed: int = None
+  n_ctx: int = None
+  n_batch: int = None
+  n_threads: int = None
+  offload_kqv: bool = None
+  chat_format: str = None
+  f16_kv: bool = None
+
+class SystemSettings(BaseModel):
+  systemMessage: str = None
+  systemMessageName: str = None
+
+class ModelSettings(BaseModel):
+  id: str = None
+  botName: str = None
+
+class PromptSettings(BaseModel):
+  promptTemplate: dict = None
+  ragTemplate: dict = None
+  ragMode: dict = None
+
+class KnowledgeSettings(BaseModel):
+  type: str = None
+  index: List[str] = None
+
+class ResponseSettings(BaseModel):
+  temperature: float = None
+  max_tokens: int = None
+  top_p: float = None
+  echo: bool = None
+  stop: List[str] = None
+  repeat_penalty: float = None
+  top_k: int = None
+  stream: bool = None
+
+
+class BotSettings(BaseModel):
+    attention: AttentionSettings = None
+    performance: PerformanceSettings = None
+    system: SystemSettings = None
+    model: ModelSettings = None
+    prompt: PromptSettings = None
+    knowledge: KnowledgeSettings = None
+    response: ResponseSettings = None
+
+class BotSettingsResponse(BaseModel):
+    success: bool
+    message: str
+    data: List[BotSettings] = None
+
+
 class SettingsResponseData(BaseModel):
     init: Optional[AppSettingsInitData] = None
     call: Optional[AppSettingsCallData] = None

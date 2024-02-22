@@ -49,7 +49,8 @@ async def lifespan(application: FastAPI):
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
     application.state.model_id = ""
-    app.state.settings = {}
+    app.state.app_settings = {}
+    app.state.bot_settings = {}
 
     yield
 
@@ -867,7 +868,7 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
         }
 
 
-# Get all app settings
+# Load app settings
 @app.get("/v1/persist/settings")
 def get_settings() -> classes.GetSettingsResponse:
     # Paths
@@ -910,12 +911,62 @@ def save_settings(data: dict) -> classes.GenericEmptyResponse:
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
 
     # Save to memory
-    app.state.settings = common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
+    app.state.app_settings = common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
 
     return {
         "success": True,
         "message": f"Saved settings to {file_path}",
         "data": None,
+    }
+
+# Save bot settings
+@app.post("/v1/persist/bot-settings")
+def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
+    # Paths
+    file_name = "bots.json"
+    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+    # Save to memory
+    results = common.save_bot_settings_file(APP_SETTINGS_PATH, file_path, settings)
+    # app.state.bot_settings = settings # @TODO Move this to the load_bot_instance func
+
+    return {
+        "success": True,
+        "message": f"Saved bot settings to {file_path}",
+        "data": results,
+    }
+
+# Load bot settings
+@app.get("/v1/persist/bot-settings")
+def get_bot_settings() -> classes.BotSettingsResponse:
+    # Paths
+    file_name = "bots.json"
+    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+
+    # Check if folder exists
+    if not os.path.exists(APP_SETTINGS_PATH):
+        return {
+            "success": False,
+            "message": f"Failed to return settings. Folder does not exist.",
+            "data": None,
+        }
+
+    # Try to open the file (if it exists)
+    loaded_data = []
+    try:
+        with open(file_path, "r") as file:
+            loaded_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist, fail
+        return {
+            "success": False,
+            "message": f"Failed to return settings. File does not exist.",
+            "data": None,
+        }
+
+    return {
+        "success": True,
+        "message": f"Returned bot settings",
+        "data": loaded_data,
     }
 
 

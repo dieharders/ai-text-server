@@ -215,6 +215,27 @@ def get_settings_file(folderpath: str, filepath: str):
 
     return loaded_data
 
+def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
+    # Create folder/file
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    # Try to open the file (if it exists)
+    try:
+        with open(filepath, "r") as file:
+            existing_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist yet, create an empty
+        existing_data = []
+
+    # Update the existing data
+    existing_data.append(data)
+
+    # Save the updated data to the file, this will overwrite all values
+    with open(filepath, "w") as file:
+        json.dump(existing_data, file, indent=2)
+
+    return existing_data
 
 def save_settings_file(folderpath: str, filepath: str, data: Any):
     # Create folder/file
