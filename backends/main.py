@@ -947,7 +947,7 @@ def get_bot_settings() -> classes.BotSettingsResponse:
         return {
             "success": False,
             "message": f"Failed to return settings. Folder does not exist.",
-            "data": None,
+            "data": [],
         }
 
     # Try to open the file (if it exists)
@@ -956,11 +956,11 @@ def get_bot_settings() -> classes.BotSettingsResponse:
         with open(file_path, "r") as file:
             loaded_data = json.load(file)
     except FileNotFoundError:
-        # If the file doesn't exist, fail
+        # If the file doesn't exist, return empty
         return {
             "success": False,
             "message": f"Failed to return settings. File does not exist.",
-            "data": None,
+            "data": [],
         }
 
     return {

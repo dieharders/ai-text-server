@@ -616,7 +616,7 @@ class ResponseSettings(BaseModel):
   max_tokens: int = None
   top_p: float = None
   echo: bool = None
-  stop: List[str] = None
+  stop: List[str] = []
   repeat_penalty: float = None
   top_k: int = None
   stream: bool = None
