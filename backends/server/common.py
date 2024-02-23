@@ -6,9 +6,11 @@ import httpx
 import subprocess
 from typing import Any, List, Tuple
 from server.classes import (
+    CHAT_MODES,
     InstalledTextModelMetadata,
     InstalledTextModel,
     ModelConfig,
+    DEFAULT_CHAT_MODE,
     DEFAULT_CONTEXT_WINDOW,
 )
 
@@ -21,13 +23,13 @@ DEFAULT_MAX_TOKENS = 128
 def calc_max_tokens(
     max_tokens: int = 0,
     context_window: int = DEFAULT_CONTEXT_WINDOW,
-    mode: str = "completion",
+    mode: str = DEFAULT_CHAT_MODE,
 ):
     system_msg_buffer = 100
     # Use what is provided, otherwise calculate a value
     if max_tokens > 0:
         return max_tokens
-    if mode == "completion":
+    if mode == CHAT_MODES.INSTRUCT:
         # Cant be too high or it fails
         context_buffer = context_window // 2
         # Largest possible since every request is a one-off response

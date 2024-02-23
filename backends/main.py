@@ -274,7 +274,7 @@ async def text_inference(payload: classes.InferenceRequest):
             response = text_llama_index.token_streamer(token_generator)
             return EventSourceResponse(response)
         # Call LLM in raw completion mode
-        elif mode == "completion":
+        elif mode == classes.CHAT_MODES.INSTRUCT:
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_completion(
@@ -287,13 +287,15 @@ async def text_inference(payload: classes.InferenceRequest):
                 )
             )
         # Call LLM in raw chat mode
-        elif mode == "chat":
+        elif mode == classes.CHAT_MODES.CHAT:
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_chat(
                     messages, system_message, message_format, app, options
                 )
             )
+        # elif mode == classes.CHAT_MODES.SLIDING:
+            # do stuff here ...
         elif mode is None:
             raise Exception("Check 'mode' is provided.")
     except (KeyError, Exception) as err:
