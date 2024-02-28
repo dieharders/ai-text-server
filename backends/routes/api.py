@@ -84,16 +84,16 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
         "name": "storage",
         "port": app.state.PORT_HOMEBREW_API,
         "endpoints": [
-            # Load all app settings
+            # Load Playground settings
             {
-                "name": "getSettings", # @TODO Change to getAppSettings
-                "urlPath": "/v1/persist/settings", # @TODO Change to /app-settings
+                "name": "getPlaygroundSettings",
+                "urlPath": "/v1/persist/playground-settings",
                 "method": "GET",
             },
-            # Save app settings
+            # Save Playground settings
             {
-                "name": "saveSettings", # @TODO Change to saveAppSettings
-                "urlPath": "/v1/persist/settings", # @TODO Change to /app-settings
+                "name": "savePlaygroundSettings",
+                "urlPath": "/v1/persist/playground-settings",
                 "method": "POST",
             },
             # Load bot settings

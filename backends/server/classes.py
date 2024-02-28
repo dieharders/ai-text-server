@@ -642,15 +642,10 @@ class BotSettingsResponse(BaseModel):
     data: List[BotSettings] = None
 
 
-class SettingsResponseData(BaseModel):
-    init: Optional[AppSettingsInitData] = None
-    call: Optional[AppSettingsCallData] = None
-
-
-class GetSettingsResponse(BaseModel):
+class GetPlaygroundSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: Optional[SettingsResponseData] = None
+    data: Optional[BotSettings] = None
 
 
 class SaveSettingsRequest(BaseModel):
