@@ -212,8 +212,9 @@ def get_settings_file(folderpath: str, filepath: str):
         with open(filepath, "r") as file:
             loaded_data = json.load(file)
     except FileNotFoundError:
-        # If the file doesn't exist, fail
-        raise Exception("File does not exist.")
+        print("File does not exist.", flush=True)
+    except json.JSONDecodeError:
+        print("Invalid JSON format or empty file.", flush=True)
 
     return loaded_data
 
@@ -228,6 +229,8 @@ def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
             existing_data = json.load(file)
     except FileNotFoundError:
         # If the file doesn't exist yet, create an empty
+        existing_data = []
+    except json.JSONDecodeError:
         existing_data = []
 
     # Update the existing data
@@ -250,6 +253,8 @@ def save_settings_file(folderpath: str, filepath: str, data: Any):
             existing_data = json.load(file)
     except FileNotFoundError:
         # If the file doesn't exist yet, create an empty dictionary
+        existing_data = {}
+    except json.JSONDecodeError:
         existing_data = {}
 
     # Update the existing data with the new variables

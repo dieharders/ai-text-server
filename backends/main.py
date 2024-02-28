@@ -951,7 +951,7 @@ def get_bot_settings() -> classes.BotSettingsResponse:
     if not os.path.exists(APP_SETTINGS_PATH):
         return {
             "success": False,
-            "message": f"Failed to return settings. Folder does not exist.",
+            "message": "Failed to return settings. Folder does not exist.",
             "data": [],
         }
 
@@ -964,7 +964,13 @@ def get_bot_settings() -> classes.BotSettingsResponse:
         # If the file doesn't exist, return empty
         return {
             "success": False,
-            "message": f"Failed to return settings. File does not exist.",
+            "message": "Failed to return settings. File does not exist.",
+            "data": [],
+        }
+    except json.JSONDecodeError:
+        return {
+            "success": False,
+            "message": "Invalid JSON format or empty file.",
             "data": [],
         }
 
