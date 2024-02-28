@@ -35,6 +35,7 @@ APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
 MODEL_METADATAS_FILENAME = "installed_models.json"
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
+BOT_SETTINGS_FILE_NAME = "bots.json"
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -928,7 +929,7 @@ def save_playground_settings(data: dict) -> classes.GenericEmptyResponse:
 @app.post("/v1/persist/bot-settings")
 def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
     # Paths
-    file_name = "bots.json"
+    file_name = BOT_SETTINGS_FILE_NAME
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
     # Save to memory
     results = common.save_bot_settings_file(APP_SETTINGS_PATH, file_path, settings)
@@ -944,7 +945,7 @@ def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
 @app.get("/v1/persist/bot-settings")
 def get_bot_settings() -> classes.BotSettingsResponse:
     # Paths
-    file_name = "bots.json"
+    file_name = BOT_SETTINGS_FILE_NAME
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
 
     # Check if folder exists

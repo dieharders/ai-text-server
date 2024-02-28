@@ -29,7 +29,7 @@ def calc_max_tokens(
     # Use what is provided, otherwise calculate a value
     if max_tokens > 0:
         return max_tokens
-    if mode == CHAT_MODES.INSTRUCT:
+    if mode == CHAT_MODES.INSTRUCT.value:
         # Cant be too high or it fails
         context_buffer = context_window // 2
         # Largest possible since every request is a one-off response
