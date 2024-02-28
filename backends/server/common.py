@@ -6,9 +6,11 @@ import httpx
 import subprocess
 from typing import Any, List, Tuple
 from server.classes import (
+    CHAT_MODES,
     InstalledTextModelMetadata,
     InstalledTextModel,
     ModelConfig,
+    DEFAULT_CHAT_MODE,
     DEFAULT_CONTEXT_WINDOW,
 )
 
@@ -21,13 +23,13 @@ DEFAULT_MAX_TOKENS = 128
 def calc_max_tokens(
     max_tokens: int = 0,
     context_window: int = DEFAULT_CONTEXT_WINDOW,
-    mode: str = "completion",
+    mode: str = DEFAULT_CHAT_MODE,
 ):
     system_msg_buffer = 100
     # Use what is provided, otherwise calculate a value
     if max_tokens > 0:
         return max_tokens
-    if mode == "completion":
+    if mode == CHAT_MODES.INSTRUCT.value:
         # Cant be too high or it fails
         context_buffer = context_window // 2
         # Largest possible since every request is a one-off response
@@ -210,11 +212,35 @@ def get_settings_file(folderpath: str, filepath: str):
         with open(filepath, "r") as file:
             loaded_data = json.load(file)
     except FileNotFoundError:
-        # If the file doesn't exist, fail
-        raise Exception("File does not exist.")
+        print("File does not exist.", flush=True)
+    except json.JSONDecodeError:
+        print("Invalid JSON format or empty file.", flush=True)
 
     return loaded_data
 
+def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
+    # Create folder/file
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    # Try to open the file (if it exists)
+    try:
+        with open(filepath, "r") as file:
+            existing_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist yet, create an empty
+        existing_data = []
+    except json.JSONDecodeError:
+        existing_data = []
+
+    # Update the existing data
+    existing_data.append(data)
+
+    # Save the updated data to the file, this will overwrite all values
+    with open(filepath, "w") as file:
+        json.dump(existing_data, file, indent=2)
+
+    return existing_data
 
 def save_settings_file(folderpath: str, filepath: str, data: Any):
     # Create folder/file
@@ -227,6 +253,8 @@ def save_settings_file(folderpath: str, filepath: str, data: Any):
             existing_data = json.load(file)
     except FileNotFoundError:
         # If the file doesn't exist yet, create an empty dictionary
+        existing_data = {}
+    except json.JSONDecodeError:
         existing_data = {}
 
     # Update the existing data with the new variables

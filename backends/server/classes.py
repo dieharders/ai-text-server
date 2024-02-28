@@ -1,12 +1,17 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from enum import Enum
 
 DEFAULT_TEMPERATURE = 0.2
 DEFAULT_CONTEXT_WINDOW = 2000
 DEFAULT_SEED = 1337
 DEFAULT_MAX_TOKENS = 0  # 0 means we should calc it
-DEFAULT_MODE = "completion"
+DEFAULT_CHAT_MODE = "instruct"
 
+class CHAT_MODES(Enum):
+    INSTRUCT = "instruct"
+    CHAT = "chat"
+    SLIDING = "sliding"
 
 class PingResponse(BaseModel):
     success: bool
@@ -80,7 +85,7 @@ class LoadTextInferenceCall(BaseModel):
 class LoadInferenceRequest(BaseModel):
     modelPath: str
     modelId: str
-    mode: Optional[str] = DEFAULT_MODE
+    mode: Optional[str] = DEFAULT_CHAT_MODE
     # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
     init: LoadTextInferenceInit
     # __call__ args
@@ -92,7 +97,7 @@ class LoadInferenceRequest(BaseModel):
                 {
                     "modelPath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
                     "modelId": "llama-2-13b-chat-ggml",
-                    "mode": "completion",
+                    "mode": DEFAULT_CHAT_MODE,
                 }
             ]
         }
@@ -158,7 +163,7 @@ class InferenceRequest(BaseModel):
     seed: Optional[int] = DEFAULT_SEED
     # homebrew server specific args
     collectionNames: Optional[List[str]] = []
-    mode: Optional[str] = DEFAULT_MODE
+    mode: Optional[str] = DEFAULT_CHAT_MODE
     systemMessage: Optional[str] = None
     messageFormat: Optional[str] = None
     promptTemplate: Optional[str] = None
@@ -203,7 +208,7 @@ class InferenceRequest(BaseModel):
                 {
                     "prompt": "Why does mass conservation break down?",
                     "collectionNames": ["science"],
-                    "mode": "completion",  # completion | chat
+                    "mode": DEFAULT_CHAT_MODE,
                     "systemMessage": "You are a helpful Ai assistant.",
                     "messageFormat": "<system> {system_message}\n<user> {prompt}",
                     "promptTemplate": "Answer this question: {query_str}",
@@ -580,15 +585,67 @@ class AppSettingsCallData(BaseModel):
     # grammar: dict = None
 
 
-class SettingsResponseData(BaseModel):
-    init: Optional[AppSettingsInitData] = None
-    call: Optional[AppSettingsCallData] = None
+class AttentionSettings(BaseModel):
+    mode: str = None
+
+class PerformanceSettings(BaseModel):
+  n_gpu_layers: int = None
+  use_mlock: bool = None
+  seed: int = None
+  n_ctx: int = None
+  n_batch: int = None
+  n_threads: int = None
+  offload_kqv: bool = None
+  chat_format: str = None
+  f16_kv: bool = None
+
+class SystemSettings(BaseModel):
+  systemMessage: str = None
+  systemMessageName: str = None
+
+class ModelSettings(BaseModel):
+  id: str = None
+  botName: str = None
+
+class PromptSettings(BaseModel):
+  promptTemplate: dict = None
+  ragTemplate: dict = None
+  ragMode: dict = None
+
+class KnowledgeSettings(BaseModel):
+  type: str = None
+  index: List[str] = None
+
+class ResponseSettings(BaseModel):
+  temperature: float = None
+  max_tokens: int = None
+  top_p: float = None
+  echo: bool = None
+  stop: List[str] = []
+  repeat_penalty: float = None
+  top_k: int = None
+  stream: bool = None
 
 
-class GetSettingsResponse(BaseModel):
+class BotSettings(BaseModel):
+    attention: AttentionSettings = None
+    performance: PerformanceSettings = None
+    system: SystemSettings = None
+    model: ModelSettings = None
+    prompt: PromptSettings = None
+    knowledge: KnowledgeSettings = None
+    response: ResponseSettings = None
+
+class BotSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: Optional[SettingsResponseData] = None
+    data: List[BotSettings] = None
+
+
+class GetPlaygroundSettingsResponse(BaseModel):
+    success: bool
+    message: str
+    data: Optional[BotSettings] = None
 
 
 class SaveSettingsRequest(BaseModel):

@@ -34,7 +34,8 @@ TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
 MODEL_METADATAS_FILENAME = "installed_models.json"
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
-
+PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
+BOT_SETTINGS_FILE_NAME = "bots.json"
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -49,7 +50,8 @@ async def lifespan(application: FastAPI):
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
     application.state.model_id = ""
-    app.state.settings = {}
+    app.state.playground_settings = {}
+    app.state.bot_settings = {}
 
     yield
 
@@ -191,9 +193,6 @@ def load_text_inference(
         # Record model's save path
         app.state.model_id = model_id
         app.state.path_to_model = modelPath
-
-        print(f"[homebrew api] Model loaded from: {modelPath}")
-
         # Load the specified Ai model
         if app.state.llm is None:
             model_settings = data.init
@@ -201,7 +200,9 @@ def load_text_inference(
             app.state.llm = text_llama_index.load_text_model(
                 modelPath, mode, model_settings, generate_settings
             )
-
+            print(f"[homebrew api] Model {model_id} loaded from: {modelPath}")
+        else:
+            print(f"[homebrew api] No action taken. Model {model_id} currently loaded from: {modelPath}")
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
     except (Exception, KeyError) as error:
         raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
@@ -224,6 +225,7 @@ async def text_inference(payload: classes.InferenceRequest):
         max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
         options = dict(
             stream=payload.stream,
+            mode=mode,
             temperature=payload.temperature,
             max_tokens=max_tokens,
             stop=payload.stop,
@@ -273,7 +275,7 @@ async def text_inference(payload: classes.InferenceRequest):
             response = text_llama_index.token_streamer(token_generator)
             return EventSourceResponse(response)
         # Call LLM in raw completion mode
-        elif mode == "completion":
+        elif mode == classes.CHAT_MODES.INSTRUCT.value:
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_completion(
@@ -286,16 +288,21 @@ async def text_inference(payload: classes.InferenceRequest):
                 )
             )
         # Call LLM in raw chat mode
-        elif mode == "chat":
+        elif mode == classes.CHAT_MODES.CHAT.value:
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_chat(
                     messages, system_message, message_format, app, options
                 )
             )
+        # elif mode == classes.CHAT_MODES.SLIDING.value:
+            # do stuff here ...
         elif mode is None:
             raise Exception("Check 'mode' is provided.")
+        else:
+            raise Exception("No 'mode' or 'collection_names' provided.")
     except (KeyError, Exception) as err:
+        print(f"Error: {err}", flush=True)
         raise HTTPException(
             status_code=400, detail=f"Something went wrong. Reason: {err}"
         )
@@ -867,11 +874,11 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
         }
 
 
-# Get all app settings
-@app.get("/v1/persist/settings")
-def get_settings() -> classes.GetSettingsResponse:
+# Load playground settings
+@app.get("/v1/persist/playground-settings")
+def get_playground_settings() -> classes.GetPlaygroundSettingsResponse:
     # Paths
-    file_name = "app.json"
+    file_name = PLAYGROUND_SETTINGS_FILE_NAME
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
 
     # Check if folder exists
@@ -902,20 +909,76 @@ def get_settings() -> classes.GetSettingsResponse:
     }
 
 
-# Save app settings
-@app.post("/v1/persist/settings")
-def save_settings(data: dict) -> classes.GenericEmptyResponse:
+# Save playground settings
+@app.post("/v1/persist/playground-settings")
+def save_playground_settings(data: dict) -> classes.GenericEmptyResponse:
     # Paths
-    file_name = "app.json"
+    file_name = PLAYGROUND_SETTINGS_FILE_NAME
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
 
     # Save to memory
-    app.state.settings = common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
+    app.state.playground_settings = common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
 
     return {
         "success": True,
         "message": f"Saved settings to {file_path}",
         "data": None,
+    }
+
+# Save bot settings
+@app.post("/v1/persist/bot-settings")
+def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
+    # Paths
+    file_name = BOT_SETTINGS_FILE_NAME
+    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+    # Save to memory
+    results = common.save_bot_settings_file(APP_SETTINGS_PATH, file_path, settings)
+    # app.state.bot_settings = settings # @TODO Move this to the load_bot_instance func
+
+    return {
+        "success": True,
+        "message": f"Saved bot settings to {file_path}",
+        "data": results,
+    }
+
+# Load bot settings
+@app.get("/v1/persist/bot-settings")
+def get_bot_settings() -> classes.BotSettingsResponse:
+    # Paths
+    file_name = BOT_SETTINGS_FILE_NAME
+    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+
+    # Check if folder exists
+    if not os.path.exists(APP_SETTINGS_PATH):
+        return {
+            "success": False,
+            "message": "Failed to return settings. Folder does not exist.",
+            "data": [],
+        }
+
+    # Try to open the file (if it exists)
+    loaded_data = []
+    try:
+        with open(file_path, "r") as file:
+            loaded_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist, return empty
+        return {
+            "success": False,
+            "message": "Failed to return settings. File does not exist.",
+            "data": [],
+        }
+    except json.JSONDecodeError:
+        return {
+            "success": False,
+            "message": "Invalid JSON format or empty file.",
+            "data": [],
+        }
+
+    return {
+        "success": True,
+        "message": f"Returned bot settings",
+        "data": loaded_data,
     }
 
 

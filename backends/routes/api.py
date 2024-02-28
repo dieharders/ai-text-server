@@ -45,7 +45,7 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/text/installed",
                 "method": "GET",
             },
-            # llama.cpp offers native embedding
+            # llama.cpp offers native embedding too
             {
                 "name": "embedding",
                 "urlPath": "/v1/text/embedding",
@@ -84,16 +84,28 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
         "name": "storage",
         "port": app.state.PORT_HOMEBREW_API,
         "endpoints": [
-            # Get all app settings
+            # Load Playground settings
             {
-                "name": "getSettings",
-                "urlPath": "/v1/persist/settings",
+                "name": "getPlaygroundSettings",
+                "urlPath": "/v1/persist/playground-settings",
                 "method": "GET",
             },
-            # Save app settings
+            # Save Playground settings
             {
-                "name": "saveSettings",
-                "urlPath": "/v1/persist/settings",
+                "name": "savePlaygroundSettings",
+                "urlPath": "/v1/persist/playground-settings",
+                "method": "POST",
+            },
+            # Load bot settings
+            {
+                "name": "getBotSettings",
+                "urlPath": "/v1/persist/bot-settings",
+                "method": "GET",
+            },
+            # Save bot settings
+            {
+                "name": "saveBotSettings",
+                "urlPath": "/v1/persist/bot-settings",
                 "method": "POST",
             },
         ],
