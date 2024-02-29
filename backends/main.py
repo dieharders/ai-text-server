@@ -225,7 +225,6 @@ async def text_inference(payload: classes.InferenceRequest):
         max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
         options = dict(
             stream=payload.stream,
-            mode=mode,
             temperature=payload.temperature,
             max_tokens=max_tokens,
             stop=payload.stop,
@@ -244,9 +243,13 @@ async def text_inference(payload: classes.InferenceRequest):
         )
 
         if not app.state.path_to_model:
-            raise Exception("No path to model provided.")
+            msg = "No path to model provided."
+            print(f"Error: {msg}", flush=True)
+            raise Exception(msg)
         if not app.state.llm:
-            raise Exception("No LLM loaded.")
+            msg = "No LLM loaded."
+            print(f"Error: {msg}", flush=True)
+            raise Exception(msg)
 
         # Call LLM with context loaded via llama-index/vector store
         if collection_names is not None and len(collection_names) > 0:
@@ -276,6 +279,9 @@ async def text_inference(payload: classes.InferenceRequest):
             return EventSourceResponse(response)
         # Call LLM in raw completion mode
         elif mode == classes.CHAT_MODES.INSTRUCT.value:
+            print(
+                f"[homebrew api] text_inference: {prompt}\nIn mode: {mode}\nsystem_message:{system_message}"
+            )
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_completion(

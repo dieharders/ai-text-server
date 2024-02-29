@@ -163,7 +163,7 @@ def load_text_model(
 
     generate_kwargs = {
         "stream": gen_settings.stream,
-        "stop": gen_settings.stop,
+        "stop": gen_settings.stop, # !Never use an empty string like [""]
         "echo": gen_settings.echo,
         "model": gen_settings.model,
         "mirostat_tau": gen_settings.mirostat_tau,
