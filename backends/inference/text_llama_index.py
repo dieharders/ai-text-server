@@ -267,6 +267,8 @@ def text_completion(
     # Format to model spec, construct a message with system message and prompt
     message = completion_to_prompt(prompt, sys_message, message_format)
 
+    print(f"[homebrew api] Text-Completion: {message}", flush=True)
+
     # Stream response
     token_generator = llm.stream_complete(message, formatted=True, kwargs=options)
     for token in token_generator:

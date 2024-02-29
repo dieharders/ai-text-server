@@ -253,10 +253,6 @@ async def text_inference(payload: classes.InferenceRequest):
 
         # Call LLM with context loaded via llama-index/vector store
         if collection_names is not None and len(collection_names) > 0:
-            print(
-                f"[homebrew api] text_inference: {prompt} on: {collection_names} in mode {mode}"
-            )
-
             # Only take the first collection for now
             collection_name = collection_names[0]
             # Set LLM settings
@@ -279,9 +275,6 @@ async def text_inference(payload: classes.InferenceRequest):
             return EventSourceResponse(response)
         # Call LLM in raw completion mode
         elif mode == classes.CHAT_MODES.INSTRUCT.value:
-            print(
-                f"[homebrew api] text_inference: {prompt}\nIn mode: {mode}\nsystem_message:{system_message}"
-            )
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
                 text_llama_index.text_completion(

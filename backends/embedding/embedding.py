@@ -512,7 +512,7 @@ def query_embedding(
     options: classes.ContextRetrievalOptions,
 ):
     print(
-        f"[embedding api] Query Data: {prompt_template.text} | {prompt_template.type}",
+        f"[embedding api] Query Data: {prompt_template.text}\n{prompt_template.type}",
         flush=True,
     )
 
