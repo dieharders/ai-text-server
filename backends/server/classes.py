@@ -676,19 +676,6 @@ class GenericEmptyResponse(BaseModel):
     }
 
 
-class TextModelResponseData(BaseModel):
-  model_id: str
-  mode: str
-  model_settings: LoadTextInferenceInit
-  generate_settings: LoadTextInferenceCall
-
-
-class TextModelResponse(BaseModel):
-    success: bool
-    message: str
-    data: TextModelResponseData
-
-
 class InstalledTextModelMetadata(BaseModel):
     savePath: str
     id: str
@@ -849,7 +836,6 @@ class InstalledTextModelResponse(BaseModel):
 
 class LoadedTextModelData(BaseModel):
     model_id: str
-    model_name: str
     mode: str = None
     model_settings: LoadTextInferenceInit
     generate_settings: LoadTextInferenceCall

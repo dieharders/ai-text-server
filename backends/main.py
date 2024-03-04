@@ -152,7 +152,7 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
 
 # Gets the currently loaded model and its installation/config metadata
 @app.get("/v1/text/model")
-def get_text_model() -> classes.TextModelResponse:
+def get_text_model() -> classes.LoadedTextModelResponse:
     try:
         llm = app.state.llm
         model_id = app.state.model_id
