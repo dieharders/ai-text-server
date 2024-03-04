@@ -84,6 +84,7 @@ class LoadTextInferenceCall(BaseModel):
 # Load in the ai model to be used for inference
 class LoadInferenceRequest(BaseModel):
     modelPath: str
+    modelName: str
     modelId: str
     mode: Optional[str] = DEFAULT_CHAT_MODE
     # __init__ args - https://llama-cpp-python.readthedocs.io/en/latest/api-reference/
@@ -605,6 +606,7 @@ class SystemSettings(BaseModel):
 
 class ModelSettings(BaseModel):
   id: str = None
+  name: str = None
   botName: str = None
 
 class PromptSettings(BaseModel):
@@ -830,6 +832,7 @@ class InstalledTextModelResponse(BaseModel):
 
 class LoadedTextModelData(BaseModel):
     model_id: str
+    model_name: str
     mode: str = None
     model_settings: LoadTextInferenceInit
     generate_settings: LoadTextInferenceCall

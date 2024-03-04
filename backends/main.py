@@ -201,11 +201,16 @@ def load_text_inference(
 ) -> classes.LoadInferenceResponse:
     try:
         model_id = data.modelId
+        model_name = data.modelName
         mode = data.mode
         modelPath = data.modelPath
         # Record model's save path
         app.state.model_id = model_id
         app.state.path_to_model = modelPath
+        # Unload the model if one exists
+        if (app.state.llm):
+            print(f"[homebrew api] Ejecting model {model_id} currently loaded from: {modelPath}")
+            unload_text_inference()
         # Load the specified Ai model
         if app.state.llm is None:
             model_settings = data.init
@@ -216,14 +221,12 @@ def load_text_inference(
             # Record the currently loaded model
             app.state.loaded_text_model_data = {
                 "model_id": model_id,
+                "model_name": model_name,
                 "mode": mode,
                 "model_settings": model_settings,
                 "generate_settings": generate_settings,
             }
-
             print(f"[homebrew api] Model {model_id} loaded from: {modelPath}")
-        else:
-            print(f"[homebrew api] No action taken. Model {model_id} currently loaded from: {modelPath}")
         return {"message": f"AI model [{model_id}] loaded.", "success": True}
     except (Exception, KeyError) as error:
         raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
