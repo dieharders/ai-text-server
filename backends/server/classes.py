@@ -828,6 +828,19 @@ class InstalledTextModelResponse(BaseModel):
     }
 
 
+class LoadedTextModelData(BaseModel):
+    model_id: str
+    mode: str = None
+    model_settings: LoadTextInferenceInit
+    generate_settings: LoadTextInferenceCall
+
+
+class LoadedTextModelResponse(BaseModel):
+    success: bool
+    message: str
+    data: LoadedTextModelData
+
+
 class ContextRetrievalOptions(BaseModel):
     response_mode: Optional[str] = None
     similarity_top_k: Optional[int] = None

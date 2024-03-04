@@ -33,6 +33,12 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/text/load",
                 "method": "POST",
             },
+            # Eject the currently loaded Ai model from memory
+            {
+                "name": "unload",
+                "urlPath": "/v1/text/unload",
+                "method": "POST",
+            },
             # Return the currently loaded model and its settings
             {
                 "name": "model",
