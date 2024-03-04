@@ -219,13 +219,17 @@ def load_text_inference(
             )
             # Record the currently loaded model
             app.state.loaded_text_model_data = {
-                "model_id": model_id,
+                "modelId": model_id,
                 "mode": mode,
-                "model_settings": model_settings,
-                "generate_settings": generate_settings,
+                "modelSettings": model_settings,
+                "generateSettings": generate_settings,
             }
             print(f"[homebrew api] Model {model_id} loaded from: {modelPath}")
-        return {"message": f"AI model [{model_id}] loaded.", "success": True}
+        return {
+            "message": f"AI model [{model_id}] loaded.",
+            "success": True,
+            "data": None,
+        }
     except (Exception, KeyError) as error:
         raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
 

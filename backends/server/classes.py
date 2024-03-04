@@ -1,3 +1,4 @@
+from types import NoneType
 from pydantic import BaseModel
 from typing import List, Optional
 from enum import Enum
@@ -91,22 +92,11 @@ class LoadInferenceRequest(BaseModel):
     # __call__ args
     call: LoadTextInferenceCall
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "modelPath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
-                    "modelId": "llama-2-13b-chat-ggml",
-                    "mode": DEFAULT_CHAT_MODE,
-                }
-            ]
-        }
-    }
-
 
 class LoadInferenceResponse(BaseModel):
     message: str
     success: bool
+    data: NoneType
 
     model_config = {
         "json_schema_extra": {
@@ -114,6 +104,7 @@ class LoadInferenceResponse(BaseModel):
                 {
                     "message": "AI model [llama-2-13b-chat-ggml] loaded.",
                     "success": True,
+                    "data": None,
                 }
             ]
         }
@@ -834,17 +825,17 @@ class InstalledTextModelResponse(BaseModel):
     }
 
 
-class LoadedTextModelData(BaseModel):
-    model_id: str
+class LoadedTextModelResData(BaseModel):
+    modelId: str
     mode: str = None
-    model_settings: LoadTextInferenceInit
-    generate_settings: LoadTextInferenceCall
+    modelSettings: LoadTextInferenceInit
+    generateSettings: LoadTextInferenceCall
 
 
 class LoadedTextModelResponse(BaseModel):
     success: bool
     message: str
-    data: LoadedTextModelData
+    data: LoadedTextModelResData
 
 
 class ContextRetrievalOptions(BaseModel):
