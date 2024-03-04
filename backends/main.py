@@ -287,7 +287,7 @@ async def text_inference(payload: classes.InferenceRequest):
                 response_mode=payload.response_mode or ResponseMode.COMPACT,
             )
             # Update LLM generation options
-            app.state.llm.generate_kwargs.update(options)
+            # app.state.llm.generate_kwargs.update(options)
 
             # Load the vector index
             indexDB = embedding.load_embedding(app, collection_name)
