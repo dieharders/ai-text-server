@@ -50,8 +50,7 @@ async def lifespan(application: FastAPI):
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
     application.state.model_id = ""
-    app.state.playground_settings = {}
-    app.state.bot_settings = {}
+    app.state.loaded_text_model_data = {}
 
     yield
 
@@ -151,20 +150,18 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
         }
 
 
-# Gets the currently loaded model and its installation metadata
+# Gets the currently loaded model and its installation/config metadata
 @app.get("/v1/text/model")
-def get_text_model() -> classes.InstalledTextModelResponse:
+def get_text_model() -> classes.LoadedTextModelResponse:
     try:
         llm = app.state.llm
         model_id = app.state.model_id
 
-        if llm is not None:
-            metadata = common.get_model_metadata(
-                model_id, APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
-            )
+        if llm:
+            metadata = app.state.loaded_text_model_data
             return {
                 "success": True,
-                "message": f"Model {model_id} is loaded.",
+                "message": f"Model {model_id} is currently loaded.",
                 "data": metadata,
             }
         else:
@@ -181,6 +178,22 @@ def get_text_model() -> classes.InstalledTextModelResponse:
         }
 
 
+# Eject the currently loaded Text Inference model
+@app.post("/v1/text/unload")
+def unload_text_inference():
+    text_llama_index.unload_text_model(app.state.llm)
+    app.state.loaded_text_model_data = {}
+    app.state.llm = None
+    app.state.path_to_model = ""
+    app.state.model_id = ""
+
+    return {
+        "success": True,
+        "message": "Model was ejected",
+        "data": None,
+    }
+
+
 # Start Text Inference service
 @app.post("/v1/text/load")
 def load_text_inference(
@@ -193,6 +206,10 @@ def load_text_inference(
         # Record model's save path
         app.state.model_id = model_id
         app.state.path_to_model = modelPath
+        # Unload the model if one exists
+        if (app.state.llm):
+            print(f"[homebrew api] Ejecting model {model_id} currently loaded from: {modelPath}")
+            unload_text_inference()
         # Load the specified Ai model
         if app.state.llm is None:
             model_settings = data.init
@@ -200,10 +217,19 @@ def load_text_inference(
             app.state.llm = text_llama_index.load_text_model(
                 modelPath, mode, model_settings, generate_settings
             )
+            # Record the currently loaded model
+            app.state.loaded_text_model_data = {
+                "modelId": model_id,
+                "mode": mode,
+                "modelSettings": model_settings,
+                "generateSettings": generate_settings,
+            }
             print(f"[homebrew api] Model {model_id} loaded from: {modelPath}")
-        else:
-            print(f"[homebrew api] No action taken. Model {model_id} currently loaded from: {modelPath}")
-        return {"message": f"AI model [{model_id}] loaded.", "success": True}
+        return {
+            "message": f"AI model [{model_id}] loaded.",
+            "success": True,
+            "data": None,
+        }
     except (Exception, KeyError) as error:
         raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
 
@@ -915,8 +941,8 @@ def save_playground_settings(data: dict) -> classes.GenericEmptyResponse:
     file_name = PLAYGROUND_SETTINGS_FILE_NAME
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
 
-    # Save to memory
-    app.state.playground_settings = common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
+    # Save to disk
+    common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
 
     return {
         "success": True,
@@ -932,7 +958,6 @@ def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
     file_path = os.path.join(APP_SETTINGS_PATH, file_name)
     # Save to memory
     results = common.save_bot_settings_file(APP_SETTINGS_PATH, file_path, settings)
-    # app.state.bot_settings = settings # @TODO Move this to the load_bot_instance func
 
     return {
         "success": True,
