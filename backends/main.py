@@ -152,7 +152,7 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
 
 # Gets the currently loaded model and its installation/config metadata
 @app.get("/v1/text/model")
-def get_text_model():
+def get_text_model() -> classes.TextModelResponse:
     try:
         llm = app.state.llm
         model_id = app.state.model_id
@@ -201,7 +201,6 @@ def load_text_inference(
 ) -> classes.LoadInferenceResponse:
     try:
         model_id = data.modelId
-        model_name = data.modelName
         mode = data.mode
         modelPath = data.modelPath
         # Record model's save path
@@ -221,7 +220,6 @@ def load_text_inference(
             # Record the currently loaded model
             app.state.loaded_text_model_data = {
                 "model_id": model_id,
-                "model_name": model_name,
                 "mode": mode,
                 "model_settings": model_settings,
                 "generate_settings": generate_settings,
