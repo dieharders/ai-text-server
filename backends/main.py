@@ -1021,6 +1021,7 @@ def start_homebrew_server():
     try:
         print("[homebrew api] Starting API server...")
         # Start the ASGI server
+        # @TODO Choose an unused/available port and store that result
         uvicorn.run(app, host="0.0.0.0", port=app.PORT_HOMEBREW_API, log_level="info")
         return True
     except:
