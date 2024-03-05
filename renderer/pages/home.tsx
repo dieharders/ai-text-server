@@ -19,9 +19,11 @@ export default function Home() {
   const HOMEBREW_URL = `${HOMEBREW_BASE_PATH}/docs`
   const START_INFERENCE_URL = `http://localhost:${PORT_HOMEBREW_API}`
 
-  const PORT_TEXT_INFERENCE = constants.PORT_TEXT_INFERENCE
-  const TEXT_INFERENCE_BASE_PATH = `http://localhost:${PORT_TEXT_INFERENCE}`
-  const TEXT_INFERENCE_URL = `${TEXT_INFERENCE_BASE_PATH}/docs`
+  // const PORT_TEXT_INFERENCE = constants.PORT_TEXT_INFERENCE
+  // const TEXT_INFERENCE_BASE_PATH = `http://localhost:${PORT_TEXT_INFERENCE}`
+  // const TEXT_INFERENCE_URL = `${TEXT_INFERENCE_BASE_PATH}/docs`
+  // @TODO This will eventually be passed/rendered by the python backend
+  const REMOTE_ADDRESS = 'http://localhost:8008'
 
   const [isStarted, setIsStarted] = useState(false)
   const [savePath, setSavePath] = useState<string>('')
@@ -65,8 +67,8 @@ export default function Home() {
             HomebrewAi
           </a>{' '}
           and{' '}
-          <a href={TEXT_INFERENCE_URL} target="_blank" className="text-yellow-400" rel="noreferrer">
-            Text Inference
+          <a href={REMOTE_ADDRESS} target="_blank" className="text-yellow-400" rel="noreferrer">
+            Remote server: {REMOTE_ADDRESS}
           </a>
         </p>
       </div>
