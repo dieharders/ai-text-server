@@ -315,6 +315,7 @@ class EmbedDocumentRequest(BaseModel):
     description: Optional[str] = ""
     tags: Optional[str] = ""
     urlPath: Optional[str] = ""
+    textInput: Optional[str] = ""
     chunkSize: Optional[int] = None
     chunkOverlap: Optional[int] = None
     chunkStrategy: Optional[str] = None

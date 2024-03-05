@@ -433,13 +433,14 @@ async def create_memory(
         description = form.description
         tags = common.parse_valid_tags(form.tags)
         url_path = form.urlPath
+        text_input = form.textInput
         tmp_input_file_path = ""
         chunk_size = form.chunkSize
         chunk_overlap = form.chunkOverlap
         chunk_strategy = form.chunkStrategy
 
-        if file == None and url_path == "":
-            raise Exception("You must supply a file upload or url.")
+        if file == None and url_path == "" and text_input == "":
+            raise Exception("You must supply a file upload, url or text.")
         if not document_name or not collection_name:
             raise Exception("You must supply a collection and memory name.")
         if tags == None:
@@ -461,6 +462,13 @@ async def create_memory(
                 os.makedirs(tmp_folder)
             # Download the file and save to disk
             await common.get_file_from_url(url_path, tmp_input_file_path, app)
+        elif text_input:
+            print(f"[homebrew api] Saving raw text to file...\n{text_input}")
+            if not os.path.exists(tmp_folder):
+                os.makedirs(tmp_folder)
+            # Write to file
+            with open(tmp_input_file_path, "w") as f:
+                f.write(text_input)
         elif file:
             print("[homebrew api] Saving uploaded file to disk...")
             # Read the uploaded file in chunks of 1mb,

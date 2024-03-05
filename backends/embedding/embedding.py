@@ -394,7 +394,8 @@ def create_embedding(
             flush=True,
         )
         for ichunk, ch in enumerate(chunks):
-            print(f"[embedding api] Chunk ({ichunk}):\n\n{ch}")
+            # .encode() prevents crash on undefined/unmapped string chars
+            print(f"[embedding api] Chunk ({ichunk}):\n\n{ch.get_content().encode('utf-8')}", flush=True)
 
         # Create document embeddings from chunks
         service_context = ServiceContext.from_defaults(
