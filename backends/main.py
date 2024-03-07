@@ -36,6 +36,7 @@ MODEL_METADATAS_FILENAME = "installed_models.json"
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
+SERVER_PORT = 8008
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -43,8 +44,7 @@ async def lifespan(application: FastAPI):
     # https://www.python-httpx.org/quickstart/
     app.requests_client = httpx.Client()
     # Store some state here if you want...
-    app.text_inference_process = None
-    application.state.PORT_HOMEBREW_API = app.PORT_HOMEBREW_API
+    application.state.PORT_HOMEBREW_API = SERVER_PORT
     application.state.storage_directory = VECTOR_STORAGE_PATH
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
@@ -55,7 +55,6 @@ async def lifespan(application: FastAPI):
     yield
 
     print("[homebrew api] Lifespan shutdown")
-    common.kill_text_inference(app)
 
 
 app = FastAPI(title="🍺 HomeBrew API server", version="0.2.0", lifespan=lifespan)
@@ -65,7 +64,7 @@ app = FastAPI(title="🍺 HomeBrew API server", version="0.2.0", lifespan=lifesp
 origins = [
     "http://localhost:3000",  # (optional) for testing client apps
     "https://hoppscotch.io",  # (optional) for testing endpoints
-    "http://localhost:8000",  # (required) Homebrew front-end
+    "http://localhost:8000",  # (required) Homebrew's front-end, not needed when we remove the node.js frontend
     "https://brain-dump-dieharders.vercel.app",  # (required) client app origin (preview)
     "https://homebrew-ai-discover.vercel.app",  # (required) client app origin (production)
 ]
@@ -108,22 +107,16 @@ def ping() -> classes.PingResponse:
 # Tell client we are ready to accept requests
 @app.get("/v1/connect")
 def connect() -> classes.ConnectResponse:
-    # Read the version from package.json file
-    try:
-        file_path = os.path.join(os.getcwd(), "package.json")
-        with open(file_path, "r") as file:
-            loaded_data = json.load(file)
-            version = loaded_data["version"]
-    except FileNotFoundError:
-        # If the file doesn't exist
-        version = "0"
+    version = "0.2.0"
 
     return {
         "success": True,
-        "message": f"Connected to api server on port {app.PORT_HOMEBREW_API}. Refer to 'http://localhost:{app.PORT_HOMEBREW_API}/docs' for api docs.",
+        "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'https://localhost:{SERVER_PORT}/docs' for api docs.",
         "data": {
-            "docs": f"http://localhost:{app.PORT_HOMEBREW_API}/docs",
+            "docs": f"https://localhost:{SERVER_PORT}/docs",
             "version": version,
+            # @TODO Lets just return everything that /services/api does.
+            # "api": "/v1/services/api", # endpoint to tell front-end what all the endpoints are
         },
     }
 
@@ -1021,8 +1014,12 @@ def start_homebrew_server():
     try:
         print("[homebrew api] Starting API server...")
         # Start the ASGI server
-        # @TODO Choose an unused/available port and store that result
-        uvicorn.run(app, host="0.0.0.0", port=app.PORT_HOMEBREW_API, log_level="info")
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=SERVER_PORT,
+            log_level="info"
+        )
         return True
     except:
         print("[homebrew api] Failed to start API server")
@@ -1030,18 +1027,5 @@ def start_homebrew_server():
 
 
 if __name__ == "__main__":
-    # Determine path to file based on prod or dev
-    current_directory = os.getcwd()
-    substrings = current_directory.split("\\")
-    last_substring = substrings[-1]
-    # This path detection is b/c of Node.js in dev vs prod mode
-    if last_substring == "backends":
-        path = "../shared/constants.json"
-    else:
-        path = "./shared/constants.json"
-    # Open and read the JSON constants file
-    with open(path, "r") as json_file:
-        data = json.load(json_file)
-        app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]
     # Starts the homebrew API server
     start_homebrew_server()
