@@ -186,6 +186,22 @@ Building app for production:
 yarn build
 ```
 
+## Deploy to dev environment
+
+If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates.
+
+This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the root of app directory.
+
+```bash
+openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36500
+```
+
+This should be enough for any webapp served over https to access the server. If you see "Warning: Potential Security Risk Ahead" in your browser when using the webapp, you can ignore it by clicking `advanced` then `Accept the Risk` button to continue.
+
+### Production
+
+For production deployments you will either want to run the server behind a reverse proxy using something like Traefic-Hub (free and opens your self hosted server to public internet using encrypted https protocol).
+
 ## Release the app for distribution
 
 ### Package application with Electron for release
