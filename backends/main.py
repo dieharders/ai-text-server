@@ -111,9 +111,9 @@ def connect() -> classes.ConnectResponse:
 
     return {
         "success": True,
-        "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'https://localhost:{SERVER_PORT}/docs' for api docs.",
+        "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'http://localhost:{SERVER_PORT}/docs' for api docs.",
         "data": {
-            "docs": f"https://localhost:{SERVER_PORT}/docs",
+            "docs": f"http://localhost:{SERVER_PORT}/docs",
             "version": version,
             # @TODO Lets just return everything that /services/api does.
             # "api": "/v1/services/api", # endpoint to tell front-end what all the endpoints are
