@@ -288,3 +288,33 @@ def get_model_config(id: str, folderpath, filepath) -> ModelConfig:
     configs = get_settings_file(folderpath, filepath)
     config = configs[id]
     return config
+
+# Read the version from package.json file
+def read_api_version():
+    try:
+        # @TODO Reading json from place other than the origin or the path is constructed incorrect...same issue in node.js app
+        file_path = os.path.join(os.getcwd(), "package.json")
+        with open(file_path, "r") as file:
+            loaded_data = json.load(file)
+            version = loaded_data["version"]
+    except FileNotFoundError:
+        # If the file doesn't exist
+        version = "0"
+    return version
+
+def read_constants(app):
+    # Determine path to file based on prod or dev
+    current_directory = os.getcwd()
+    substrings = current_directory.split("\\")
+    last_substring = substrings[-1]
+
+    # This path detection is b/c of Node.js in dev vs prod mode
+    if last_substring == "backends":
+        path = "../shared/constants.json"
+    else:
+        path = "./shared/constants.json"
+
+    # Open and read the JSON constants file
+    with open(path, "r") as json_file:
+        data = json.load(json_file)
+        app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]

@@ -161,7 +161,7 @@ class InferenceRequest(BaseModel):
     ragPromptTemplate: Optional[RagTemplateData] = None
     # __call__ args
     prompt: str
-    messages: Optional[List[str]] = None
+    messages: Optional[List[str]] = []
     stream: Optional[bool] = True
     # suffix: Optional[str] = ""
     temperature: Optional[float] = 0.0  # precise
@@ -290,7 +290,7 @@ class PreProcessResponse(BaseModel):
 class AddCollectionRequest(BaseModel):
     collectionName: str
     description: Optional[str] = ""
-    tags: Optional[str] = List[None]
+    tags: Optional[str] = ""
 
 
 class AddCollectionResponse(BaseModel):
