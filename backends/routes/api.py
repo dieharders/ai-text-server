@@ -16,7 +16,7 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
     # Return text inference services
     text_inference_api = {
         "name": "textInference",
-        "port": app.state.PORT_HOMEBREW_API,
+        "port": app.state.PORT_HOMEBREW_API, # @TODO Remove this as we will be using static port
         "configs": {
             "ragResponseModes": rag_response_modes,
         },
