@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { getTextModelConfig } from '@/utils/localStorage'
-import constants from '@/shared/constants.json'
+import { useEffect, useState } from 'react'
+// import { getTextModelConfig } from '@/utils/localStorage'
+// import constants from '@/shared/constants.json'
 import textModels from '@/models/models'
 import AppsBrowser from '@/components/AppsBrowser'
 import TextInferenceConfigMenu, {
@@ -14,16 +14,16 @@ import TextModelBrowserMenu, {
 
 export default function Home() {
   // App vars
-  const PORT_HOMEBREW_API = constants.PORT_HOMEBREW_API
-  const HOMEBREW_BASE_PATH = `http://localhost:${PORT_HOMEBREW_API}`
-  const HOMEBREW_URL = `${HOMEBREW_BASE_PATH}/docs`
-  const START_INFERENCE_URL = `http://localhost:${PORT_HOMEBREW_API}`
+  const PORT_HOMEBREW_API = '8008'
+  // const HOMEBREW_BASE_PATH = `http://localhost:${PORT_HOMEBREW_API}`
+  // const HOMEBREW_URL = `${HOMEBREW_BASE_PATH}/docs`
+  const START_INFERENCE_URL = `https://localhost:${PORT_HOMEBREW_API}`
 
   // const PORT_TEXT_INFERENCE = constants.PORT_TEXT_INFERENCE
   // const TEXT_INFERENCE_BASE_PATH = `http://localhost:${PORT_TEXT_INFERENCE}`
   // const TEXT_INFERENCE_URL = `${TEXT_INFERENCE_BASE_PATH}/docs`
   // @TODO This will eventually be passed/rendered by the python backend
-  const REMOTE_ADDRESS = 'http://localhost:8008'
+  const REMOTE_ADDRESS = 'https://localhost:8008/docs'
 
   const [isStarted, setIsStarted] = useState(false)
   const [savePath, setSavePath] = useState<string>('')
@@ -63,12 +63,8 @@ export default function Home() {
         </button>
         <p className="pb-2">
           Refer to api docs for{' '}
-          <a href={HOMEBREW_URL} target="_blank" className="text-yellow-400" rel="noreferrer">
-            HomebrewAi
-          </a>{' '}
-          and{' '}
           <a href={REMOTE_ADDRESS} target="_blank" className="text-yellow-400" rel="noreferrer">
-            Remote server: {REMOTE_ADDRESS}
+            OpenBrew server: {REMOTE_ADDRESS}
           </a>
         </p>
       </div>
@@ -95,30 +91,30 @@ export default function Home() {
       }
     }
     // Load path from persistent storage
-    const currModelId = localStorage.getItem(ITEM_CURRENT_MODEL) || ''
-    const storedConfig = getTextModelConfig(currModelId)
-    const config = textModels.find(model => model.id === currModelId)
-    const storedPath = storedConfig?.savePath
-    const textModelConfig = {
-      id: config?.id,
-      name: config?.name,
-      type: config?.type,
-      checksum: storedConfig?.checksum,
-      isFavorited: storedConfig?.isFavorited,
-      modified: storedConfig?.modified,
-      numTimesRun: storedConfig?.numTimesRun,
-      savePath: storedPath,
-      size: storedConfig?.size,
-      description: config?.description,
-      licenses: config?.licenses,
-      modelType: config?.modelType,
-      provider: config?.provider,
-      ramSize: config?.ramSize,
-      tags: config?.tags,
-      promptTemplate: config?.promptTemplate || '{{PROMPT}}',
-    }
-    storedPath && setSavePath(storedPath)
-    currModelId && setCurrentTextModel(currModelId)
+    // const currModelId = localStorage.getItem(ITEM_CURRENT_MODEL) || ''
+    // const storedConfig = getTextModelConfig(currModelId)
+    // const config = textModels.find(model => model.id === currModelId)
+    // const storedPath = storedConfig?.savePath
+    // const textModelConfig = {
+    //   id: config?.id,
+    //   name: config?.name,
+    //   type: config?.type,
+    //   checksum: storedConfig?.checksum,
+    //   isFavorited: storedConfig?.isFavorited,
+    //   modified: storedConfig?.modified,
+    //   numTimesRun: storedConfig?.numTimesRun,
+    //   savePath: storedPath,
+    //   size: storedConfig?.size,
+    //   description: config?.description,
+    //   licenses: config?.licenses,
+    //   modelType: config?.modelType,
+    //   provider: config?.provider,
+    //   ramSize: config?.ramSize,
+    //   tags: config?.tags,
+    //   promptTemplate: config?.promptTemplate || '{{PROMPT}}',
+    // }
+    // storedPath && setSavePath(storedPath)
+    // currModelId && setCurrentTextModel(currModelId)
     // Load stored model from storage if found
     // if (storedPath && currModelId)
     //   loadTextModelAction({
@@ -128,7 +124,7 @@ export default function Home() {
     //   })
 
     // Set defaults if none found
-    if (!storedPath) saveDefaultPath()
+    // if (!storedPath) saveDefaultPath()
   }, [])
 
   return (
