@@ -111,7 +111,7 @@ def load_text_retrieval_model(
 ):
     # @TODO "text_models" dir may need to be looked up from settings storage if user chose a different location.
     PATH_TO_RETRIEVAL_MODEL = os.path.join(
-        os.getcwd(), "text_models", "zephyr-7b-beta.Q4_K_M.gguf"
+        os.getcwd(), common.INSTALLED_TEXT_MODELS_DIR, "zephyr-7b-beta.Q4_K_M.gguf"
     )
     if not os.path.isfile(PATH_TO_RETRIEVAL_MODEL):
         print("[homebrew api] No embedding model exists.")

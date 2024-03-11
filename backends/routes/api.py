@@ -51,6 +51,12 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/text/installed",
                 "method": "GET",
             },
+            # Open the directory of installed models
+            {
+                "name": "modelExplore",
+                "urlPath": "/v1/text/modelExplore",
+                "method": "GET",
+            },
             # llama.cpp offers native embedding too
             {
                 "name": "embedding",

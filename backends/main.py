@@ -227,6 +227,25 @@ def load_text_inference(
         raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
 
 
+# Open an OS file exporer on host machine
+@app.get("/v1/text/modelExplore")
+def explore_text_model_dir() -> classes.FileExploreResponse:
+    filePath = common.INSTALLED_TEXT_MODELS_DIR
+
+    if not filePath:
+        return {
+            "success": False,
+            "message": "No file path given",
+        }
+    # Open a new os window
+    common.file_explore(filePath)
+
+    return {
+        "success": True,
+        "message": "Opened file explorer",
+    }
+
+
 # Use Llama Index to run queries on vector database embeddings or run normal chat inference.
 @app.post("/v1/text/inference")
 async def text_inference(payload: classes.InferenceRequest):

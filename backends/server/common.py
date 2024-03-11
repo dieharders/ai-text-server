@@ -14,6 +14,7 @@ from server.classes import (
     DEFAULT_CONTEXT_WINDOW,
 )
 
+INSTALLED_TEXT_MODELS_DIR = "text_models"
 INSTALLED_TEXT_MODELS = "installed_text_models"
 DEFAULT_MAX_TOKENS = 128
 
