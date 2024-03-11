@@ -459,9 +459,15 @@ class FileExploreResponse(BaseModel):
 
 
 class UpdateEmbeddedDocumentRequest(EmbedDocumentRequest):
+    collectionName: str
     documentId: str
-    filePath: Optional[str] = ""
-    metadata: Optional[dict]  # @TODO What data struct ?
+    documentName: Optional[str] = ""
+    metadata: Optional[dict] = {}  # @TODO What data struct ?
+    urlPath: Optional[str] = ""
+    filePath: Optional[str]
+    chunkSize: Optional[int] = 300
+    chunkOverlap: Optional[int] = 0
+    chunkStrategy: Optional[str] = ""
 
 
 class UpdateDocumentResponse(BaseModel):
