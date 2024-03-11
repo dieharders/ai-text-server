@@ -139,7 +139,7 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
         return {
             "success": False,
             "message": "Failed to find any installed models.",
-            "data": {},
+            "data": [],
         }
 
 
