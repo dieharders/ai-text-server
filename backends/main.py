@@ -245,7 +245,7 @@ def explore_text_model_dir() -> classes.FileExploreResponse:
 
 # Search huggingface hub and return results
 # https://huggingface.co/docs/huggingface_hub/en/guides/search
-@app.get("/v1/text/search_models")
+@app.get("/v1/text/searchModels")
 def search_models(payload):
     sort = payload.sort
     task = payload.task or "text-generation"
@@ -266,7 +266,7 @@ def search_models(payload):
     }
 
 
-@app.get("/v1/text/get_model_metadata")
+@app.get("/v1/text/getModelMetadata")
 def get_model_metadata(payload):
     repo_id = payload.repo_id
     filename = payload.filename
