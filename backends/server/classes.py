@@ -148,6 +148,9 @@ class RagTemplateData(BaseModel):
     type: Optional[str] = None
 
 
+class GetModelInfoRequest(BaseModel):
+    repoId: str
+
 class DownloadTextModelRequest(BaseModel):
     repo_id: str
     filename: str

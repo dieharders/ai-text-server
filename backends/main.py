@@ -266,6 +266,22 @@ def search_models(payload):
     }
 
 
+# Fetches repo info about a model from huggingface hub
+@app.get("/v1/text/getModelInfo")
+def get_model_info(
+    payload: classes.GetModelInfoRequest = Depends(),
+):
+    id = payload.repoId
+    hf_api = HfApi()
+    info = hf_api.model_info(repo_id=id, files_metadata=True)
+    return {
+        "success": True,
+        "message": "Returned model info",
+        "data": info,
+    }
+
+
+# Fetches metadata about a file from huggingface hub
 @app.get("/v1/text/getModelMetadata")
 def get_model_metadata(payload):
     repo_id = payload.repo_id
@@ -275,7 +291,7 @@ def get_model_metadata(payload):
 
     return {
         "success": True,
-        "message": "Opened file explorer",
+        "message": "Returned model metadata",
         "data": metadata,
     }
 
