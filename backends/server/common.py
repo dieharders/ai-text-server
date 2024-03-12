@@ -14,8 +14,12 @@ from server.classes import (
     DEFAULT_CONTEXT_WINDOW,
 )
 
+MODEL_METADATAS_FILENAME = "installed_models.json"
+APP_SETTINGS_FOLDER = "settings"
+APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
+MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 INSTALLED_TEXT_MODELS_DIR = "text_models"
-INSTALLED_TEXT_MODELS = "installed_text_models"
+INSTALLED_TEXT_MODELS = "installed_text_models" # key in json file
 DEFAULT_MAX_TOKENS = 128
 
 
@@ -179,6 +183,42 @@ def parse_valid_tags(tags: str):
         return None
 
 
+class SaveTextModelRequestArgs(dict):
+    repoId: str
+    filename: str
+    savePath: str = ""
+    isFavorited: bool = False
+
+
+# Index the path of the downloaded model in a file
+def save_text_model(data: SaveTextModelRequestArgs):
+    folderpath = APP_SETTINGS_PATH
+    filepath = MODEL_METADATAS_FILEPATH
+    # Create folder/file
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    # Try to open the file (if it exists)
+    try:
+        with open(filepath, "r") as file:
+            existing_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist yet, create an empty dictionary
+        existing_data = {}
+    except json.JSONDecodeError:
+        existing_data = {}
+
+    # Update the existing data with the new variables
+    for key, val in data.items():
+        list = existing_data[INSTALLED_TEXT_MODELS]
+        model = next((x for x in list if x.repoId == data.repoId), None)
+        model[key] = val
+
+    # Save the updated data to the file, this will overwrite all values in the key's dict.
+    with open(filepath, "w") as file:
+        json.dump(existing_data, file, indent=2)
+
+
 def delete_vector_store(target_file_path: str, folder_path):
     path_to_delete = os.path.join(folder_path, target_file_path)
     if os.path.exists(path_to_delete):
@@ -243,7 +283,7 @@ def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
 
     return existing_data
 
-def save_settings_file(folderpath: str, filepath: str, data: Any):
+def save_settings_file(folderpath: str, filepath: str, data: dict):
     # Create folder/file
     if not os.path.exists(folderpath):
         os.makedirs(folderpath)

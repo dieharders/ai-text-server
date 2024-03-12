@@ -148,6 +148,11 @@ class RagTemplateData(BaseModel):
     type: Optional[str] = None
 
 
+class DownloadTextModelRequest(BaseModel):
+    repo_id: str
+    filename: str
+
+
 class InferenceRequest(BaseModel):
     # __init__ args
     n_ctx: Optional[int] = DEFAULT_CONTEXT_WINDOW

@@ -21,19 +21,16 @@ from embedding import embedding
 from server import common, classes
 from routes import router as endpoint_router
 from llama_index.response_synthesizers import ResponseMode
+from huggingface_hub import hf_hub_download, get_hf_file_metadata, hf_hub_url, ModelFilter, HfApi
 
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
 TMP_FOLDER = "tmp"
-APP_SETTINGS_FOLDER = "settings"
 VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
 MEMORY_PATH = os.path.join(os.getcwd(), MEMORY_FOLDER)
 PARSED_DOCUMENT_PATH = os.path.join(MEMORY_PATH, PARSED_FOLDER)
 TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
-APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
-MODEL_METADATAS_FILENAME = "installed_models.json"
-MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
 SERVER_PORT = 8008
@@ -127,7 +124,7 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
     try:
         # Get installed models file
         metadatas: classes.InstalledTextModel = common.get_settings_file(
-            APP_SETTINGS_PATH, MODEL_METADATAS_FILEPATH
+            common.APP_SETTINGS_PATH, common.MODEL_METADATAS_FILEPATH
         )
 
         return {
@@ -244,6 +241,80 @@ def explore_text_model_dir() -> classes.FileExploreResponse:
         "success": True,
         "message": "Opened file explorer",
     }
+
+
+# Search huggingface hub and return results
+# https://huggingface.co/docs/huggingface_hub/en/guides/search
+@app.get("/v1/text/search_models")
+def search_models(payload):
+    sort = payload.sort
+    task = payload.task or "text-generation"
+    limit = payload.limit or 10
+    hf_api = HfApi()
+    # @TODO Example showing how to filter by task and return only top 10 most downloaded
+    models = hf_api.list_models(
+        sort=sort, # or "downloads" or "trending"
+        limit=limit,
+        filter=ModelFilter(
+            task=task,
+        )
+    )
+    return {
+        "success": True,
+        "message": f"Returned {len(models)} results",
+        "data": models,
+    }
+
+
+@app.get("/v1/text/get_model_metadata")
+def get_model_metadata(payload):
+    repo_id = payload.repo_id
+    filename = payload.filename
+    url = hf_hub_url(repo_id=repo_id, filename=filename)
+    metadata = get_hf_file_metadata(url=url)
+
+    return {
+        "success": True,
+        "message": "Opened file explorer",
+        "data": metadata,
+    }
+
+
+# Download a text model from huggingface hub
+# https://huggingface.co/docs/huggingface_hub/v0.21.4/en/package_reference/file_download#huggingface_hub.hf_hub_download
+@app.post("/v1/text/download")
+def download_text_model(payload: classes.DownloadTextModelRequest):
+    try:
+        repo_id  = payload.repo_id
+        filename = payload.filename
+        cache_dir = common.INSTALLED_TEXT_MODELS_DIR
+        # repo_type = "model" # optional, specify type of data, defaults to model
+        # resume_download = True # optional, resume from prev download progress
+        # local_dir = "" # optional, downloaded file will be placed under this directory
+
+        # Save path and details to json file
+        common.save_text_model({
+            "repoId": repo_id,
+            "filename": filename,
+        })
+
+        # Download model
+        download_path = hf_hub_download(repo_id=repo_id, filename=filename, cache_dir=cache_dir)
+
+        # Save finalized details
+        common.save_text_model({
+            "savePath": download_path,
+        })
+
+        return {
+            "success": True,
+            "message": f"Saved model file to {download_path}.",
+        }
+    except (KeyError, Exception, EnvironmentError, OSError, ValueError) as err:
+        print(f"Error: {err}", flush=True)
+        raise HTTPException(
+            status_code=400, detail=f"Something went wrong. Reason: {err}"
+        )
 
 
 # Use Llama Index to run queries on vector database embeddings or run normal chat inference.
@@ -924,10 +995,10 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
 def get_playground_settings() -> classes.GetPlaygroundSettingsResponse:
     # Paths
     file_name = PLAYGROUND_SETTINGS_FILE_NAME
-    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+    file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
 
     # Check if folder exists
-    if not os.path.exists(APP_SETTINGS_PATH):
+    if not os.path.exists(common.APP_SETTINGS_PATH):
         return {
             "success": False,
             "message": f"Failed to return settings. Folder does not exist.",
@@ -959,10 +1030,10 @@ def get_playground_settings() -> classes.GetPlaygroundSettingsResponse:
 def save_playground_settings(data: dict) -> classes.GenericEmptyResponse:
     # Paths
     file_name = PLAYGROUND_SETTINGS_FILE_NAME
-    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+    file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
 
     # Save to disk
-    common.save_settings_file(APP_SETTINGS_PATH, file_path, data)
+    common.save_settings_file(common.APP_SETTINGS_PATH, file_path, data)
 
     return {
         "success": True,
@@ -975,9 +1046,9 @@ def save_playground_settings(data: dict) -> classes.GenericEmptyResponse:
 def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
     # Paths
     file_name = BOT_SETTINGS_FILE_NAME
-    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+    file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
     # Save to memory
-    results = common.save_bot_settings_file(APP_SETTINGS_PATH, file_path, settings)
+    results = common.save_bot_settings_file(common.APP_SETTINGS_PATH, file_path, settings)
 
     return {
         "success": True,
@@ -990,10 +1061,10 @@ def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
 def get_bot_settings() -> classes.BotSettingsResponse:
     # Paths
     file_name = BOT_SETTINGS_FILE_NAME
-    file_path = os.path.join(APP_SETTINGS_PATH, file_name)
+    file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
 
     # Check if folder exists
-    if not os.path.exists(APP_SETTINGS_PATH):
+    if not os.path.exists(common.APP_SETTINGS_PATH):
         return {
             "success": False,
             "message": "Failed to return settings. Folder does not exist.",
