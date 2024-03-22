@@ -4,7 +4,7 @@ import json
 import glob
 import httpx
 import subprocess
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 from server.classes import (
     CHAT_MODES,
     InstalledTextModelMetadata,
@@ -184,14 +184,15 @@ def parse_valid_tags(tags: str):
 
 
 class SaveTextModelRequestArgs(dict):
-    repoId: str
-    filename: str
-    savePath: str = ""
-    isFavorited: bool = False
+    id: str
+    savePath: Optional[str] = ""
+    isFavorited: Optional[bool] = False
+    numTimesRun: Optional[int] = 0
 
 
 # Index the path of the downloaded model in a file
 def save_text_model(data: SaveTextModelRequestArgs):
+    repoId = ""
     folderpath = APP_SETTINGS_PATH
     filepath = MODEL_METADATAS_FILEPATH
     # Create folder/file
@@ -200,6 +201,7 @@ def save_text_model(data: SaveTextModelRequestArgs):
 
     # Try to open the file (if it exists)
     try:
+        repoId = data["id"]
         with open(filepath, "r") as file:
             existing_data = json.load(file)
     except FileNotFoundError:
@@ -209,10 +211,27 @@ def save_text_model(data: SaveTextModelRequestArgs):
         existing_data = {}
 
     # Update the existing data with the new variables
-    for key, val in data.items():
-        list = existing_data[INSTALLED_TEXT_MODELS]
-        model = next((x for x in list if x.repoId == data.repoId), None)
-        model[key] = val
+    models_list: List = existing_data[INSTALLED_TEXT_MODELS]
+    modelIndex = next((x for x, item in enumerate(models_list) if item["id"] == repoId), None)
+    if modelIndex:
+        model = models_list[modelIndex]
+        # Assign updated data
+        for key, val in data.items():
+            if key == "savePath":
+                prev_save_paths: dict = model[key]
+                new_save_paths: dict = data["savePath"]
+                new_save_key = list(new_save_paths.keys())[0]
+                new_save_path = list(new_save_paths.values())[0]
+                prev_save_paths[new_save_key] = new_save_path
+            else:
+                model[key] = val
+        models_list[modelIndex] = model
+    else:
+        # Assign new data
+        new_data = data
+        new_data["numTimesRun"] = 0
+        new_data["isFavorited"] = False
+        models_list.append(data)
 
     # Save the updated data to the file, this will overwrite all values in the key's dict.
     with open(filepath, "w") as file:

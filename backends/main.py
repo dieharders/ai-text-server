@@ -310,16 +310,24 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
 
         # Save path and details to json file
         common.save_text_model({
-            "repoId": repo_id,
-            "filename": filename,
+            "id": repo_id,
         })
 
         # Download model
-        download_path = hf_hub_download(repo_id=repo_id, filename=filename, cache_dir=cache_dir)
+        download_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            cache_dir=cache_dir,
+            # repo_type=repo_type,
+            # resume_download=resume_download,
+            # local_dir=local_dir,
+        )
 
-        # Save finalized details
+        # Save finalized details to file
+        dpath = os.path.join(os.getcwd(), download_path)
         common.save_text_model({
-            "savePath": download_path,
+            "id": repo_id,
+            "savePath": {filename: dpath},
         })
 
         return {
