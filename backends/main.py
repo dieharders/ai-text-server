@@ -349,7 +349,7 @@ def delete_text_model(payload: classes.DeleteTextModelRequest):
     revision = payload.revision
 
     try:
-        # Delete weights from cache
+        # Delete weights from cache, https://huggingface.co/docs/huggingface_hub/en/guides/manage-cache
         delete_strategy = scan_cache_dir().delete_revisions(revision)
         delete_strategy.execute()
         freed_size = delete_strategy.expected_freed_size_str
