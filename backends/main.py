@@ -21,7 +21,7 @@ from embedding import embedding
 from server import common, classes
 from routes import router as endpoint_router
 from llama_index.response_synthesizers import ResponseMode
-from huggingface_hub import hf_hub_download, get_hf_file_metadata, hf_hub_url, ModelFilter, HfApi
+from huggingface_hub import hf_hub_download, get_hf_file_metadata, hf_hub_url, scan_cache_dir, ModelFilter, HfApi
 
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
@@ -335,6 +335,34 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
             "message": f"Saved model file to {download_path}.",
         }
     except (KeyError, Exception, EnvironmentError, OSError, ValueError) as err:
+        print(f"Error: {err}", flush=True)
+        raise HTTPException(
+            status_code=400, detail=f"Something went wrong. Reason: {err}"
+        )
+
+
+# Remove text model weights file and installation record
+@app.post("/v1/text/delete")
+def delete_text_model(payload: classes.DeleteTextModelRequest):
+    filename = payload.filename
+    repo_id = payload.repoId
+    revision = payload.revision
+
+    try:
+        # Delete weights from cache
+        delete_strategy = scan_cache_dir().delete_revisions(revision)
+        delete_strategy.execute()
+        freed_size = delete_strategy.expected_freed_size_str
+        print(f"Freed {freed_size}Gb space.", flush=True)
+
+        # Delete install record from json file
+        common.delete_text_model(filename=filename, repo_id=repo_id)
+
+        return {
+            "success": True,
+            "message": f"Deleted model file from {filename}. Freed {freed_size}Gb of space.",
+        }
+    except (KeyError, Exception) as err:
         print(f"Error: {err}", flush=True)
         raise HTTPException(
             status_code=400, detail=f"Something went wrong. Reason: {err}"

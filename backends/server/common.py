@@ -239,6 +239,34 @@ def save_text_model(data: SaveTextModelRequestArgs):
         json.dump(existing_data, file, indent=2)
 
 
+class DeleteTextModelRequestArgs(dict):
+    filename: str
+    repo_id: str
+
+
+def delete_text_model(args: DeleteTextModelRequestArgs):
+    repo_id = args["repo_id"]
+    filename = args["filename"]
+    filepath = MODEL_METADATAS_FILEPATH
+
+    try:
+        # Try to open the file (if it exists)
+        with open(filepath, "r") as file:
+            metadata = json.load(file)
+        # Remove model entry from metadata
+        models_list: List = metadata[INSTALLED_TEXT_MODELS]
+        modelIndex = next((x for x, item in enumerate(models_list) if item["id"] == repo_id), None)
+        model = models_list[modelIndex]
+        del model["savePath"][filename]
+        # Save updated metadata
+        with open(filepath, "w") as file:
+            json.dump(metadata, file, indent=2)
+    except FileNotFoundError:
+        print("File not found", flush=True)
+    except json.JSONDecodeError:
+        print("JSON parsing error", flush=True)
+
+
 def delete_vector_store(target_file_path: str, folder_path):
     path_to_delete = os.path.join(folder_path, target_file_path)
     if os.path.exists(path_to_delete):

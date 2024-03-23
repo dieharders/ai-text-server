@@ -75,6 +75,12 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/text/download",
                 "method": "POST",
             },
+            # Delete model from cache
+            {
+                "name": "delete",
+                "urlPath": "/v1/text/delete",
+                "method": "POST",
+            },
             # llama.cpp offers native embedding too
             {
                 "name": "embedding",
