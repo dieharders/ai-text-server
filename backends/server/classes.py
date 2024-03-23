@@ -683,33 +683,19 @@ class GenericEmptyResponse(BaseModel):
 
 
 class InstalledTextModelMetadata(BaseModel):
-    savePath: str
-    id: str
-    numTimesRun: int
-    isFavorited: bool
-    validation: str
-    modified: str
-    size: int
-    endChunk: int
-    progress: int
-    tokenizerPath: str
-    checksum: str
+    id: Optional[str] = None
+    savePath: Optional[str | dict] = None
+    numTimesRun: Optional[int] = None
+    isFavorited: Optional[bool] = None
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
                     "id": "llama2-13b",
+                    "savePath": "C:\\Project Files\\brain-dump-ai\\models\\llama-2-13b-chat.ggmlv3.q2_K.bin",
                     "numTimesRun": 0,
                     "isFavorited": False,
-                    "validation": "success",
-                    "modified": "Tue, 19 Sep 2023 23:25:28 GMT",
-                    "size": 1200000,
-                    "endChunk": 13,
-                    "progress": 67,
-                    "tokenizerPath": "/some/path/to/tokenizer",
-                    "checksum": "90b27795b2e319a93cc7c3b1a928eefedf7bd6acd3ecdbd006805f7a028ce79d",
                 }
             ]
         }
@@ -728,16 +714,9 @@ class InstalledTextModel(BaseModel):
                     "installed_text_models": [
                         {
                             "id": "llama-2-13b-chat",
-                            "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "savePath": {"llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"},
                             "numTimesRun": 0,
                             "isFavorited": False,
-                            "validation": "success",
-                            "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
-                            "size": 7865956224,
-                            "endChunk": 1,
-                            "progress": 100,
-                            "tokenizerPath": "",
-                            "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
                         }
                     ],
                 }
@@ -763,25 +742,10 @@ class ModelConfig(BaseModel):
     sha256: Optional[str] = None
 
 
-# This is a combination of model config and metadata
-class TextModelInstallMetadata(BaseModel):
-    id: Optional[str] = None
-    savePath: Optional[str] = None
-    numTimesRun: Optional[int] = None
-    isFavorited: Optional[bool] = None
-    validation: Optional[str] = None
-    modified: Optional[str] = None
-    size: Optional[int] = None
-    endChunk: Optional[int] = None
-    progress: Optional[float] = None
-    tokenizerPath: Optional[str] = None
-    checksum: Optional[str] = None
-
-
 class TextModelInstallMetadataResponse(BaseModel):
     success: bool
     message: str
-    data: List[TextModelInstallMetadata]
+    data: List[InstalledTextModelMetadata]
 
     model_config = {
         "json_schema_extra": {
@@ -792,16 +756,9 @@ class TextModelInstallMetadataResponse(BaseModel):
                     "data": [
                         {
                             "id": "llama-2-13b-chat",
-                            "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                            "savePath": {"llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"},
                             "numTimesRun": 0,
                             "isFavorited": False,
-                            "validation": "success",
-                            "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
-                            "size": 7865956224,
-                            "endChunk": 1,
-                            "progress": 100,
-                            "tokenizerPath": "",
-                            "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
                         }
                     ],
                 }
@@ -813,7 +770,7 @@ class TextModelInstallMetadataResponse(BaseModel):
 class InstalledTextModelResponse(BaseModel):
     success: bool
     message: str
-    data: TextModelInstallMetadata
+    data: InstalledTextModelMetadata
 
     model_config = {
         "json_schema_extra": {
@@ -823,16 +780,9 @@ class InstalledTextModelResponse(BaseModel):
                     "message": "Success",
                     "data": {
                         "id": "llama-2-13b-chat",
-                        "savePath": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf",
+                        "savePath": {"llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"},
                         "numTimesRun": 0,
                         "isFavorited": False,
-                        "validation": "success",
-                        "modified": "Mon, 13 Nov 2023 13:02:52 GMT",
-                        "size": 7865956224,
-                        "endChunk": 1,
-                        "progress": 100,
-                        "tokenizerPath": "",
-                        "checksum": "7ddfe27f61bf994542c22aca213c46ecbd8a624cca74abff02a7b5a8c18f787f",
                     },
                 }
             ]
