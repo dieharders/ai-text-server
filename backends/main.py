@@ -21,7 +21,14 @@ from embedding import embedding
 from server import common, classes
 from routes import router as endpoint_router
 from llama_index.response_synthesizers import ResponseMode
-from huggingface_hub import hf_hub_download, get_hf_file_metadata, hf_hub_url, scan_cache_dir, ModelFilter, HfApi
+from huggingface_hub import (
+    hf_hub_download,
+    get_hf_file_metadata,
+    hf_hub_url,
+    scan_cache_dir,
+    ModelFilter,
+    HfApi,
+)
 
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
@@ -34,6 +41,7 @@ TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
 SERVER_PORT = 8008
+
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -197,8 +205,10 @@ def load_text_inference(
         app.state.model_id = model_id
         app.state.path_to_model = modelPath
         # Unload the model if one exists
-        if (app.state.llm):
-            print(f"[homebrew api] Ejecting model {model_id} currently loaded from: {modelPath}")
+        if app.state.llm:
+            print(
+                f"[homebrew api] Ejecting model {model_id} currently loaded from: {modelPath}"
+            )
             unload_text_inference()
         # Load the specified Ai model
         if app.state.llm is None:
@@ -253,11 +263,11 @@ def search_models(payload):
     hf_api = HfApi()
     # @TODO Example showing how to filter by task and return only top 10 most downloaded
     models = hf_api.list_models(
-        sort=sort, # or "downloads" or "trending"
+        sort=sort,  # or "downloads" or "trending"
         limit=limit,
         filter=ModelFilter(
             task=task,
-        )
+        ),
     )
     return {
         "success": True,
@@ -301,7 +311,7 @@ def get_model_metadata(payload):
 @app.post("/v1/text/download")
 def download_text_model(payload: classes.DownloadTextModelRequest):
     try:
-        repo_id  = payload.repo_id
+        repo_id = payload.repo_id
         filename = payload.filename
         cache_dir = common.INSTALLED_TEXT_MODELS_DIR
         # repo_type = "model" # optional, specify type of data, defaults to model
@@ -309,9 +319,11 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
         # local_dir = "" # optional, downloaded file will be placed under this directory
 
         # Save path and details to json file
-        common.save_text_model({
-            "id": repo_id,
-        })
+        common.save_text_model(
+            {
+                "id": repo_id,
+            }
+        )
 
         # Download model
         download_path = hf_hub_download(
@@ -325,10 +337,12 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
 
         # Save finalized details to file
         dpath = os.path.join(os.getcwd(), download_path)
-        common.save_text_model({
-            "id": repo_id,
-            "savePath": {filename: dpath},
-        })
+        common.save_text_model(
+            {
+                "id": repo_id,
+                "savePath": {filename: dpath},
+            }
+        )
 
         return {
             "success": True,
@@ -356,7 +370,8 @@ def delete_text_model(payload: classes.DeleteTextModelRequest):
         print(f"Freed {freed_size}Gb space.", flush=True)
 
         # Delete install record from json file
-        common.delete_text_model(filename=filename, repo_id=repo_id)
+        if freed_size != "0.0":
+            common.delete_text_model(filename=filename, repo_id=repo_id)
 
         return {
             "success": True,
@@ -456,7 +471,7 @@ async def text_inference(payload: classes.InferenceRequest):
                 )
             )
         # elif mode == classes.CHAT_MODES.SLIDING.value:
-            # do stuff here ...
+        # do stuff here ...
         elif mode is None:
             raise Exception("Check 'mode' is provided.")
         else:
@@ -1093,6 +1108,7 @@ def save_playground_settings(data: dict) -> classes.GenericEmptyResponse:
         "data": None,
     }
 
+
 # Save bot settings
 @app.post("/v1/persist/bot-settings")
 def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
@@ -1100,13 +1116,16 @@ def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
     file_name = BOT_SETTINGS_FILE_NAME
     file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
     # Save to memory
-    results = common.save_bot_settings_file(common.APP_SETTINGS_PATH, file_path, settings)
+    results = common.save_bot_settings_file(
+        common.APP_SETTINGS_PATH, file_path, settings
+    )
 
     return {
         "success": True,
         "message": f"Saved bot settings to {file_path}",
         "data": results,
     }
+
 
 # Load bot settings
 @app.get("/v1/persist/bot-settings")
@@ -1156,12 +1175,7 @@ def start_homebrew_server():
     try:
         print("[homebrew api] Starting API server...")
         # Start the ASGI server
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=SERVER_PORT,
-            log_level="info"
-        )
+        uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT, log_level="info")
         return True
     except:
         print("[homebrew api] Failed to start API server")
