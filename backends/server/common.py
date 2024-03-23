@@ -185,7 +185,7 @@ def parse_valid_tags(tags: str):
 
 class SaveTextModelRequestArgs(dict):
     id: str
-    savePath: Optional[str] = ""
+    savePath: Optional[dict] = {}
     isFavorited: Optional[bool] = False
     numTimesRun: Optional[int] = 0
 
