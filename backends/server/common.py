@@ -218,11 +218,12 @@ def save_text_model(data: SaveTextModelRequestArgs):
         # Assign updated data
         for key, val in data.items():
             if key == "savePath":
+                new_save_paths: dict = data[key]
                 prev_save_paths: dict = model[key]
-                new_save_paths: dict = data["savePath"]
-                new_save_key = list(new_save_paths.keys())[0]
-                new_save_path = list(new_save_paths.values())[0]
-                prev_save_paths[new_save_key] = new_save_path
+                model[key] = {
+                    **prev_save_paths,
+                    **new_save_paths,
+                }
             else:
                 model[key] = val
         models_list[modelIndex] = model
