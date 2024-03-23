@@ -1,8 +1,11 @@
 # For type safety
 pydantic_settings==2.0.3
+# For downloading models
+huggingface_hub==0.21.4
 # For servers
 fastapi==0.101.1
-uvicorn[standard]
+uvicorn==0.23.2
+httpx==0.27.0
 sse-starlette==1.6.5
 starlette_context==0.3.6
 # For building single exe python
@@ -10,7 +13,7 @@ pyinstaller==5.13.0 # this needs security update
 python-multipart==0.0.6
 # For text inference
 llama-cpp-python==0.2.27
-# For embedding querying
+# For retrieving embeddings
 llama-index==0.9.34
 # For embeddings creation and storage
 chromadb==0.4.15

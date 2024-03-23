@@ -57,6 +57,24 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/text/modelExplore",
                 "method": "GET",
             },
+            # Get model info
+            {
+                "name": "getModelInfo",
+                "urlPath": "/v1/text/getModelInfo",
+                "method": "GET",
+            },
+            # Get model details
+            {
+                "name": "getModelMetadata",
+                "urlPath": "/v1/text/getModelMetadata",
+                "method": "GET",
+            },
+            # Download model from Huggingface
+            {
+                "name": "download",
+                "urlPath": "/v1/text/download",
+                "method": "POST",
+            },
             # llama.cpp offers native embedding too
             {
                 "name": "embedding",

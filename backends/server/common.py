@@ -4,7 +4,7 @@ import json
 import glob
 import httpx
 import subprocess
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 from server.classes import (
     CHAT_MODES,
     InstalledTextModelMetadata,
@@ -14,8 +14,12 @@ from server.classes import (
     DEFAULT_CONTEXT_WINDOW,
 )
 
+MODEL_METADATAS_FILENAME = "installed_models.json"
+APP_SETTINGS_FOLDER = "settings"
+APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
+MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 INSTALLED_TEXT_MODELS_DIR = "text_models"
-INSTALLED_TEXT_MODELS = "installed_text_models"
+INSTALLED_TEXT_MODELS = "installed_text_models" # key in json file
 DEFAULT_MAX_TOKENS = 128
 
 
@@ -179,6 +183,62 @@ def parse_valid_tags(tags: str):
         return None
 
 
+class SaveTextModelRequestArgs(dict):
+    id: str
+    savePath: Optional[str] = ""
+    isFavorited: Optional[bool] = False
+    numTimesRun: Optional[int] = 0
+
+
+# Index the path of the downloaded model in a file
+def save_text_model(data: SaveTextModelRequestArgs):
+    repoId = data["id"]
+    folderpath = APP_SETTINGS_PATH
+    filepath = MODEL_METADATAS_FILEPATH
+
+    # Create folder/file
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    # Try to open the file (if it exists)
+    try:
+        with open(filepath, "r") as file:
+            existing_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist yet, create an empty dictionary
+        existing_data = {}
+    except json.JSONDecodeError:
+        existing_data = {}
+
+    # Update the existing data with the new variables
+    models_list: List = existing_data[INSTALLED_TEXT_MODELS]
+    modelIndex = next((x for x, item in enumerate(models_list) if item["id"] == repoId), None)
+    if modelIndex:
+        model = models_list[modelIndex]
+        # Assign updated data
+        for key, val in data.items():
+            if key == "savePath":
+                new_save_paths: dict = data[key]
+                prev_save_paths: dict = model[key]
+                model[key] = {
+                    **prev_save_paths,
+                    **new_save_paths,
+                }
+            else:
+                model[key] = val
+        models_list[modelIndex] = model
+    else:
+        # Assign new data
+        new_data = data
+        new_data["numTimesRun"] = 0
+        new_data["isFavorited"] = False
+        models_list.append(data)
+
+    # Save the updated data to the file, this will overwrite all values in the key's dict.
+    with open(filepath, "w") as file:
+        json.dump(existing_data, file, indent=2)
+
+
 def delete_vector_store(target_file_path: str, folder_path):
     path_to_delete = os.path.join(folder_path, target_file_path)
     if os.path.exists(path_to_delete):
@@ -243,7 +303,7 @@ def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
 
     return existing_data
 
-def save_settings_file(folderpath: str, filepath: str, data: Any):
+def save_settings_file(folderpath: str, filepath: str, data: dict):
     # Create folder/file
     if not os.path.exists(folderpath):
         os.makedirs(folderpath)
