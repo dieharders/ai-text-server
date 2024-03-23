@@ -192,16 +192,16 @@ class SaveTextModelRequestArgs(dict):
 
 # Index the path of the downloaded model in a file
 def save_text_model(data: SaveTextModelRequestArgs):
-    repoId = ""
+    repoId = data["id"]
     folderpath = APP_SETTINGS_PATH
     filepath = MODEL_METADATAS_FILEPATH
+
     # Create folder/file
     if not os.path.exists(folderpath):
         os.makedirs(folderpath)
 
     # Try to open the file (if it exists)
     try:
-        repoId = data["id"]
         with open(filepath, "r") as file:
             existing_data = json.load(file)
     except FileNotFoundError:
