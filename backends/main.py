@@ -1187,7 +1187,12 @@ def start_homebrew_server():
     try:
         print("[homebrew api] Starting API server...")
         # Start the ASGI server
-        uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT, log_level="info")
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=SERVER_PORT,
+            log_level="info",
+        )
         return True
     except:
         print("[homebrew api] Failed to start API server")
