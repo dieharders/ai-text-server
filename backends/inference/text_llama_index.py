@@ -111,7 +111,7 @@ def load_text_retrieval_model(
 ):
     # @TODO "text_models" dir may need to be looked up from settings storage if user chose a different location.
     PATH_TO_RETRIEVAL_MODEL = os.path.join(
-        os.getcwd(), common.INSTALLED_TEXT_MODELS_DIR, "zephyr-7b-beta.Q4_K_M.gguf"
+        os.getcwd(), common.MODELS_CACHE_DIR, "zephyr-7b-beta.Q4_K_M.gguf"
     )
     if not os.path.isfile(PATH_TO_RETRIEVAL_MODEL):
         print("[homebrew api] No embedding model exists.")
@@ -163,7 +163,7 @@ def load_text_model(
 
     generate_kwargs = {
         "stream": gen_settings.stream,
-        "stop": gen_settings.stop, # !Never use an empty string like [""]
+        "stop": gen_settings.stop,  # !Never use an empty string like [""]
         "echo": gen_settings.echo,
         "model": gen_settings.model,
         "mirostat_tau": gen_settings.mirostat_tau,

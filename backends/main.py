@@ -237,7 +237,7 @@ def load_text_inference(
 # Open an OS file exporer on host machine
 @app.get("/v1/text/modelExplore")
 def explore_text_model_dir() -> classes.FileExploreResponse:
-    filePath = common.INSTALLED_TEXT_MODELS_DIR
+    filePath = common.MODELS_CACHE_DIR
 
     if not filePath:
         return {
@@ -313,7 +313,7 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
     try:
         repo_id = payload.repo_id
         filename = payload.filename
-        cache_dir = common.INSTALLED_TEXT_MODELS_DIR
+        cache_dir = common.MODELS_CACHE_DIR
         # repo_type = "model" # optional, specify type of data, defaults to model
         # resume_download = True # optional, resume from prev download progress
         # local_dir = "" # optional, downloaded file will be placed under this directory
@@ -355,27 +355,39 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
         )
 
 
-# Remove text model weights file and installation record
+# Remove text model weights file and installation record.
+# Current limitation is that this deletes all quant files for a repo.
 @app.post("/v1/text/delete")
 def delete_text_model(payload: classes.DeleteTextModelRequest):
     filename = payload.filename
     repo_id = payload.repoId
-    revision = payload.revision
 
     try:
+        cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
+        # Find model hash. Pass nothing to scan the default dir
+        model_cache_info = scan_cache_dir(cache_dir)
+        repos = model_cache_info.repos
+        repoIndex = next(
+            (x for x, info in enumerate(repos) if info.repo_id == repo_id), None
+        )
+        target_repo = list(repos)[repoIndex]
+        repo_revisions = list(target_repo.revisions)
+        repo_commit_hash = []
+        for r in repo_revisions:
+            repo_commit_hash.append(r.commit_hash)
         # Delete weights from cache, https://huggingface.co/docs/huggingface_hub/en/guides/manage-cache
-        delete_strategy = scan_cache_dir().delete_revisions(revision)
+        delete_strategy = model_cache_info.delete_revisions(*repo_commit_hash)
         delete_strategy.execute()
         freed_size = delete_strategy.expected_freed_size_str
-        print(f"Freed {freed_size}Gb space.", flush=True)
+        print(f"Freed {freed_size} space.", flush=True)
 
         # Delete install record from json file
         if freed_size != "0.0":
-            common.delete_text_model(filename=filename, repo_id=repo_id)
+            common.delete_text_model_revisions(repo_id=repo_id)
 
         return {
             "success": True,
-            "message": f"Deleted model file from {filename}. Freed {freed_size}Gb of space.",
+            "message": f"Deleted model file from {filename}. Freed {freed_size} of space.",
         }
     except (KeyError, Exception) as err:
         print(f"Error: {err}", flush=True)

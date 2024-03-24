@@ -9,10 +9,12 @@ DEFAULT_SEED = 1337
 DEFAULT_MAX_TOKENS = 0  # 0 means we should calc it
 DEFAULT_CHAT_MODE = "instruct"
 
+
 class CHAT_MODES(Enum):
     INSTRUCT = "instruct"
     CHAT = "chat"
     SLIDING = "sliding"
+
 
 class PingResponse(BaseModel):
     success: bool
@@ -158,7 +160,6 @@ class DownloadTextModelRequest(BaseModel):
 
 
 class DeleteTextModelRequest(BaseModel):
-    revision: str
     filename: str
     repoId: str
 
@@ -181,30 +182,30 @@ class InferenceRequest(BaseModel):
     # suffix: Optional[str] = ""
     temperature: Optional[float] = 0.0  # precise
     max_tokens: Optional[int] = DEFAULT_MAX_TOKENS
-    stop: Optional[
-        List[str]
-    ] = []  # A list of strings to stop generation when encountered
+    stop: Optional[List[str]] = (
+        []
+    )  # A list of strings to stop generation when encountered
     echo: Optional[bool] = False
-    model: Optional[
-        str
-    ] = "local"  # The name to use for the model in the completion object
+    model: Optional[str] = (
+        "local"  # The name to use for the model in the completion object
+    )
     grammar: Optional[dict] = None  # A grammar to use for constrained sampling
-    mirostat_tau: Optional[
-        float
-    ] = 5.0  # A higher value corresponds to more surprising or less predictable text, while a lower value corresponds to less surprising or more predictable text.
-    tfs_z: Optional[
-        float
-    ] = 1.0  # Tail Free Sampling - https://www.trentonbricken.com/Tail-Free-Sampling/
+    mirostat_tau: Optional[float] = (
+        5.0  # A higher value corresponds to more surprising or less predictable text, while a lower value corresponds to less surprising or more predictable text.
+    )
+    tfs_z: Optional[float] = (
+        1.0  # Tail Free Sampling - https://www.trentonbricken.com/Tail-Free-Sampling/
+    )
     top_k: Optional[int] = 40
     top_p: Optional[float] = 0.95
     min_p: Optional[float] = 0.05
     repeat_penalty: Optional[float] = 1.1
-    presence_penalty: Optional[
-        float
-    ] = 0.0  # The penalty to apply to tokens based on their presence in the prompt
-    frequency_penalty: Optional[
-        float
-    ] = 0.0  # The penalty to apply to tokens based on their frequency in the prompt
+    presence_penalty: Optional[float] = (
+        0.0  # The penalty to apply to tokens based on their presence in the prompt
+    )
+    frequency_penalty: Optional[float] = (
+        0.0  # The penalty to apply to tokens based on their frequency in the prompt
+    )
     similarity_top_k: Optional[int] = None
     response_mode: Optional[str] = None
 
@@ -601,48 +602,49 @@ class AppSettingsCallData(BaseModel):
 class AttentionSettings(BaseModel):
     mode: str = None
 
+
 class PerformanceSettings(BaseModel):
-  n_gpu_layers: int = None
-  use_mlock: bool = None
-  seed: int = None
-  n_ctx: int = None
-  n_batch: int = None
-  n_threads: int = None
-  offload_kqv: bool = None
-  chat_format: str = None
-  f16_kv: bool = None
+    n_gpu_layers: int = None
+    use_mlock: bool = None
+    seed: int = None
+    n_ctx: int = None
+    n_batch: int = None
+    n_threads: int = None
+    offload_kqv: bool = None
+    chat_format: str = None
+    f16_kv: bool = None
 
 
 class SystemSettings(BaseModel):
-  systemMessage: str = None
-  systemMessageName: str = None
+    systemMessage: str = None
+    systemMessageName: str = None
 
 
 class ModelSettings(BaseModel):
-  id: str = None # @TODO change to modelId
-  botName: str = None
+    id: str = None  # @TODO change to modelId
+    botName: str = None
 
 
 class PromptSettings(BaseModel):
-  promptTemplate: dict = None
-  ragTemplate: dict = None
-  ragMode: dict = None
+    promptTemplate: dict = None
+    ragTemplate: dict = None
+    ragMode: dict = None
 
 
 class KnowledgeSettings(BaseModel):
-  type: str = None
-  index: List[str] = None
+    type: str = None
+    index: List[str] = None
 
 
 class ResponseSettings(BaseModel):
-  temperature: float = None
-  max_tokens: int = None
-  top_p: float = None
-  echo: bool = None
-  stop: List[str] = []
-  repeat_penalty: float = None
-  top_k: int = None
-  stream: bool = None
+    temperature: float = None
+    max_tokens: int = None
+    top_p: float = None
+    echo: bool = None
+    stop: List[str] = []
+    repeat_penalty: float = None
+    top_k: int = None
+    stream: bool = None
 
 
 class BotSettings(BaseModel):
@@ -721,7 +723,9 @@ class InstalledTextModel(BaseModel):
                     "installed_text_models": [
                         {
                             "id": "llama-2-13b-chat",
-                            "savePath": {"llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"},
+                            "savePath": {
+                                "llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"
+                            },
                             "numTimesRun": 0,
                             "isFavorited": False,
                         }
@@ -763,7 +767,9 @@ class TextModelInstallMetadataResponse(BaseModel):
                     "data": [
                         {
                             "id": "llama-2-13b-chat",
-                            "savePath": {"llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"},
+                            "savePath": {
+                                "llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"
+                            },
                             "numTimesRun": 0,
                             "isFavorited": False,
                         }
@@ -787,7 +793,9 @@ class InstalledTextModelResponse(BaseModel):
                     "message": "Success",
                     "data": {
                         "id": "llama-2-13b-chat",
-                        "savePath": {"llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"},
+                        "savePath": {
+                            "llama-2-13b-chat-Q5_1": "C:\\Users\\user\\Downloads\\llama-2-13b-chat.Q4_K_M.gguf"
+                        },
                         "numTimesRun": 0,
                         "isFavorited": False,
                     },

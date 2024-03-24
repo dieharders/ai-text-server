@@ -18,7 +18,7 @@ MODEL_METADATAS_FILENAME = "installed_models.json"
 APP_SETTINGS_FOLDER = "settings"
 APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
-INSTALLED_TEXT_MODELS_DIR = "text_models"
+MODELS_CACHE_DIR = "text_models"
 INSTALLED_TEXT_MODELS = "installed_text_models"  # key in json file
 DEFAULT_MAX_TOKENS = 128
 
@@ -232,6 +232,7 @@ def save_text_model(data: SaveTextModelRequestArgs):
     else:
         # Assign new data
         new_data = data
+        new_data["savePath"] = {}
         new_data["numTimesRun"] = 0
         new_data["isFavorited"] = False
         models_list.append(data)
@@ -241,6 +242,30 @@ def save_text_model(data: SaveTextModelRequestArgs):
         json.dump(existing_data, file, indent=2)
 
 
+# Deletes all files associated with a revision (model)
+def delete_text_model_revisions(repo_id: str):
+    filepath = MODEL_METADATAS_FILEPATH
+
+    try:
+        # Try to open the file (if it exists)
+        with open(filepath, "r") as file:
+            metadata = json.load(file)
+        # Remove model entry from metadata
+        models_list: List = metadata[INSTALLED_TEXT_MODELS]
+        modelIndex = next(
+            (x for x, item in enumerate(models_list) if item["id"] == repo_id), None
+        )
+        del models_list[modelIndex]
+        # Save updated metadata
+        with open(filepath, "w") as file:
+            json.dump(metadata, file, indent=2)
+    except FileNotFoundError:
+        print("File not found", flush=True)
+    except json.JSONDecodeError:
+        print("JSON parsing error", flush=True)
+
+
+# Delete a single (quant) file for the model
 def delete_text_model(filename: str, repo_id: str):
     filepath = MODEL_METADATAS_FILEPATH
 
