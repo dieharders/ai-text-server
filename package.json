@@ -10,15 +10,16 @@
   "scripts": {
     "clean": "rimraf includes renderer/.next renderer/out build release main.spec",
     "dev": "next dev",
+    "server": "python ./backends/main.py",
     "build": "yarn run python-deps && yarn run build:api && next build renderer",
+    "build:api": "pyinstaller -c -F --clean --name main --distpath includes backends/main.py",
     "release": "yarn run build && electron-builder",
     "release:win": "yarn run build && electron-builder --win --x64",
     "unpacked": "yarn run build && electron-builder --dir",
     "export": "next export",
     "start": "electron .",
     "lint": "next lint",
-    "python-deps": "pip install -r requirements.txt",
-    "build:api": "pyinstaller -c -F --clean --name main --distpath includes backends/main.py"
+    "python-deps": "pip install -r requirements.txt"
   },
   "postinstall": "electron-builder install-app-deps",
   "build": {
