@@ -21,7 +21,14 @@ from embedding import embedding
 from server import common, classes
 from routes import router as endpoint_router
 from llama_index.response_synthesizers import ResponseMode
-from huggingface_hub import hf_hub_download, get_hf_file_metadata, hf_hub_url, ModelFilter, HfApi
+from huggingface_hub import (
+    hf_hub_download,
+    get_hf_file_metadata,
+    hf_hub_url,
+    scan_cache_dir,
+    ModelFilter,
+    HfApi,
+)
 
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
@@ -34,6 +41,7 @@ TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
 SERVER_PORT = 8008
+
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -197,8 +205,10 @@ def load_text_inference(
         app.state.model_id = model_id
         app.state.path_to_model = modelPath
         # Unload the model if one exists
-        if (app.state.llm):
-            print(f"[homebrew api] Ejecting model {model_id} currently loaded from: {modelPath}")
+        if app.state.llm:
+            print(
+                f"[homebrew api] Ejecting model {model_id} currently loaded from: {modelPath}"
+            )
             unload_text_inference()
         # Load the specified Ai model
         if app.state.llm is None:
@@ -227,7 +237,7 @@ def load_text_inference(
 # Open an OS file exporer on host machine
 @app.get("/v1/text/modelExplore")
 def explore_text_model_dir() -> classes.FileExploreResponse:
-    filePath = common.INSTALLED_TEXT_MODELS_DIR
+    filePath = common.MODELS_CACHE_DIR
 
     if not filePath:
         return {
@@ -253,11 +263,11 @@ def search_models(payload):
     hf_api = HfApi()
     # @TODO Example showing how to filter by task and return only top 10 most downloaded
     models = hf_api.list_models(
-        sort=sort, # or "downloads" or "trending"
+        sort=sort,  # or "downloads" or "trending"
         limit=limit,
         filter=ModelFilter(
             task=task,
-        )
+        ),
     )
     return {
         "success": True,
@@ -301,17 +311,19 @@ def get_model_metadata(payload):
 @app.post("/v1/text/download")
 def download_text_model(payload: classes.DownloadTextModelRequest):
     try:
-        repo_id  = payload.repo_id
+        repo_id = payload.repo_id
         filename = payload.filename
-        cache_dir = common.INSTALLED_TEXT_MODELS_DIR
+        cache_dir = common.MODELS_CACHE_DIR
         # repo_type = "model" # optional, specify type of data, defaults to model
         # resume_download = True # optional, resume from prev download progress
         # local_dir = "" # optional, downloaded file will be placed under this directory
 
         # Save path and details to json file
-        common.save_text_model({
-            "id": repo_id,
-        })
+        common.save_text_model(
+            {
+                "id": repo_id,
+            }
+        )
 
         # Download model
         download_path = hf_hub_download(
@@ -325,16 +337,59 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
 
         # Save finalized details to file
         dpath = os.path.join(os.getcwd(), download_path)
-        common.save_text_model({
-            "id": repo_id,
-            "savePath": {filename: dpath},
-        })
+        common.save_text_model(
+            {
+                "id": repo_id,
+                "savePath": {filename: dpath},
+            }
+        )
 
         return {
             "success": True,
             "message": f"Saved model file to {download_path}.",
         }
     except (KeyError, Exception, EnvironmentError, OSError, ValueError) as err:
+        print(f"Error: {err}", flush=True)
+        raise HTTPException(
+            status_code=400, detail=f"Something went wrong. Reason: {err}"
+        )
+
+
+# Remove text model weights file and installation record.
+# Current limitation is that this deletes all quant files for a repo.
+@app.post("/v1/text/delete")
+def delete_text_model(payload: classes.DeleteTextModelRequest):
+    filename = payload.filename
+    repo_id = payload.repoId
+
+    try:
+        cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
+        # Find model hash. Pass nothing to scan the default dir
+        model_cache_info = scan_cache_dir(cache_dir)
+        repos = model_cache_info.repos
+        repoIndex = next(
+            (x for x, info in enumerate(repos) if info.repo_id == repo_id), None
+        )
+        target_repo = list(repos)[repoIndex]
+        repo_revisions = list(target_repo.revisions)
+        repo_commit_hash = []
+        for r in repo_revisions:
+            repo_commit_hash.append(r.commit_hash)
+        # Delete weights from cache, https://huggingface.co/docs/huggingface_hub/en/guides/manage-cache
+        delete_strategy = model_cache_info.delete_revisions(*repo_commit_hash)
+        delete_strategy.execute()
+        freed_size = delete_strategy.expected_freed_size_str
+        print(f"Freed {freed_size} space.", flush=True)
+
+        # Delete install record from json file
+        if freed_size != "0.0":
+            common.delete_text_model_revisions(repo_id=repo_id)
+
+        return {
+            "success": True,
+            "message": f"Deleted model file from {filename}. Freed {freed_size} of space.",
+        }
+    except (KeyError, Exception) as err:
         print(f"Error: {err}", flush=True)
         raise HTTPException(
             status_code=400, detail=f"Something went wrong. Reason: {err}"
@@ -428,7 +483,7 @@ async def text_inference(payload: classes.InferenceRequest):
                 )
             )
         # elif mode == classes.CHAT_MODES.SLIDING.value:
-            # do stuff here ...
+        # do stuff here ...
         elif mode is None:
             raise Exception("Check 'mode' is provided.")
         else:
@@ -1065,6 +1120,7 @@ def save_playground_settings(data: dict) -> classes.GenericEmptyResponse:
         "data": None,
     }
 
+
 # Save bot settings
 @app.post("/v1/persist/bot-settings")
 def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
@@ -1072,13 +1128,16 @@ def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
     file_name = BOT_SETTINGS_FILE_NAME
     file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
     # Save to memory
-    results = common.save_bot_settings_file(common.APP_SETTINGS_PATH, file_path, settings)
+    results = common.save_bot_settings_file(
+        common.APP_SETTINGS_PATH, file_path, settings
+    )
 
     return {
         "success": True,
         "message": f"Saved bot settings to {file_path}",
         "data": results,
     }
+
 
 # Load bot settings
 @app.get("/v1/persist/bot-settings")
@@ -1132,7 +1191,7 @@ def start_homebrew_server():
             app,
             host="0.0.0.0",
             port=SERVER_PORT,
-            log_level="info"
+            log_level="info",
         )
         return True
     except:

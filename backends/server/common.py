@@ -18,8 +18,8 @@ MODEL_METADATAS_FILENAME = "installed_models.json"
 APP_SETTINGS_FOLDER = "settings"
 APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
-INSTALLED_TEXT_MODELS_DIR = "text_models"
-INSTALLED_TEXT_MODELS = "installed_text_models" # key in json file
+MODELS_CACHE_DIR = "text_models"
+INSTALLED_TEXT_MODELS = "installed_text_models"  # key in json file
 DEFAULT_MAX_TOKENS = 128
 
 
@@ -212,7 +212,9 @@ def save_text_model(data: SaveTextModelRequestArgs):
 
     # Update the existing data with the new variables
     models_list: List = existing_data[INSTALLED_TEXT_MODELS]
-    modelIndex = next((x for x, item in enumerate(models_list) if item["id"] == repoId), None)
+    modelIndex = next(
+        (x for x, item in enumerate(models_list) if item["id"] == repoId), None
+    )
     if modelIndex:
         model = models_list[modelIndex]
         # Assign updated data
@@ -230,6 +232,7 @@ def save_text_model(data: SaveTextModelRequestArgs):
     else:
         # Assign new data
         new_data = data
+        new_data["savePath"] = {}
         new_data["numTimesRun"] = 0
         new_data["isFavorited"] = False
         models_list.append(data)
@@ -237,6 +240,53 @@ def save_text_model(data: SaveTextModelRequestArgs):
     # Save the updated data to the file, this will overwrite all values in the key's dict.
     with open(filepath, "w") as file:
         json.dump(existing_data, file, indent=2)
+
+
+# Deletes all files associated with a revision (model)
+def delete_text_model_revisions(repo_id: str):
+    filepath = MODEL_METADATAS_FILEPATH
+
+    try:
+        # Try to open the file (if it exists)
+        with open(filepath, "r") as file:
+            metadata = json.load(file)
+        # Remove model entry from metadata
+        models_list: List = metadata[INSTALLED_TEXT_MODELS]
+        modelIndex = next(
+            (x for x, item in enumerate(models_list) if item["id"] == repo_id), None
+        )
+        del models_list[modelIndex]
+        # Save updated metadata
+        with open(filepath, "w") as file:
+            json.dump(metadata, file, indent=2)
+    except FileNotFoundError:
+        print("File not found", flush=True)
+    except json.JSONDecodeError:
+        print("JSON parsing error", flush=True)
+
+
+# Delete a single (quant) file for the model
+def delete_text_model(filename: str, repo_id: str):
+    filepath = MODEL_METADATAS_FILEPATH
+
+    try:
+        # Try to open the file (if it exists)
+        with open(filepath, "r") as file:
+            metadata = json.load(file)
+        # Remove model entry from metadata
+        models_list: List = metadata[INSTALLED_TEXT_MODELS]
+        modelIndex = next(
+            (x for x, item in enumerate(models_list) if item["id"] == repo_id), None
+        )
+        model = models_list[modelIndex]
+        del model["savePath"][filename]
+        # Save updated metadata
+        with open(filepath, "w") as file:
+            json.dump(metadata, file, indent=2)
+    except FileNotFoundError:
+        print("File not found", flush=True)
+    except json.JSONDecodeError:
+        print("JSON parsing error", flush=True)
 
 
 def delete_vector_store(target_file_path: str, folder_path):
@@ -279,6 +329,7 @@ def get_settings_file(folderpath: str, filepath: str):
 
     return loaded_data
 
+
 def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
     # Create folder/file
     if not os.path.exists(folderpath):
@@ -302,6 +353,7 @@ def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
         json.dump(existing_data, file, indent=2)
 
     return existing_data
+
 
 def save_settings_file(folderpath: str, filepath: str, data: dict):
     # Create folder/file
@@ -350,6 +402,7 @@ def get_model_config(id: str, folderpath, filepath) -> ModelConfig:
     config = configs[id]
     return config
 
+
 # Read the version from package.json file
 def read_api_version():
     try:
@@ -362,6 +415,7 @@ def read_api_version():
         # If the file doesn't exist
         version = "0"
     return version
+
 
 def read_constants(app):
     # Determine path to file based on prod or dev
