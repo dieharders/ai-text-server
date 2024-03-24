@@ -184,7 +184,7 @@ def parse_valid_tags(tags: str):
 
 
 class SaveTextModelRequestArgs(dict):
-    id: str
+    repoId: str
     savePath: Optional[dict] = {}
     isFavorited: Optional[bool] = False
     numTimesRun: Optional[int] = 0
@@ -192,7 +192,7 @@ class SaveTextModelRequestArgs(dict):
 
 # Index the path of the downloaded model in a file
 def save_text_model(data: SaveTextModelRequestArgs):
-    repoId = data["id"]
+    repo_id = data["repoId"]
     folderpath = APP_SETTINGS_PATH
     filepath = MODEL_METADATAS_FILEPATH
 
@@ -213,7 +213,7 @@ def save_text_model(data: SaveTextModelRequestArgs):
     # Update the existing data with the new variables
     models_list: List = existing_data[INSTALLED_TEXT_MODELS]
     modelIndex = next(
-        (x for x, item in enumerate(models_list) if item["id"] == repoId), None
+        (x for x, item in enumerate(models_list) if item["repoId"] == repo_id), None
     )
     if modelIndex:
         model = models_list[modelIndex]
@@ -253,7 +253,7 @@ def delete_text_model_revisions(repo_id: str):
         # Remove model entry from metadata
         models_list: List = metadata[INSTALLED_TEXT_MODELS]
         modelIndex = next(
-            (x for x, item in enumerate(models_list) if item["id"] == repo_id), None
+            (x for x, item in enumerate(models_list) if item["repoId"] == repo_id), None
         )
         del models_list[modelIndex]
         # Save updated metadata
@@ -276,7 +276,7 @@ def delete_text_model(filename: str, repo_id: str):
         # Remove model entry from metadata
         models_list: List = metadata[INSTALLED_TEXT_MODELS]
         modelIndex = next(
-            (x for x, item in enumerate(models_list) if item["id"] == repo_id), None
+            (x for x, item in enumerate(models_list) if item["repoId"] == repo_id), None
         )
         model = models_list[modelIndex]
         del model["savePath"][filename]
@@ -390,7 +390,7 @@ def get_model_metadata(
     settings: InstalledTextModel = get_settings_file(folderpath, filepath)
     models = settings[INSTALLED_TEXT_MODELS]
     for item in models:
-        if item["id"] == id:
+        if item["repoId"] == id:
             metadata = item
             break
     return metadata

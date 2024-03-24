@@ -692,7 +692,7 @@ class GenericEmptyResponse(BaseModel):
 
 
 class InstalledTextModelMetadata(BaseModel):
-    id: Optional[str] = None
+    repoId: Optional[str] = None
     savePath: Optional[str | dict] = None
     numTimesRun: Optional[int] = None
     isFavorited: Optional[bool] = None

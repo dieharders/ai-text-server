@@ -134,7 +134,6 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
         metadatas: classes.InstalledTextModel = common.get_settings_file(
             common.APP_SETTINGS_PATH, common.MODEL_METADATAS_FILEPATH
         )
-
         return {
             "success": True,
             "message": "This is a list of all currently installed models.",
@@ -321,7 +320,7 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
         # Save path and details to json file
         common.save_text_model(
             {
-                "id": repo_id,
+                "repoId": repo_id,
             }
         )
 
@@ -339,7 +338,7 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
         dpath = os.path.join(os.getcwd(), download_path)
         common.save_text_model(
             {
-                "id": repo_id,
+                "repoId": repo_id,
                 "savePath": {filename: dpath},
             }
         )
