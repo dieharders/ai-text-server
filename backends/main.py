@@ -350,6 +350,8 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
             # local_dir_use_symlinks=False,
             # repo_type=repo_type,
         )
+        if not isinstance(file_path, str):
+            raise Exception("Path is not string.")
 
         # Get actual file path
         [model_cache_info, repo_revisions] = common.scan_cached_repo(
