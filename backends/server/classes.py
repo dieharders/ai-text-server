@@ -622,7 +622,8 @@ class SystemSettings(BaseModel):
 
 class ModelSettings(BaseModel):
     id: str = None  # @TODO change to modelId
-    botName: str = None
+    filename: str = None
+    botName: Optional[str] = None
 
 
 class PromptSettings(BaseModel):
@@ -692,7 +693,7 @@ class GenericEmptyResponse(BaseModel):
 
 
 class InstalledTextModelMetadata(BaseModel):
-    id: Optional[str] = None
+    repoId: Optional[str] = None
     savePath: Optional[str | dict] = None
     numTimesRun: Optional[int] = None
     isFavorited: Optional[bool] = None

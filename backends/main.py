@@ -25,7 +25,6 @@ from huggingface_hub import (
     hf_hub_download,
     get_hf_file_metadata,
     hf_hub_url,
-    scan_cache_dir,
     ModelFilter,
     HfApi,
 )
@@ -134,7 +133,6 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
         metadatas: classes.InstalledTextModel = common.get_settings_file(
             common.APP_SETTINGS_PATH, common.MODEL_METADATAS_FILEPATH
         )
-
         return {
             "success": True,
             "message": "This is a list of all currently installed models.",
@@ -150,7 +148,7 @@ def get_installed_models() -> classes.TextModelInstallMetadataResponse:
 
 # Gets the currently loaded model and its installation/config metadata
 @app.get("/v1/text/model")
-def get_text_model() -> classes.LoadedTextModelResponse:
+def get_text_model() -> classes.LoadedTextModelResponse | dict:
     try:
         llm = app.state.llm
         model_id = app.state.model_id
@@ -313,34 +311,46 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
     try:
         repo_id = payload.repo_id
         filename = payload.filename
-        cache_dir = common.MODELS_CACHE_DIR
         # repo_type = "model" # optional, specify type of data, defaults to model
         # resume_download = True # optional, resume from prev download progress
         # local_dir = "" # optional, downloaded file will be placed under this directory
+        cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
 
         # Save path and details to json file
         common.save_text_model(
             {
-                "id": repo_id,
+                "repoId": repo_id,
             }
         )
 
-        # Download model
+        # Download model.
+        # Returned path is symlink which isnt loadable; for our purposes we use get_cached_blob_path().
         download_path = hf_hub_download(
             repo_id=repo_id,
             filename=filename,
             cache_dir=cache_dir,
+            # local_dir=cache_dir,
+            # local_dir_use_symlinks=False,
             # repo_type=repo_type,
-            # resume_download=resume_download,
-            # local_dir=local_dir,
+            # resume_download=True,
         )
 
-        # Save finalized details to file
-        dpath = os.path.join(os.getcwd(), download_path)
+        # Get actual file path
+        [model_cache_info, repo_revisions] = common.scan_cached_repo(
+            cache_dir=cache_dir, repo_id=repo_id
+        )
+        # file_path = os.path.join(os.getcwd(), download_path)
+        file_path = common.get_cached_blob_path(
+            repo_revisions=repo_revisions, filename=filename
+        )
+        if not isinstance(file_path, str):
+            raise Exception("Path is not string.")
+
+        # Save finalized details to disk
         common.save_text_model(
             {
-                "id": repo_id,
-                "savePath": {filename: dpath},
+                "repoId": repo_id,
+                "savePath": {filename: file_path},
             }
         )
 
@@ -364,17 +374,20 @@ def delete_text_model(payload: classes.DeleteTextModelRequest):
 
     try:
         cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
-        # Find model hash. Pass nothing to scan the default dir
-        model_cache_info = scan_cache_dir(cache_dir)
-        repos = model_cache_info.repos
-        repoIndex = next(
-            (x for x, info in enumerate(repos) if info.repo_id == repo_id), None
+
+        # Checks file and throws if not found
+        common.check_cached_file_exists(
+            cache_dir=cache_dir, repo_id=repo_id, filename=filename
         )
-        target_repo = list(repos)[repoIndex]
-        repo_revisions = list(target_repo.revisions)
+
+        # Find model hash
+        [model_cache_info, repo_revisions] = common.scan_cached_repo(
+            cache_dir=cache_dir, repo_id=repo_id
+        )
         repo_commit_hash = []
         for r in repo_revisions:
             repo_commit_hash.append(r.commit_hash)
+
         # Delete weights from cache, https://huggingface.co/docs/huggingface_hub/en/guides/manage-cache
         delete_strategy = model_cache_info.delete_revisions(*repo_commit_hash)
         delete_strategy.execute()
