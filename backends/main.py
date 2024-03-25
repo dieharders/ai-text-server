@@ -311,15 +311,31 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
     try:
         repo_id = payload.repo_id
         filename = payload.filename
-        # repo_type = "model" # optional, specify type of data, defaults to model
-        # resume_download = True # optional, resume from prev download progress
-        # local_dir = "" # optional, downloaded file will be placed under this directory
         cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
+        # repo_type = "model" # optional, specify type of data, defaults to model
+        # local_dir = "" # optional, downloaded file will be placed under this directory
+
+        # Resume from prev download progress if no path record found
+        resume_download = False
+        metadatas: classes.InstalledTextModel = common.get_settings_file(
+            common.APP_SETTINGS_PATH, common.MODEL_METADATAS_FILEPATH
+        )
+        installed_models = metadatas[common.INSTALLED_TEXT_MODELS]
+        modelIndex = next(
+            (x for x, item in enumerate(installed_models) if item["repoId"] == repo_id),
+            None,
+        )
+        if modelIndex:
+            save_paths = installed_models[modelIndex]["savePath"]
+            save_path_keys = save_paths.keys()
+            if filename in save_path_keys and save_paths[filename] == "":
+                resume_download = True
 
         # Save path and details to json file
         common.save_text_model(
             {
                 "repoId": repo_id,
+                "savePath": {filename: ""},
             }
         )
 
@@ -329,10 +345,10 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
             repo_id=repo_id,
             filename=filename,
             cache_dir=cache_dir,
+            resume_download=resume_download,
             # local_dir=cache_dir,
             # local_dir_use_symlinks=False,
             # repo_type=repo_type,
-            # resume_download=True,
         )
 
         # Get actual file path
