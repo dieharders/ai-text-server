@@ -13,6 +13,13 @@ from server.classes import (
     DEFAULT_CHAT_MODE,
     DEFAULT_CONTEXT_WINDOW,
 )
+from huggingface_hub import (
+    scan_cache_dir,
+    try_to_load_from_cache,
+    _CACHED_NO_EXIST,
+    HFCacheInfo,
+    CachedFileInfo,
+)
 
 MODEL_METADATAS_FILENAME = "installed_models.json"
 APP_SETTINGS_FOLDER = "settings"
@@ -110,6 +117,48 @@ async def get_file_from_url(url: str, pathname: str, app):
             for block in res.iter_bytes(chunk_size=CHUNK_SIZE):
                 file.write(block)
     return True
+
+
+def check_cached_file_exists(cache_dir: str, repo_id: str, filename: str):
+    filepath = try_to_load_from_cache(
+        cache_dir=cache_dir, repo_id=repo_id, filename=filename
+    )
+    if isinstance(filepath, str):
+        # file exists and is cached
+        print(f"File exists: {filepath}", flush=True)
+    elif filepath is _CACHED_NO_EXIST:
+        # non-existence of file is cached
+        err = "File non-existence has been recorded"
+        print(err, flush=True)
+        raise Exception(err)
+    else:
+        # file is not cached
+        err = "File not cached"
+        print(err, flush=True)
+        raise Exception(err)
+
+
+# Find the specified model repo and return all revisions
+def scan_cached_repo(cache_dir: str, repo_id: str) -> Tuple[HFCacheInfo, list]:
+    # Pass nothing to scan the default dir
+    model_cache_info = scan_cache_dir(cache_dir)
+    repos = model_cache_info.repos
+    repoIndex = next(
+        (x for x, info in enumerate(repos) if info.repo_id == repo_id), None
+    )
+    target_repo = list(repos)[repoIndex]
+    repo_revisions = list(target_repo.revisions)
+    return [model_cache_info, repo_revisions]
+
+
+def get_cached_blob_path(repo_revisions: list, filename: str):
+    for r in repo_revisions:
+        files: List[CachedFileInfo] = list(r.files)
+        for file in files:
+            if file.file_name == filename:
+                # CachedFileInfo: file.blob_path same as -> file.file_path.resolve()
+                actual_path = str(file.blob_path)
+                return actual_path
 
 
 # Determine if the input string is acceptable as an id
