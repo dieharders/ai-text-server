@@ -314,6 +314,7 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
         # repo_type = "model" # optional, specify type of data, defaults to model
         # resume_download = True # optional, resume from prev download progress
         # local_dir = "" # optional, downloaded file will be placed under this directory
+        cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
 
         # Save path and details to json file
         common.save_text_model(
@@ -327,15 +328,14 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
         download_path = hf_hub_download(
             repo_id=repo_id,
             filename=filename,
-            cache_dir=os.path.join(os.getcwd(), common.MODELS_CACHE_DIR),
-            # local_dir=os.path.join(os.getcwd(), common.MODELS_CACHE_DIR),
+            cache_dir=cache_dir,
+            # local_dir=cache_dir,
             # local_dir_use_symlinks=False,
             # repo_type=repo_type,
             # resume_download=True,
         )
 
         # Get actual file path
-        cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
         [model_cache_info, repo_revisions] = common.scan_cached_repo(
             cache_dir=cache_dir, repo_id=repo_id
         )

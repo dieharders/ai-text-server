@@ -109,14 +109,14 @@ def messages_to_prompt(
 def load_text_retrieval_model(
     options: dict,
 ):
-    # @TODO "text_models" dir may need to be looked up from settings storage if user chose a different location.
+    # @TODO We hardcode this until we support user specified model/file. Determine path from HF cache.
     PATH_TO_RETRIEVAL_MODEL = os.path.join(
         os.getcwd(), common.MODELS_CACHE_DIR, "zephyr-7b-beta.Q4_K_M.gguf"
     )
     if not os.path.isfile(PATH_TO_RETRIEVAL_MODEL):
         print("[homebrew api] No embedding model exists.")
         # @TODO Will need to await downloading model here if none exists
-        return None
+        raise Exception("No embedding model exists")
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
     callback_manager = CallbackManager([llama_debug])
     return LlamaCPP(
