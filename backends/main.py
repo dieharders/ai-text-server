@@ -5,6 +5,7 @@ import uvicorn
 import httpx
 import shutil
 import socket
+from dotenv import load_dotenv
 from typing import List
 from fastapi import (
     FastAPI,
@@ -41,6 +42,12 @@ TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
 SERVER_PORT = 8008
+
+# Path to the .env file in the parent directory
+current_directory = os.path.dirname(os.path.abspath(__file__))
+parent_directory = os.path.dirname(current_directory)
+env_path = os.path.join(parent_directory, ".env")
+load_dotenv(env_path)
 
 
 @asynccontextmanager
@@ -81,12 +88,15 @@ app = FastAPI(title="🍺 HomeBrew API server", version="0.2.0", lifespan=lifesp
 
 
 # Configure CORS settings
+CUSTOM_ORIGINS_ENV: str = os.getenv("CUSTOM_ORIGINS")
+CUSTOM_ORIGINS = CUSTOM_ORIGINS_ENV.split(",") if CUSTOM_ORIGINS_ENV else []
 origins = [
     "http://localhost:3000",  # (optional) for testing client apps
-    "https://hoppscotch.io",  # (optional) for testing endpoints
-    "http://localhost:8000",  # (required) Homebrew's front-end, not needed when we remove the node.js frontend
+    # "https://hoppscotch.io",  # (optional) for testing endpoints
     "https://brain-dump-dieharders.vercel.app",  # (required) client app origin (preview)
-    "https://homebrew-ai-discover.vercel.app",  # (required) client app origin (production)
+    "https://homebrew-ai-discover.vercel.app",  # (required) client app origin (production/alias)
+    "https://studio.openbrewai.com",  # (required) client app origin (production/domain)
+    *CUSTOM_ORIGINS,
 ]
 
 # Redirect requests to our custom endpoints
