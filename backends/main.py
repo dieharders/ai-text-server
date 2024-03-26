@@ -4,6 +4,7 @@ import json
 import uvicorn
 import httpx
 import shutil
+import socket
 from typing import List
 from fastapi import (
     FastAPI,
@@ -44,7 +45,22 @@ SERVER_PORT = 8008
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    print("[OPENBREW] Lifespan startup")
+    print(f"{common.PRNT_API} Lifespan startup", flush=True)
+    # Display where the admin can use the web UI
+    openbrew_studio_url = "https://studio.openbrewai.com"
+    print(
+        f"{common.PRNT_API} Navigate your browser to OpenBrew Studio\n-> {openbrew_studio_url} for the admin web UI.",
+        flush=True,
+    )
+    # Display the local IP address of this server
+    hostname = socket.gethostname()
+    IPAddr = socket.gethostbyname(hostname)
+    openbrew_server_ip = f"http://{IPAddr}:{SERVER_PORT}/docs"
+    openbrew_server_local_ip = f"http://localhost:{SERVER_PORT}/docs"
+    print(
+        f"{common.PRNT_API} Refer to API docs for OpenBrew Server \n-> {openbrew_server_local_ip} \nOR\n-> {openbrew_server_ip}",
+        flush=True,
+    )
     # https://www.python-httpx.org/quickstart/
     app.requests_client = httpx.Client()
     # Store some state here if you want...
@@ -58,7 +74,7 @@ async def lifespan(application: FastAPI):
 
     yield
 
-    print("[OPENBREW] Lifespan shutdown")
+    print(f"{common.PRNT_API} Lifespan shutdown")
 
 
 app = FastAPI(title="🍺 HomeBrew API server", version="0.2.0", lifespan=lifespan)
@@ -104,7 +120,7 @@ def ping() -> classes.PingResponse:
         db.heartbeat()
         return {"success": True, "message": "pong"}
     except Exception as e:
-        print(f"[OPENBREW] Error pinging server: {e}")
+        print(f"{common.PRNT_API} Error pinging server: {e}")
         return {"success": False, "message": ""}
 
 
@@ -205,7 +221,7 @@ def load_text_inference(
         # Unload the model if one exists
         if app.state.llm:
             print(
-                f"[OPENBREW] Ejecting model {model_id} currently loaded from: {modelPath}"
+                f"{common.PRNT_API} Ejecting model {model_id} currently loaded from: {modelPath}"
             )
             unload_text_inference()
         # Load the specified Ai model
@@ -222,7 +238,7 @@ def load_text_inference(
                 "modelSettings": model_settings,
                 "generateSettings": generate_settings,
             }
-            print(f"[OPENBREW] Model {model_id} loaded from: {modelPath}")
+            print(f"{common.PRNT_API} Model {model_id} loaded from: {modelPath}")
         return {
             "message": f"AI model [{model_id}] loaded.",
             "success": True,
@@ -649,21 +665,21 @@ async def create_memory(
         tmp_input_file_path = os.path.join(tmp_folder, filename)
         if url_path:
             print(
-                f"[OPENBREW] Downloading file from url {url_path} to {tmp_input_file_path}"
+                f"{common.PRNT_API} Downloading file from url {url_path} to {tmp_input_file_path}"
             )
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             # Download the file and save to disk
             await common.get_file_from_url(url_path, tmp_input_file_path, app)
         elif text_input:
-            print(f"[OPENBREW] Saving raw text to file...\n{text_input}")
+            print(f"{common.PRNT_API} Saving raw text to file...\n{text_input}")
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             # Write to file
             with open(tmp_input_file_path, "w") as f:
                 f.write(text_input)
         elif file:
-            print("[OPENBREW] Saving uploaded file to disk...")
+            print(f"{common.PRNT_API} Saving uploaded file to disk...")
             # Read the uploaded file in chunks of 1mb,
             # store to a tmp dir for processing later
             if not os.path.exists(tmp_folder):
@@ -686,7 +702,7 @@ async def create_memory(
         )
 
         # Create embeddings
-        print("[OPENBREW] Start embedding...")
+        print(f"{common.PRNT_API} Start embedding...")
         embed_form = {
             "collection_name": collection_name,
             "document_name": document_name,
@@ -707,14 +723,14 @@ async def create_memory(
     except (Exception, KeyError) as e:
         # Error
         msg = f"Failed to create a new memory: {e}"
-        print(f"[OPENBREW] {msg}")
+        print(f"{common.PRNT_API} {msg}")
         return {
             "success": False,
             "message": msg,
         }
     else:
         msg = "A new memory has been added to the queue. It will be available for use shortly."
-        print(f"[OPENBREW] {msg}", flush=True)
+        print(f"{common.PRNT_API} {msg}", flush=True)
         return {
             "success": True,
             "message": msg,
@@ -723,7 +739,7 @@ async def create_memory(
         # Delete uploaded tmp file
         if os.path.exists(tmp_input_file_path):
             os.remove(tmp_input_file_path)
-            print(f"[OPENBREW] Removed temp file.")
+            print(f"{common.PRNT_API} Removed temp file.")
 
 
 @app.get("/v1/memory/getAllCollections")
@@ -746,7 +762,7 @@ def get_all_collections() -> classes.GetAllCollectionsResponse:
             "data": collections,
         }
     except Exception as e:
-        print(f"[OPENBREW] Error: {e}")
+        print(f"{common.PRNT_API} Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -783,7 +799,7 @@ def get_collection(
             },
         }
     except Exception as e:
-        print(f"[OPENBREW] Error: {e}")
+        print(f"{common.PRNT_API} Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -814,7 +830,7 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
             "data": documents,
         }
     except Exception as e:
-        print(f"[OPENBREW] Error: {e}")
+        print(f"{common.PRNT_API} Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -892,16 +908,16 @@ async def update_memory(
         tmp_file_path = os.path.join(TMP_DOCUMENT_PATH, new_file_name)
         if url_path:
             # Download the file and save to disk
-            print(f"[OPENBREW] Downloading file to {tmp_file_path} ...")
+            print(f"{common.PRNT_API} Downloading file to {tmp_file_path} ...")
             await common.get_file_from_url(url_path, tmp_file_path, app)
         elif file_path:
             # Copy file from provided location to /tmp dir, only if paths differ
-            print(f"[OPENBREW] Loading local file from disk {file_path} ...")
+            print(f"{common.PRNT_API} Loading local file from disk {file_path} ...")
             if file_path != tmp_file_path:
                 if not os.path.exists(tmp_folder):
                     os.makedirs(tmp_folder)
                 shutil.copy(file_path, tmp_file_path)
-            print("[OPENBREW] File to be copied already in /tmp dir")
+            print(f"{common.PRNT_API} File to be copied already in /tmp dir")
         else:
             raise Exception("Please supply a local path or url to a file")
 
@@ -957,7 +973,7 @@ async def update_memory(
             "message": f"Updated memories [{document_name}]",
         }
     except Exception as e:
-        print(f"[OPENBREW] Error: {e}")
+        print(f"{common.PRNT_API} Error: {e}")
         return {
             "success": False,
             "message": f"{e}",
@@ -990,7 +1006,9 @@ def delete_documents(
             source_file_path = document_metadata["filePath"]
             document_id = document_metadata["id"]
             # Remove file from disk
-            print(f"[OPENBREW] Remove file {document_id} from {source_file_path}")
+            print(
+                f"{common.PRNT_API} Remove file {document_id} from {source_file_path}"
+            )
             if os.path.exists(source_file_path):
                 os.remove(source_file_path)
             # Remove source reference from collection array
@@ -1010,7 +1028,7 @@ def delete_documents(
             "message": f"Removed {num_documents} document(s): {document_ids}",
         }
     except Exception as e:
-        print(f"[OPENBREW] Error: {e}")
+        print(f"{common.PRNT_API} Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -1049,7 +1067,7 @@ def delete_collection(
             "message": f"Removed collection [{collection_id}]",
         }
     except Exception as e:
-        print(f"[OPENBREW] Error: {e}")
+        print(f"{common.PRNT_API} Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -1093,7 +1111,7 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
             "message": "Successfully wiped all memories from Ai",
         }
     except Exception as e:
-        print(f"[OPENBREW] Error: {e}")
+        print(f"{common.PRNT_API} Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -1216,7 +1234,7 @@ def get_bot_settings() -> classes.BotSettingsResponse:
 
 def start_homebrew_server():
     try:
-        print("[OPENBREW] Starting API server...")
+        print(f"{common.PRNT_API} Starting API server...")
         # Start the ASGI server
         uvicorn.run(
             app,
@@ -1226,7 +1244,7 @@ def start_homebrew_server():
         )
         return True
     except:
-        print("[OPENBREW] Failed to start API server")
+        print(f"{common.PRNT_API} Failed to start API server")
         return False
 
 

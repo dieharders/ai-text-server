@@ -1,4 +1,5 @@
 import subprocess
+from server import common
 
 
 async def start_text_inference_server(file_path: str, port: int, process: str):
@@ -33,9 +34,9 @@ async def start_text_inference_server(file_path: str, port: int, process: str):
         # Execute the command
         proc = subprocess.Popen(serve_llama_cpp)
         print(
-            f"[OPENBREW] Starting Inference server from: {file_path} with pid: {proc.pid}"
+            f"{common.PRNT_API} Starting Inference server from: {file_path} with pid: {proc.pid}"
         )
         return proc
     except:
-        print("[OPENBREW] Failed to start Inference server")
+        print(f"{common.PRNT_API} Failed to start Inference server")
         return False

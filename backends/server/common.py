@@ -30,6 +30,22 @@ INSTALLED_TEXT_MODELS = "installed_text_models"  # key in json file
 DEFAULT_MAX_TOKENS = 128
 
 
+# Colors for logging
+class bcolors:
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+
+
+PRNT_API = f"{bcolors.OKBLUE}[OPENBREW]{bcolors.ENDC}"
+
+
 # This will return a context window that is suited for a particular mode.
 # This impacts how long a conversation you can have before the context_window limit is reached (and issues/hallucinations begin) for a given Ai model.
 def calc_max_tokens(
@@ -170,24 +186,24 @@ def check_valid_id(input: str):
     # Check for sequences reserved for our parsing scheme
     matches_double_hyphen = re.findall("--", input)
     if matches_double_hyphen:
-        print(f"[OPENBREW] Found double hyphen in 'id': {input}")
+        print(f"{PRNT_API} Found double hyphen in 'id': {input}")
         return False
     # All names must be 3 and 63 characters
     if l > 63 or l < 3:
         return False
     # No hyphens at start/end
     if input[0] == "-" or input[l - 1] == "-":
-        print("[OPENBREW] Found hyphens at start/end in [id]")
+        print(f"{PRNT_API} Found hyphens at start/end in [id]")
         return False
     # No whitespace allowed
     matches_whitespace = re.findall("\s", input)
     if matches_whitespace:
-        print("[OPENBREW] Found whitespace in [id]")
+        print(f"{PRNT_API} Found whitespace in [id]")
         return False
     # Check special chars. All chars must be lowercase. Dashes acceptable.
     m = re.compile(r"[a-z0-9-]*$")
     if not m.match(input):
-        print("[OPENBREW] Found invalid special chars in [id]")
+        print(f"{PRNT_API} Found invalid special chars in [id]")
         return False
     # Passes
     return True
@@ -228,7 +244,7 @@ def parse_valid_tags(tags: str):
         # Return a sanitized string
         return result
     except Exception as e:
-        print(f"[OPENBREW] {e}")
+        print(f"{PRNT_API} {e}")
         return None
 
 
