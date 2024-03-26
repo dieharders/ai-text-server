@@ -170,24 +170,24 @@ def check_valid_id(input: str):
     # Check for sequences reserved for our parsing scheme
     matches_double_hyphen = re.findall("--", input)
     if matches_double_hyphen:
-        print(f"[homebrew api] Found double hyphen in 'id': {input}")
+        print(f"[OPENBREW] Found double hyphen in 'id': {input}")
         return False
     # All names must be 3 and 63 characters
     if l > 63 or l < 3:
         return False
     # No hyphens at start/end
     if input[0] == "-" or input[l - 1] == "-":
-        print("[homebrew api] Found hyphens at start/end in [id]")
+        print("[OPENBREW] Found hyphens at start/end in [id]")
         return False
     # No whitespace allowed
     matches_whitespace = re.findall("\s", input)
     if matches_whitespace:
-        print("[homebrew api] Found whitespace in [id]")
+        print("[OPENBREW] Found whitespace in [id]")
         return False
     # Check special chars. All chars must be lowercase. Dashes acceptable.
     m = re.compile(r"[a-z0-9-]*$")
     if not m.match(input):
-        print("[homebrew api] Found invalid special chars in [id]")
+        print("[OPENBREW] Found invalid special chars in [id]")
         return False
     # Passes
     return True
@@ -228,7 +228,7 @@ def parse_valid_tags(tags: str):
         # Return a sanitized string
         return result
     except Exception as e:
-        print(f"[homebrew api] {e}")
+        print(f"[OPENBREW] {e}")
         return None
 
 

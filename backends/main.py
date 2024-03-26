@@ -44,7 +44,7 @@ SERVER_PORT = 8008
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    print("[homebrew api] Lifespan startup")
+    print("[OPENBREW] Lifespan startup")
     # https://www.python-httpx.org/quickstart/
     app.requests_client = httpx.Client()
     # Store some state here if you want...
@@ -58,7 +58,7 @@ async def lifespan(application: FastAPI):
 
     yield
 
-    print("[homebrew api] Lifespan shutdown")
+    print("[OPENBREW] Lifespan shutdown")
 
 
 app = FastAPI(title="🍺 HomeBrew API server", version="0.2.0", lifespan=lifespan)
@@ -104,7 +104,7 @@ def ping() -> classes.PingResponse:
         db.heartbeat()
         return {"success": True, "message": "pong"}
     except Exception as e:
-        print(f"[homebrew api] Error pinging server: {e}")
+        print(f"[OPENBREW] Error pinging server: {e}")
         return {"success": False, "message": ""}
 
 
@@ -205,7 +205,7 @@ def load_text_inference(
         # Unload the model if one exists
         if app.state.llm:
             print(
-                f"[homebrew api] Ejecting model {model_id} currently loaded from: {modelPath}"
+                f"[OPENBREW] Ejecting model {model_id} currently loaded from: {modelPath}"
             )
             unload_text_inference()
         # Load the specified Ai model
@@ -222,7 +222,7 @@ def load_text_inference(
                 "modelSettings": model_settings,
                 "generateSettings": generate_settings,
             }
-            print(f"[homebrew api] Model {model_id} loaded from: {modelPath}")
+            print(f"[OPENBREW] Model {model_id} loaded from: {modelPath}")
         return {
             "message": f"AI model [{model_id}] loaded.",
             "success": True,
@@ -649,21 +649,21 @@ async def create_memory(
         tmp_input_file_path = os.path.join(tmp_folder, filename)
         if url_path:
             print(
-                f"[homebrew api] Downloading file from url {url_path} to {tmp_input_file_path}"
+                f"[OPENBREW] Downloading file from url {url_path} to {tmp_input_file_path}"
             )
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             # Download the file and save to disk
             await common.get_file_from_url(url_path, tmp_input_file_path, app)
         elif text_input:
-            print(f"[homebrew api] Saving raw text to file...\n{text_input}")
+            print(f"[OPENBREW] Saving raw text to file...\n{text_input}")
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             # Write to file
             with open(tmp_input_file_path, "w") as f:
                 f.write(text_input)
         elif file:
-            print("[homebrew api] Saving uploaded file to disk...")
+            print("[OPENBREW] Saving uploaded file to disk...")
             # Read the uploaded file in chunks of 1mb,
             # store to a tmp dir for processing later
             if not os.path.exists(tmp_folder):
@@ -686,7 +686,7 @@ async def create_memory(
         )
 
         # Create embeddings
-        print("[homebrew api] Start embedding...")
+        print("[OPENBREW] Start embedding...")
         embed_form = {
             "collection_name": collection_name,
             "document_name": document_name,
@@ -707,14 +707,14 @@ async def create_memory(
     except (Exception, KeyError) as e:
         # Error
         msg = f"Failed to create a new memory: {e}"
-        print(f"[homebrew api] {msg}")
+        print(f"[OPENBREW] {msg}")
         return {
             "success": False,
             "message": msg,
         }
     else:
         msg = "A new memory has been added to the queue. It will be available for use shortly."
-        print(f"[homebrew api] {msg}", flush=True)
+        print(f"[OPENBREW] {msg}", flush=True)
         return {
             "success": True,
             "message": msg,
@@ -723,7 +723,7 @@ async def create_memory(
         # Delete uploaded tmp file
         if os.path.exists(tmp_input_file_path):
             os.remove(tmp_input_file_path)
-            print(f"[homebrew api] Removed temp file.")
+            print(f"[OPENBREW] Removed temp file.")
 
 
 @app.get("/v1/memory/getAllCollections")
@@ -746,7 +746,7 @@ def get_all_collections() -> classes.GetAllCollectionsResponse:
             "data": collections,
         }
     except Exception as e:
-        print(f"[homebrew api] Error: {e}")
+        print(f"[OPENBREW] Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -783,7 +783,7 @@ def get_collection(
             },
         }
     except Exception as e:
-        print(f"[homebrew api] Error: {e}")
+        print(f"[OPENBREW] Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -814,7 +814,7 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
             "data": documents,
         }
     except Exception as e:
-        print(f"[homebrew api] Error: {e}")
+        print(f"[OPENBREW] Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -892,16 +892,16 @@ async def update_memory(
         tmp_file_path = os.path.join(TMP_DOCUMENT_PATH, new_file_name)
         if url_path:
             # Download the file and save to disk
-            print(f"[homebrew api] Downloading file to {tmp_file_path} ...")
+            print(f"[OPENBREW] Downloading file to {tmp_file_path} ...")
             await common.get_file_from_url(url_path, tmp_file_path, app)
         elif file_path:
             # Copy file from provided location to /tmp dir, only if paths differ
-            print(f"[homebrew api] Loading local file from disk {file_path} ...")
+            print(f"[OPENBREW] Loading local file from disk {file_path} ...")
             if file_path != tmp_file_path:
                 if not os.path.exists(tmp_folder):
                     os.makedirs(tmp_folder)
                 shutil.copy(file_path, tmp_file_path)
-            print("[homebrew api] File to be copied already in /tmp dir")
+            print("[OPENBREW] File to be copied already in /tmp dir")
         else:
             raise Exception("Please supply a local path or url to a file")
 
@@ -957,7 +957,7 @@ async def update_memory(
             "message": f"Updated memories [{document_name}]",
         }
     except Exception as e:
-        print(f"[homebrew api] Error: {e}")
+        print(f"[OPENBREW] Error: {e}")
         return {
             "success": False,
             "message": f"{e}",
@@ -990,7 +990,7 @@ def delete_documents(
             source_file_path = document_metadata["filePath"]
             document_id = document_metadata["id"]
             # Remove file from disk
-            print(f"[homebrew api] Remove file {document_id} from {source_file_path}")
+            print(f"[OPENBREW] Remove file {document_id} from {source_file_path}")
             if os.path.exists(source_file_path):
                 os.remove(source_file_path)
             # Remove source reference from collection array
@@ -1010,7 +1010,7 @@ def delete_documents(
             "message": f"Removed {num_documents} document(s): {document_ids}",
         }
     except Exception as e:
-        print(f"[homebrew api] Error: {e}")
+        print(f"[OPENBREW] Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -1049,7 +1049,7 @@ def delete_collection(
             "message": f"Removed collection [{collection_id}]",
         }
     except Exception as e:
-        print(f"[homebrew api] Error: {e}")
+        print(f"[OPENBREW] Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -1093,7 +1093,7 @@ def wipe_all_memories() -> classes.WipeMemoriesResponse:
             "message": "Successfully wiped all memories from Ai",
         }
     except Exception as e:
-        print(f"[homebrew api] Error: {e}")
+        print(f"[OPENBREW] Error: {e}")
         return {
             "success": False,
             "message": str(e),
@@ -1216,7 +1216,7 @@ def get_bot_settings() -> classes.BotSettingsResponse:
 
 def start_homebrew_server():
     try:
-        print("[homebrew api] Starting API server...")
+        print("[OPENBREW] Starting API server...")
         # Start the ASGI server
         uvicorn.run(
             app,
@@ -1226,7 +1226,7 @@ def start_homebrew_server():
         )
         return True
     except:
-        print("[homebrew api] Failed to start API server")
+        print("[OPENBREW] Failed to start API server")
         return False
 
 

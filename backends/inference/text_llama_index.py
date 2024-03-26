@@ -114,7 +114,7 @@ def load_text_retrieval_model(
         os.getcwd(), common.MODELS_CACHE_DIR, "zephyr-7b-beta.Q4_K_M.gguf"
     )
     if not os.path.isfile(PATH_TO_RETRIEVAL_MODEL):
-        print("[homebrew api] No embedding model exists.")
+        print("[OPENBREW] No embedding model exists.")
         # @TODO Will need to await downloading model here if none exists
         raise Exception("No embedding model exists")
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
@@ -267,7 +267,7 @@ def text_completion(
     # Format to model spec, construct a message with system message and prompt
     message = completion_to_prompt(prompt, sys_message, message_format)
 
-    print(f"[homebrew api] Text-Completion: {message}", flush=True)
+    print(f"[OPENBREW] Text-Completion: {message}", flush=True)
 
     # Stream response
     token_generator = llm.stream_complete(message, formatted=True, kwargs=options)

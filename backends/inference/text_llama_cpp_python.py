@@ -33,9 +33,9 @@ async def start_text_inference_server(file_path: str, port: int, process: str):
         # Execute the command
         proc = subprocess.Popen(serve_llama_cpp)
         print(
-            f"[homebrew api] Starting Inference server from: {file_path} with pid: {proc.pid}"
+            f"[OPENBREW] Starting Inference server from: {file_path} with pid: {proc.pid}"
         )
         return proc
     except:
-        print("[homebrew api] Failed to start Inference server")
+        print("[OPENBREW] Failed to start Inference server")
         return False
