@@ -1,12 +1,12 @@
 {
-  "name": "ai-knowledgebase-backend",
-  "version": "0.2.1",
+  "name": "openbrew-server",
+  "version": "0.3.0",
   "author": "Spread Shot Studios",
   "license": "MIT",
-  "productName": "HomeBrewAi",
-  "description": "Local & private Ai engine.",
+  "productName": "OpenBrew Server",
+  "description": "A local & private Ai engine.",
   "main": "main/electron.js",
-  "private": true,
+  "private": false,
   "scripts": {
     "clean": "rimraf includes renderer/.next renderer/out build release main.spec",
     "dev": "next dev",
