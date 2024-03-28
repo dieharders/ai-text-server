@@ -1,8 +1,6 @@
-# 🍺 HomeBrewAi - Inference Engine
+# 🍺 OpenBrew Server - Ai Inference Engine
 
 This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
-
----
 
 ## Introduction
 
@@ -10,25 +8,21 @@ This is a hybrid Node.js + Python app that uses Next.js as the frontend and Fast
 
 Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examples/with-electron)
 
----
-
 ## Main Features
 
 - ✅ Inference: Run open-source AI models for free
-- ✅ Provide easy to setup desktop installers
+- ✅ Provide easy to use desktop installers
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
 - ✅ Advanced Settings: Fine tune how the model is loaded
 - ❌ Threads: Save/Retrieve chat message history
 
-## Features (upcoming)
+## Upcoming Features
 
 - ❌ Cloud platform (subscription, host your infra with us)
 - ❌ Enterprise service (subscription & paid support, bring your own infra)
 - ❌ Auto Agents
 - ❌ Multi-Chat
-
----
 
 ## How It Works
 
@@ -37,8 +31,6 @@ Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examp
 - The Python/FastAPI server (homebrew api) operates under `localhost:8008`.
 
 - 3rd party client apps will call the homebrew api to perform all functions needed.
-
----
 
 ## Getting Started
 
@@ -60,8 +52,6 @@ pip install -r requirements.txt
 yarn python-deps
 ```
 
----
-
 ## Testing locally
 
 ### Run Front-End
@@ -78,9 +68,17 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 If you wish to run the backend server seperately, right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
 
+Or
+
 ```bash
 # from working dir
 python src/backends/main.py
+```
+
+Or (recommended)
+
+```bash
+yarn server
 ```
 
 The homebrew api server will be running on [http://localhost:8008](http://localhost:8008)
@@ -93,9 +91,7 @@ This is the perferred method of running the app:
 yarn start
 ```
 
----
-
-## Build
+## Build steps
 
 This project is meant to be deployed locally on the client's machine. It is a next.js app using serverless runtimes all wrapped by Electron to create a native app. We do this to package up dependencies to make installation easier on the user and to provide the app access to the local OS disk space.
 
@@ -164,9 +160,13 @@ Run the command below in powershell to set your env variables:
 )
 ```
 
-### Bundling - Explanation of build scripts
+## Bundling
 
-Bundling Python exe (the -F flag bundles everything into one .exe ). This is handled automatically by npm scripts and you do not need to execute these manually.
+### Python server
+
+#### Bundling the Python exe with PyInstaller:
+
+This is handled automatically by npm scripts so you do not need to execute these manually. The -F flag bundles everything into one .exe file.
 
 To install the pyinstaller tool:
 
@@ -180,13 +180,43 @@ Then use it to bundle a python script:
 pyinstaller -c -F your_program.py
 ```
 
-Building app for production:
+#### Bundling with auto-py-to-exe:
+
+This is a GUI tool that greatly simplifies the process. You can also save and load configs.
+
+To install:
+
+```bash
+auto-py-to-exe
+```
+
+To run the debug build script:
+
+```bash
+yarn build:api:debug
+```
+
+To run the production build script:
+
+```bash
+yarn build:api:prod
+```
+
+### Build scripts
+
+Building both front-end and server apps for production:
 
 ```bash
 yarn build
 ```
 
-## Release the app for distribution
+Building just the python server for production. This will place the file(s) in `/includes` folder:
+
+```bash
+yarn build:api
+```
+
+## Release app for distribution
 
 ### Package application with Electron for release
 
@@ -194,7 +224,7 @@ This will build the production deps and then bundle them with pre-built Electron
 Please note, "yarn" should be used as the package manager as npm/pnpm will not work for packaging node_modules for some reason.
 Electron Builder commands: https://www.electron.build/cli.html
 
-This will create an installer (perferred). Copy the file from `/release/[app-name][version].exe` and put into your Github releases.
+This will create an installer (preferred). Copy the file from `/release/[app-name][version].exe` and put into your Github releases.
 
 ```bash
 yarn release
@@ -207,8 +237,6 @@ yarn unpacked
 ```
 
 ### Create a release on Github with link to installer
-
-Electron-builder provides a way to automate the release process by creating a release w/ binary for you. You must first setup an auth token and yada yada I cant be bothered...so here is the manual procedure.
 
 1. Create a tag with:
 
@@ -238,33 +266,19 @@ yarn version --major
 
 https://github.com/[github-user]/[project-name]/releases/latest/download/[installer-file-name]
 
----
-
 ## API Overview
 
 This project deploys several backend servers exposed using the `/v1` endpoint. The goal is to separate all OS level logic and processing from the client apps. This can make deploying new apps and swapping out engine functionality easier.
 
-Endpoints can be found [here](http://localhost:8000/docs) after HomeBrewAi is started.
-
-### /v1/ping
-
-Used to check if the inference server is alive.
+A complete list of endpoint documentation can be found [here](http://localhost:8000/docs) after OpenBrew Server is started.
 
 ### /v1/connect
 
 Used by client apps to detect when services are ready to be used.
 
-### /v1/services/shutdown
-
-Terminates all running services.
-
 ### /v1/services/api
 
 Gets all parameters for making calls to the homebrew api.
-
-### /v1/models
-
-Gets all inference model configuration.
 
 ### /v1/text/load
 
@@ -274,16 +288,7 @@ Load a model into the text inference service.
 
 Start the text inference server.
 
----
-
-## Model Configs
-
-To get the sha256 of each file, click on the model you want from the "Files" page and copy from the page or raw pointer.
-
-## Text Inference
-
-Using [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for ai text inference.
-
 ## Learn More
 
-- [FastAPI Documentation](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+- Server uses [FastAPI Documentation](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+- Text Inference uses [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for ai text inference.

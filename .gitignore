@@ -57,3 +57,4 @@ next-env.d.ts
 /settings
 /embed_models
 /text_models
+/output

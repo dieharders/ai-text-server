@@ -1,3 +1,4 @@
+# import sys
 import os
 import glob
 import json
@@ -30,6 +31,10 @@ from huggingface_hub import (
     ModelFilter,
     HfApi,
 )
+
+# Remove prints in prod when deploying in window mode.
+# sys.stdout = open(os.devnull, "w")
+# sys.stderr = open(os.devnull, "w")
 
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
@@ -155,19 +160,28 @@ def connect() -> classes.ConnectResponse:
 @app.get("/v1/text/installed")
 def get_installed_models() -> classes.TextModelInstallMetadataResponse:
     try:
+        data = []
         # Get installed models file
         metadatas: classes.InstalledTextModel = common.get_settings_file(
             common.APP_SETTINGS_PATH, common.MODEL_METADATAS_FILEPATH
         )
-        return {
-            "success": True,
-            "message": "This is a list of all currently installed models.",
-            "data": metadatas["installed_text_models"],
-        }
-    except Exception:
+        if not metadatas:
+            metadatas = common.DEFAULT_SETTINGS_DICT
+        if common.INSTALLED_TEXT_MODELS in metadatas:
+            data = metadatas[common.INSTALLED_TEXT_MODELS]
+            return {
+                "success": True,
+                "message": "This is a list of all currently installed models.",
+                "data": data,
+            }
+        else:
+            raise Exception(
+                f"No attribute {common.INSTALLED_TEXT_MODELS} exists in settings file."
+            )
+    except Exception as err:
         return {
             "success": False,
-            "message": "Failed to find any installed models.",
+            "message": f"Failed to find any installed models. {err}",
             "data": [],
         }
 
@@ -258,16 +272,17 @@ def load_text_inference(
         raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
 
 
-# Open an OS file exporer on host machine
+# Open OS file explorer on host machine
 @app.get("/v1/text/modelExplore")
 def explore_text_model_dir() -> classes.FileExploreResponse:
-    filePath = common.MODELS_CACHE_DIR
+    filePath = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
 
-    if not filePath:
+    if not os.path.exists(filePath):
         return {
             "success": False,
-            "message": "No file path given",
+            "message": "No file path exists",
         }
+
     # Open a new os window
     common.file_explore(filePath)
 
@@ -338,26 +353,11 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
         repo_id = payload.repo_id
         filename = payload.filename
         cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
+        resume_download = False
         # repo_type = "model" # optional, specify type of data, defaults to model
         # local_dir = "" # optional, downloaded file will be placed under this directory
 
-        # Resume from prev download progress if no path record found
-        resume_download = False
-        metadatas: classes.InstalledTextModel = common.get_settings_file(
-            common.APP_SETTINGS_PATH, common.MODEL_METADATAS_FILEPATH
-        )
-        installed_models = metadatas[common.INSTALLED_TEXT_MODELS]
-        modelIndex = next(
-            (x for x, item in enumerate(installed_models) if item["repoId"] == repo_id),
-            None,
-        )
-        if modelIndex:
-            save_paths = installed_models[modelIndex]["savePath"]
-            save_path_keys = save_paths.keys()
-            if filename in save_path_keys and save_paths[filename] == "":
-                resume_download = True
-
-        # Save path and details to json file
+        # Save initial path and details to json file
         common.save_text_model(
             {
                 "repoId": repo_id,
@@ -367,7 +367,7 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
 
         # Download model.
         # Returned path is symlink which isnt loadable; for our purposes we use get_cached_blob_path().
-        download_path = hf_hub_download(
+        hf_hub_download(
             repo_id=repo_id,
             filename=filename,
             cache_dir=cache_dir,
@@ -376,8 +376,6 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
             # local_dir_use_symlinks=False,
             # repo_type=repo_type,
         )
-        if not isinstance(file_path, str):
-            raise Exception("Path is not string.")
 
         # Get actual file path
         [model_cache_info, repo_revisions] = common.scan_cached_repo(
@@ -400,7 +398,7 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
 
         return {
             "success": True,
-            "message": f"Saved model file to {download_path}.",
+            "message": f"Saved model file to {file_path}.",
         }
     except (KeyError, Exception, EnvironmentError, OSError, ValueError) as err:
         print(f"Error: {err}", flush=True)
@@ -855,11 +853,12 @@ def explore_source_file(
 ) -> classes.FileExploreResponse:
     filePath = params.filePath
 
-    if not filePath:
+    if not os.path.exists(filePath):
         return {
             "success": False,
-            "message": "No file path given",
+            "message": "No file path exists",
         }
+
     # Open a new os window
     common.file_explore(filePath)
 
@@ -1134,27 +1133,20 @@ def get_playground_settings() -> classes.GetPlaygroundSettingsResponse:
     # Paths
     file_name = PLAYGROUND_SETTINGS_FILE_NAME
     file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
+    loaded_data = {}
 
     # Check if folder exists
     if not os.path.exists(common.APP_SETTINGS_PATH):
-        return {
-            "success": False,
-            "message": f"Failed to return settings. Folder does not exist.",
-            "data": None,
-        }
+        print("Path does not exist.", flush=True)
+        os.makedirs(common.APP_SETTINGS_PATH)
 
-    # Try to open the file (if it exists)
-    loaded_data = {}
     try:
+        # Open the file
         with open(file_path, "r") as file:
             loaded_data = json.load(file)
     except FileNotFoundError:
         # If the file doesn't exist, fail
-        return {
-            "success": False,
-            "message": f"Failed to return settings. File does not exist.",
-            "data": None,
-        }
+        print("No file exists.", flush=True)
 
     return {
         "success": True,

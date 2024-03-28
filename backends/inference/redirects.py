@@ -2,6 +2,8 @@ import re
 from fastapi import Request, status
 from fastapi.responses import RedirectResponse
 
+# *Note This is not currently being used.
+
 # These are direct api endpoints to the text inference engine
 direct_routes = [
     "/v1/completions",

@@ -4,7 +4,6 @@
 ###
 import os
 import json
-import torch
 from typing import List, Optional, Sequence
 from llama_index.llms import LlamaCPP
 from llama_index.core.llms.types import ChatMessage, MessageRole
