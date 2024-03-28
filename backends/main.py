@@ -1128,27 +1128,20 @@ def get_playground_settings() -> classes.GetPlaygroundSettingsResponse:
     # Paths
     file_name = PLAYGROUND_SETTINGS_FILE_NAME
     file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
+    loaded_data = {}
 
     # Check if folder exists
     if not os.path.exists(common.APP_SETTINGS_PATH):
-        return {
-            "success": False,
-            "message": f"Failed to return settings. Folder does not exist.",
-            "data": None,
-        }
+        print("Path does not exist.", flush=True)
+        os.makedirs(common.APP_SETTINGS_PATH)
 
-    # Try to open the file (if it exists)
-    loaded_data = {}
     try:
+        # Open the file
         with open(file_path, "r") as file:
             loaded_data = json.load(file)
     except FileNotFoundError:
         # If the file doesn't exist, fail
-        return {
-            "success": False,
-            "message": f"Failed to return settings. File does not exist.",
-            "data": None,
-        }
+        print("No file exists.", flush=True)
 
     return {
         "success": True,
