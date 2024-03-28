@@ -1,3 +1,4 @@
+# import sys
 import os
 import glob
 import json
@@ -30,6 +31,10 @@ from huggingface_hub import (
     ModelFilter,
     HfApi,
 )
+
+# Remove prints in prod when deploying in window mode.
+# sys.stdout = open(os.devnull, "w")
+# sys.stderr = open(os.devnull, "w")
 
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
