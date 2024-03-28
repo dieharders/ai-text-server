@@ -72,6 +72,6 @@
  ],
  "nonPyinstallerOptions": {
   "increaseRecursionLimit": true,
-  "manualArguments": "--mode=prod"
+  "manualArguments": ""
  }
 }

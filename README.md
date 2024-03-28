@@ -78,7 +78,9 @@ python src/backends/main.py
 Or (recommended)
 
 ```bash
-yarn server
+yarn server:dev
+# or
+yarn server:prod
 ```
 
 The homebrew api server will be running on [http://localhost:8008](http://localhost:8008)
@@ -213,7 +215,9 @@ yarn build
 Building just the python server for production. This will place the file(s) in `/includes` folder:
 
 ```bash
-yarn build:api
+yarn build:api:dev
+# or
+yarn build:api:prod
 ```
 
 ## Release app for distribution

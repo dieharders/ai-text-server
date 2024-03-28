@@ -63,8 +63,9 @@ def parse_runtime_args():
 
 
 buildEnv = parse_runtime_args()
-isDev = buildEnv == "dev"
-isProd = buildEnv == "prod"
+isDebug = hasattr(sys, "gettrace") and sys.gettrace() is not None
+isDev = buildEnv == "dev" or isDebug
+isProd = buildEnv == "prod" or not isDev
 if isProd:
     # Remove prints in prod when deploying in window mode
     sys.stdout = open(os.devnull, "w")
@@ -1260,7 +1261,7 @@ class Window:
     def __init__(self, master):
         # @TODO Swap out with a UI or other image
         self.img = Image.open("public/splash.png")
-        self.img = self.img.resize((320, 300), Image.FILTERED)
+        self.img = self.img.resize((640, 480), Image.FILTERED)
 
         self.img = ImageTk.PhotoImage(self.img)
 
@@ -1299,6 +1300,6 @@ if __name__ == "__main__":
     # GUI window
     if isProd:
         run_GUI()
-    # Handle stopping the server when window is closed
-    print(f"{common.PRNT_API} Shutting down on user action", flush=True)
-    os.kill(os.getpid(), signal.SIGINT)
+        # Handle stopping the server when window is closed
+        print(f"{common.PRNT_API} Shutting down", flush=True)
+        os.kill(os.getpid(), signal.SIGINT)
