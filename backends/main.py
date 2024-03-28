@@ -1,5 +1,7 @@
-# import sys
 import os
+import sys
+import signal
+import threading
 import glob
 import json
 import uvicorn
@@ -18,6 +20,8 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
+import tkinter as tk
+from PIL import Image, ImageTk
 from contextlib import asynccontextmanager
 from inference import text_llama_index
 from embedding import embedding
@@ -32,10 +36,6 @@ from huggingface_hub import (
     HfApi,
 )
 
-# Remove prints in prod when deploying in window mode.
-# sys.stdout = open(os.devnull, "w")
-# sys.stderr = open(os.devnull, "w")
-
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
@@ -47,6 +47,28 @@ TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
 SERVER_PORT = 8008
+
+
+# Parse runtime arguments passed to script
+def parse_runtime_args():
+    # Command-line arguments are accessed via sys.argv
+    arguments = sys.argv[1:]
+    # Initialize variables to store parsed arguments
+    mode = None
+    # Iterate through arguments and parse them
+    for arg in arguments:
+        if arg.startswith("--mode="):
+            mode = arg.split("=")[1]
+    return mode
+
+
+buildEnv = parse_runtime_args()
+isDev = buildEnv == "dev"
+isProd = buildEnv == "prod"
+if isProd:
+    # Remove prints in prod when deploying in window mode
+    sys.stdout = open(os.devnull, "w")
+    sys.stderr = open(os.devnull, "w")
 
 # Path to the .env file in the parent directory
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -1234,7 +1256,27 @@ def get_bot_settings() -> classes.BotSettingsResponse:
 # Methods...
 
 
-def start_homebrew_server():
+class Window:
+    def __init__(self, master):
+        # @TODO Swap out with a UI or other image
+        self.img = Image.open("public/splash.png")
+        self.img = self.img.resize((320, 300), Image.FILTERED)
+
+        self.img = ImageTk.PhotoImage(self.img)
+
+        label = tk.Label(master, image=self.img)
+        label.pack(expand=True, fill=tk.BOTH)
+
+
+# Function to create and run the Tkinter window
+def run_GUI():
+    root = tk.Tk()
+    root.title("OpenBrew Server")
+    window = Window(root)
+    root.mainloop()
+
+
+def run_server():
     try:
         print(f"{common.PRNT_API} Starting API server...")
         # Start the ASGI server
@@ -1251,5 +1293,12 @@ def start_homebrew_server():
 
 
 if __name__ == "__main__":
-    # Starts the homebrew API server
-    start_homebrew_server()
+    # Start the API server in a separate thread
+    fastapi_thread = threading.Thread(target=run_server)
+    fastapi_thread.start()
+    # GUI window
+    if isProd:
+        run_GUI()
+    # Handle stopping the server when window is closed
+    print(f"{common.PRNT_API} Shutting down on user action", flush=True)
+    os.kill(os.getpid(), signal.SIGINT)

@@ -15,7 +15,7 @@
   },
   {
    "optionDest": "console",
-   "value": false
+   "value": true
   },
   {
    "optionDest": "icon_file",
@@ -64,14 +64,10 @@
   {
    "optionDest": "datas",
    "value": "C:/Python311/Lib/site-packages/llama_index/VERSION;./llama_index"
-  },
-  {
-   "optionDest": "datas",
-   "value": "C:/Python311/Lib/site-packages/tiktoken_ext;tiktoken_ext/"
   }
  ],
  "nonPyinstallerOptions": {
   "increaseRecursionLimit": true,
-  "manualArguments": "--mode=prod"
+  "manualArguments": "--mode=dev"
  }
 }
