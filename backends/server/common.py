@@ -257,30 +257,38 @@ class SaveTextModelRequestArgs(dict):
 
 # Index the path of the downloaded model in a file
 def save_text_model(data: SaveTextModelRequestArgs):
+    DEFAULT_SETTINGS_DICT = {"current_download_path": "", INSTALLED_TEXT_MODELS: []}
     repo_id = data["repoId"]
     folderpath = APP_SETTINGS_PATH
     filepath = MODEL_METADATAS_FILEPATH
+    existing_data = DEFAULT_SETTINGS_DICT
 
-    # Create folder/file
-    if not os.path.exists(folderpath):
-        os.makedirs(folderpath)
-
-    # Try to open the file (if it exists)
     try:
+        # Create folder
+        if not os.path.exists(folderpath):
+            os.makedirs(folderpath)
+        # Try to open the file (if it exists)
         with open(filepath, "r") as file:
             existing_data = json.load(file)
     except FileNotFoundError:
         # If the file doesn't exist yet, create an empty dictionary
-        existing_data = {}
+        existing_data = DEFAULT_SETTINGS_DICT
     except json.JSONDecodeError:
-        existing_data = {}
+        existing_data = DEFAULT_SETTINGS_DICT
 
     # Update the existing data with the new variables
     models_list: List = existing_data[INSTALLED_TEXT_MODELS]
     modelIndex = next(
         (x for x, item in enumerate(models_list) if item["repoId"] == repo_id), None
     )
-    if modelIndex:
+    if modelIndex is None:
+        # Assign new data
+        new_data = data
+        new_data["savePath"] = {}
+        new_data["numTimesRun"] = 0
+        new_data["isFavorited"] = False
+        models_list.append(data)
+    else:
         model = models_list[modelIndex]
         # Assign updated data
         for key, val in data.items():
@@ -294,17 +302,11 @@ def save_text_model(data: SaveTextModelRequestArgs):
             else:
                 model[key] = val
         models_list[modelIndex] = model
-    else:
-        # Assign new data
-        new_data = data
-        new_data["savePath"] = {}
-        new_data["numTimesRun"] = 0
-        new_data["isFavorited"] = False
-        models_list.append(data)
 
     # Save the updated data to the file, this will overwrite all values in the key's dict.
     with open(filepath, "w") as file:
         json.dump(existing_data, file, indent=2)
+    return existing_data
 
 
 # Deletes all files associated with a revision (model)
@@ -378,20 +380,22 @@ def dedupe_substrings(input_string):
 
 
 def get_settings_file(folderpath: str, filepath: str):
-    # Check if folder exists
-    if not os.path.exists(folderpath):
-        raise Exception("Folder does not exist.")
+    loaded_data = None
 
-    # Try to open the file (if it exists)
-    loaded_data = {}
     try:
+        # Check if folder exists
+        if not os.path.exists(folderpath):
+            print(f"Folder does not exist: {folderpath}", flush=True)
+            os.makedirs(folderpath)
+        # Try to open the file (if it exists)
         with open(filepath, "r") as file:
             loaded_data = json.load(file)
     except FileNotFoundError:
         print("File does not exist.", flush=True)
+        loaded_data = None
     except json.JSONDecodeError:
         print("Invalid JSON format or empty file.", flush=True)
-
+        loaded_data = None
     return loaded_data
 
 
@@ -421,12 +425,12 @@ def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
 
 
 def save_settings_file(folderpath: str, filepath: str, data: dict):
-    # Create folder/file
-    if not os.path.exists(folderpath):
-        os.makedirs(folderpath)
-
-    # Try to open the file (if it exists)
     try:
+        # Create folder/file
+        if not os.path.exists(folderpath):
+            print(f"Folder does not exist: {folderpath}", flush=True)
+            os.makedirs(folderpath)
+        # Try to open the file (if it exists)
         with open(filepath, "r") as file:
             existing_data = json.load(file)
     except FileNotFoundError:

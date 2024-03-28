@@ -164,7 +164,9 @@ Run the command below in powershell to set your env variables:
 
 ### Python server
 
-Bundling Python exe (the -F flag bundles everything into one .exe ). This is handled automatically by npm scripts and you do not need to execute these manually.
+#### Bundling the Python exe with PyInstaller:
+
+This is handled automatically by npm scripts so you do not need to execute these manually. The -F flag bundles everything into one .exe file.
 
 To install the pyinstaller tool:
 
@@ -176,6 +178,28 @@ Then use it to bundle a python script:
 
 ```bash
 pyinstaller -c -F your_program.py
+```
+
+#### Bundling with auto-py-to-exe:
+
+This is a GUI tool that greatly simplifies the process. You can also save and load configs.
+
+To install:
+
+```bash
+auto-py-to-exe
+```
+
+To run the debug build script:
+
+```bash
+yarn build:api:debug
+```
+
+To run the production build script:
+
+```bash
+yarn build:api:prod
 ```
 
 ### Build scripts
