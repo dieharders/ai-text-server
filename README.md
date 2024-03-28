@@ -238,8 +238,6 @@ yarn unpacked
 
 ### Create a release on Github with link to installer
 
-Electron-builder provides a way to automate the release process by creating a release w/ binary for you. You must first setup an auth token and yada yada I cant be bothered...so here is the manual procedure.
-
 1. Create a tag with:
 
 Increase the patch version by 1 (x.x.1 to x.x.2)
