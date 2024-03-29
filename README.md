@@ -83,7 +83,7 @@ yarn server:dev
 yarn server:prod
 ```
 
-The OpenBrew api server will be running on [http://localhost:8008](http://localhost:8008)
+The OpenBrew api server will be running on [https://localhost:8008](https://localhost:8008)
 
 \*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https. If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
 
@@ -292,7 +292,7 @@ https://github.com/[github-user]/[project-name]/releases/latest/download/[instal
 
 This project deploys several backend servers exposed using the `/v1` endpoint. The goal is to separate all OS level logic and processing from the client apps. This can make deploying new apps and swapping out engine functionality easier.
 
-A complete list of endpoint documentation can be found [here](http://localhost:8000/docs) after OpenBrew Server is started.
+A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after OpenBrew Server is started.
 
 ### /v1/connect
 

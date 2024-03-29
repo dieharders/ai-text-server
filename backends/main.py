@@ -159,9 +159,9 @@ def connect() -> classes.ConnectResponse:
 
     return {
         "success": True,
-        "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'http://localhost:{SERVER_PORT}/docs' for api docs.",
+        "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'https://localhost:{SERVER_PORT}/docs' for api docs.",
         "data": {
-            "docs": f"http://localhost:{SERVER_PORT}/docs",
+            "docs": f"https://localhost:{SERVER_PORT}/docs",
             "version": version,
             # @TODO Lets just return everything that /services/api does.
             # "api": "/v1/services/api", # endpoint to tell front-end what all the endpoints are
@@ -1263,8 +1263,8 @@ def display_server_info():
     # Display the local IP address of this server
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
-    remote_ip = f"http://{IPAddr}:{SERVER_PORT}"
-    local_ip = f"http://localhost:{SERVER_PORT}"
+    remote_ip = f"https://{IPAddr}:{SERVER_PORT}"
+    local_ip = f"https://localhost:{SERVER_PORT}"
     print(
         f"{common.PRNT_API} Refer to API docs for OpenBrew Server:\n-> {local_ip}/docs \nOR\n-> {remote_ip}/docs",
         flush=True,
