@@ -18,6 +18,7 @@
     "python-deps": "pip install -r requirements.txt",
     "release": "yarn run build && electron-builder",
     "release:win": "yarn run build && electron-builder --win --x64",
+    "makecert": "openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36500",
     "unpacked": "yarn run build && electron-builder --dir",
     "export": "next export",
     "start": "electron .",

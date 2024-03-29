@@ -28,9 +28,9 @@ Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examp
 
 - Startup and shutdown of the backend services are done via the front-end UI or REST api.
 
-- The Python/FastAPI server (homebrew api) operates under `localhost:8008`.
+- The Python/FastAPI server (OpenBrew api) operates under `localhost:8008`.
 
-- 3rd party client apps will call the homebrew api to perform all functions needed.
+- 3rd party client apps will call the OpenBrew api to perform all functions needed.
 
 ## Getting Started
 
@@ -83,9 +83,11 @@ yarn server:dev
 yarn server:prod
 ```
 
-The homebrew api server will be running on [http://localhost:8008](http://localhost:8008)
+The OpenBrew api server will be running on [http://localhost:8008](http://localhost:8008)
 
-### Run the app in development
+\*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https. If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
+
+### Run the Electron app (UI and Backend) in development
 
 This is the perferred method of running the app:
 
@@ -220,7 +222,23 @@ yarn build:api:dev
 yarn build:api:prod
 ```
 
-## Release app for distribution
+## Production
+
+### Deploy to public over internet
+
+For production deployments you will either want to run the server behind a reverse proxy using something like Traefic-Hub (free and opens your self hosted server to public internet using encrypted https protocol).
+
+### Deploy to local network over https
+
+If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates.
+
+This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the root of app directory.
+
+```bash
+openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36500
+```
+
+This should be enough for any webapp served over https to access the server. If you see "Warning: Potential Security Risk Ahead" in your browser when using the webapp, you can ignore it by clicking `advanced` then `Accept the Risk` button to continue.
 
 ### Package application with Electron for release
 
@@ -282,7 +300,7 @@ Used by client apps to detect when services are ready to be used.
 
 ### /v1/services/api
 
-Gets all parameters for making calls to the homebrew api.
+Gets all parameters for making calls to the OpenBrew api.
 
 ### /v1/text/load
 
