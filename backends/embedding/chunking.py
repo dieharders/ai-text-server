@@ -3,7 +3,7 @@ import re
 import os
 import base64
 from typing import List
-from PIL import Image
+from PIL import Image  # use `pip install pillow` instead of PIL
 from langchain.text_splitter import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,

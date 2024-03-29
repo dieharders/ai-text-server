@@ -1,6 +1,6 @@
 {
   "name": "openbrew-server",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": "Spread Shot Studios",
   "license": "MIT",
   "productName": "OpenBrew Server",
@@ -10,10 +10,11 @@
   "scripts": {
     "clean": "rimraf includes renderer/.next renderer/out build release main.spec",
     "dev": "next dev",
-    "server": "python ./backends/main.py",
+    "server:dev": "python ./backends/main.py --mode=dev",
+    "server:prod": "python ./backends/main.py --mode=prod",
     "build": "yarn run build:api && next build renderer",
-    "build:api:prod": "yarn run python-deps && pyinstaller --noconfirm --onedir --windowed --icon C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico --name OpenBrew-Server --contents-directory _deps --clean --add-data C:/Python311/Lib/site-packages/llama_index/VERSION;./llama_index --add-data C:/Python311/Lib/site-packages/tiktoken_ext;tiktoken_ext/  C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py",
-    "build:api:debug": "yarn run python-deps && pyinstaller --noconfirm --onedir --console --icon C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico --name OpenBrew-Server --contents-directory _deps --clean --debug imports --add-data C:/Python311/Lib/site-packages/llama_index/VERSION;./llama_index  C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py",
+    "build:api:dev": "yarn run python-deps && pyinstaller --noconfirm --onedir --console --icon C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico --name OpenBrew-Server --contents-directory _deps --clean --debug bootloader --add-data C:/Python311/Lib/site-packages/llama_index/VERSION;llama_index --add-data C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/  C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py",
+    "build:api:prod": "yarn run python-deps && pyinstaller --noconfirm --onedir --windowed --icon C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico --name OpenBrew-Server --contents-directory _deps --clean --add-data C:/Python311/Lib/site-packages/llama_index/VERSION;llama_index --add-data C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/  C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py",
     "python-deps": "pip install -r requirements.txt",
     "release": "yarn run build && electron-builder",
     "release:win": "yarn run build && electron-builder --win --x64",

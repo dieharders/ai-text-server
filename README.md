@@ -14,7 +14,7 @@ Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examp
 - ✅ Provide easy to use desktop installers
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
-- ✅ Advanced Settings: Fine tune how the model is loaded
+- ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
 - ❌ Threads: Save/Retrieve chat message history
 
 ## Upcoming Features
@@ -78,7 +78,9 @@ python src/backends/main.py
 Or (recommended)
 
 ```bash
-yarn server
+yarn server:dev
+# or
+yarn server:prod
 ```
 
 The homebrew api server will be running on [http://localhost:8008](http://localhost:8008)
@@ -213,7 +215,9 @@ yarn build
 Building just the python server for production. This will place the file(s) in `/includes` folder:
 
 ```bash
-yarn build:api
+yarn build:api:dev
+# or
+yarn build:api:prod
 ```
 
 ## Release app for distribution

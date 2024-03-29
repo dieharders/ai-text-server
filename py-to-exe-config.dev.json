@@ -15,7 +15,7 @@
   },
   {
    "optionDest": "console",
-   "value": false
+   "value": true
   },
   {
    "optionDest": "icon_file",
@@ -32,6 +32,10 @@
   {
    "optionDest": "clean_build",
    "value": true
+  },
+  {
+   "optionDest": "debug",
+   "value": "bootloader"
   },
   {
    "optionDest": "strip",

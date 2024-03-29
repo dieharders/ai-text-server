@@ -1,8 +1,10 @@
-# import sys
 import os
+import sys
+import threading
 import glob
 import json
 import uvicorn
+import webbrowser
 import httpx
 import shutil
 import socket
@@ -18,6 +20,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
+import tkinter as tk
 from contextlib import asynccontextmanager
 from inference import text_llama_index
 from embedding import embedding
@@ -32,10 +35,7 @@ from huggingface_hub import (
     HfApi,
 )
 
-# Remove prints in prod when deploying in window mode.
-# sys.stdout = open(os.devnull, "w")
-# sys.stderr = open(os.devnull, "w")
-
+server_thread = None
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
@@ -47,6 +47,31 @@ TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
 SERVER_PORT = 8008
+# Display where the admin can use the web UI
+openbrew_studio_url = "https://studio.openbrewai.com"
+
+
+# Parse runtime arguments passed to script
+def parse_runtime_args():
+    # Command-line arguments are accessed via sys.argv
+    arguments = sys.argv[1:]
+    # Initialize variables to store parsed arguments
+    mode = None
+    # Iterate through arguments and parse them
+    for arg in arguments:
+        if arg.startswith("--mode="):
+            mode = arg.split("=")[1]
+    return mode
+
+
+buildEnv = parse_runtime_args()
+isDebug = hasattr(sys, "gettrace") and sys.gettrace() is not None
+isDev = buildEnv == "dev" or isDebug
+isProd = buildEnv == "prod" or not isDev
+if isProd:
+    # Remove prints in prod when deploying in window mode
+    sys.stdout = open(os.devnull, "w")
+    sys.stderr = open(os.devnull, "w")
 
 # Path to the .env file in the parent directory
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -58,21 +83,6 @@ load_dotenv(env_path)
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     print(f"{common.PRNT_API} Lifespan startup", flush=True)
-    # Display where the admin can use the web UI
-    openbrew_studio_url = "https://studio.openbrewai.com"
-    print(
-        f"{common.PRNT_API} Navigate your browser to OpenBrew Studio\n-> {openbrew_studio_url} for the admin web UI.",
-        flush=True,
-    )
-    # Display the local IP address of this server
-    hostname = socket.gethostname()
-    IPAddr = socket.gethostbyname(hostname)
-    openbrew_server_ip = f"http://{IPAddr}:{SERVER_PORT}/docs"
-    openbrew_server_local_ip = f"http://localhost:{SERVER_PORT}/docs"
-    print(
-        f"{common.PRNT_API} Refer to API docs for OpenBrew Server \n-> {openbrew_server_local_ip} \nOR\n-> {openbrew_server_ip}",
-        flush=True,
-    )
     # https://www.python-httpx.org/quickstart/
     app.requests_client = httpx.Client()
     # Store some state here if you want...
@@ -85,7 +95,7 @@ async def lifespan(application: FastAPI):
     app.state.loaded_text_model_data = {}
 
     yield
-
+    # Do shutdown cleanup here...
     print(f"{common.PRNT_API} Lifespan shutdown")
 
 
@@ -1234,7 +1244,133 @@ def get_bot_settings() -> classes.BotSettingsResponse:
 # Methods...
 
 
-def start_homebrew_server():
+def shutdown_server(*args):
+    print(f"{common.PRNT_API} Shutting down server...", flush=True)
+    # os.kill(os.getpid(), signal.SIGINT)
+    # server_thread.join()
+    print(f"{common.PRNT_API} Server shutdown complete.", flush=True)
+    sys.exit(0)
+
+
+def display_server_info():
+    print(
+        f"{common.PRNT_API} Navigate your browser to OpenBrew Studio for the admin web UI:\n-> {openbrew_studio_url}",
+        flush=True,
+    )
+    # Display the local IP address of this server
+    hostname = socket.gethostname()
+    IPAddr = socket.gethostbyname(hostname)
+    remote_ip = f"http://{IPAddr}:{SERVER_PORT}"
+    local_ip = f"http://localhost:{SERVER_PORT}"
+    print(
+        f"{common.PRNT_API} Refer to API docs for OpenBrew Server:\n-> {local_ip} \nOR\n-> {remote_ip}",
+        flush=True,
+    )
+    return {
+        "local_ip": local_ip,
+        "remote_ip": remote_ip,
+    }
+
+
+# Function to create and run the Tkinter window
+def run_GUI(local_ip: str, remote_ip: str):
+    if not isProd:
+        return
+    color_bg = "#333333"
+    color_label = "#ffe135"
+    root = tk.Tk()
+    root.title("OpenBrew Server")
+    root.geometry("1200x600")
+    # since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
+    root.iconbitmap(default=os.path.join(common.dep_path("public/favicon.ico")))
+    root.configure(bg=color_bg)
+    frame = tk.Frame(bg=color_bg)
+    # Labels
+    title_label = tk.Label(
+        frame,
+        text="Server Info",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 30),
+    )
+    descr_label = tk.Label(
+        frame,
+        text="Click the link below or navigate your browser to use the WebUI interface.",
+        bg=color_bg,
+        fg="white",
+        font=("Arial", 14),
+    )
+    docs_label = tk.Label(
+        frame,
+        text="API Docs:",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 24),
+        width=24,
+    )
+    server_local_label = tk.Label(
+        frame,
+        text="Server (Local Address):",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 24),
+        width=24,
+    )
+    remote_label = tk.Label(
+        frame,
+        text="Server (Remote Address):",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 24),
+        width=24,
+    )
+    webui_label = tk.Label(
+        frame,
+        text="WebUI Address:",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 24),
+        width=24,
+    )
+    webui_link = tk.Label(
+        frame,
+        text=openbrew_studio_url,
+        bg=color_bg,
+        fg="white",
+        font=("Arial", 24),
+        cursor="hand2",
+        width=24,
+    )
+    webui_link.bind(
+        "<Button-1>", lambda e: webbrowser.open_new_tab(openbrew_studio_url)
+    )
+    # Inputs
+    docs_entry = tk.Entry(frame, font=("Arial", 24), w="24")
+    docs_entry.insert(0, f"{local_ip}/docs")
+    server_local_entry = tk.Entry(frame, font=("Arial", 24), w="24")
+    server_local_entry.insert(0, f"{local_ip}")
+    remote_entry = tk.Entry(frame, font=("Arial", 24), w="24")
+    remote_entry.insert(0, remote_ip)
+    # Placement
+    title_label.grid(row=0, column=0, columnspan=2, sticky="news", pady=40)
+    descr_label.grid(row=1, column=0, columnspan=2, sticky="news", pady=40)
+    webui_label.grid(row=2, column=0, padx=20)
+    webui_link.grid(row=2, column=1, pady=20)
+    server_local_label.grid(row=3, column=0, padx=20)
+    server_local_entry.grid(row=3, column=1, padx=20)
+    remote_label.grid(row=4, column=0, padx=20)
+    remote_entry.grid(row=4, column=1, pady=20)
+    docs_label.grid(row=5, column=0, padx=20)
+    docs_entry.grid(row=5, column=1, pady=20)
+    frame.pack()
+    # Render
+    root.mainloop()
+    # Handle stopping the server when window is closed
+    print(f"{common.PRNT_API} Shutting down GUI", flush=True)
+    shutdown_server()
+
+
+def start_server():
     try:
         print(f"{common.PRNT_API} Starting API server...")
         # Start the ASGI server
@@ -1244,12 +1380,37 @@ def start_homebrew_server():
             port=SERVER_PORT,
             log_level="info",
         )
-        return True
     except:
         print(f"{common.PRNT_API} Failed to start API server")
-        return False
+
+
+def run_server():
+    # Start the API server in a separate thread from GUI
+    fastapi_thread = threading.Thread(target=start_server)
+    fastapi_thread.daemon = True  # let the parent kill the child thread at exit
+    fastapi_thread.start()
+    return fastapi_thread
 
 
 if __name__ == "__main__":
-    # Starts the homebrew API server
-    start_homebrew_server()
+    try:
+        # Start API server
+        server_thread = run_server()
+        # Find IP info
+        server_info = display_server_info()
+        # Render GUI window
+        run_GUI(
+            local_ip=server_info["local_ip"],
+            remote_ip=server_info["remote_ip"],
+        )
+        # Open browser to WebUI
+        print(
+            f"{common.PRNT_API} API server started. Opening WebUI at {openbrew_studio_url}"
+        )
+        webbrowser.open(openbrew_studio_url, new=2)
+        # Prevent main process from closing prematurely
+        while True:
+            pass
+    except KeyboardInterrupt:
+        print(f"{common.PRNT_API} User pressed Ctrl+C exiting...")
+        shutdown_server()
