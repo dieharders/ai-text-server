@@ -1,3 +1,4 @@
+# Misc
 python-dotenv==1.0.0
 # For type safety
 pydantic-settings==2.0.3

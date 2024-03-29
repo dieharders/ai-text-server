@@ -14,7 +14,7 @@ Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examp
 - ✅ Provide easy to use desktop installers
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
-- ✅ Advanced Settings: Fine tune how the model is loaded
+- ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
 - ❌ Threads: Save/Retrieve chat message history
 
 ## Upcoming Features

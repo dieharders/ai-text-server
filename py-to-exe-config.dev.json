@@ -34,6 +34,10 @@
    "value": true
   },
   {
+   "optionDest": "debug",
+   "value": "bootloader"
+  },
+  {
    "optionDest": "strip",
    "value": false
   },
@@ -63,7 +67,11 @@
   },
   {
    "optionDest": "datas",
-   "value": "C:/Python311/Lib/site-packages/llama_index/VERSION;./llama_index"
+   "value": "C:/Python311/Lib/site-packages/llama_index/VERSION;llama_index"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/"
   }
  ],
  "nonPyinstallerOptions": {

@@ -81,21 +81,6 @@ load_dotenv(env_path)
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     print(f"{common.PRNT_API} Lifespan startup", flush=True)
-    # Display where the admin can use the web UI
-    openbrew_studio_url = "https://studio.openbrewai.com"
-    print(
-        f"{common.PRNT_API} Navigate your browser to OpenBrew Studio\n-> {openbrew_studio_url} for the admin web UI.",
-        flush=True,
-    )
-    # Display the local IP address of this server
-    hostname = socket.gethostname()
-    IPAddr = socket.gethostbyname(hostname)
-    openbrew_server_ip = f"http://{IPAddr}:{SERVER_PORT}/docs"
-    openbrew_server_local_ip = f"http://localhost:{SERVER_PORT}/docs"
-    print(
-        f"{common.PRNT_API} Refer to API docs for OpenBrew Server \n-> {openbrew_server_local_ip} \nOR\n-> {openbrew_server_ip}",
-        flush=True,
-    )
     # https://www.python-httpx.org/quickstart/
     app.requests_client = httpx.Client()
     # Store some state here if you want...
@@ -1257,23 +1242,86 @@ def get_bot_settings() -> classes.BotSettingsResponse:
 # Methods...
 
 
-class Window:
-    def __init__(self, master):
-        # @TODO Swap out with a UI or other image
-        self.img = Image.open("public/splash.png")
-        self.img = self.img.resize((640, 480), Image.FILTERED)
-
-        self.img = ImageTk.PhotoImage(self.img)
-
-        label = tk.Label(master, image=self.img)
-        label.pack(expand=True, fill=tk.BOTH)
+def display_server_info():
+    # Display where the admin can use the web UI
+    openbrew_studio_url = "https://studio.openbrewai.com"
+    print(
+        f"{common.PRNT_API} Navigate your browser to OpenBrew Studio\n-> {openbrew_studio_url} for the admin web UI.",
+        flush=True,
+    )
+    # Display the local IP address of this server
+    hostname = socket.gethostname()
+    IPAddr = socket.gethostbyname(hostname)
+    remote_ip = f"http://{IPAddr}:{SERVER_PORT}/docs"
+    local_ip = f"http://localhost:{SERVER_PORT}/docs"
+    print(
+        f"{common.PRNT_API} Refer to API docs for OpenBrew Server \n-> {local_ip} \nOR\n-> {remote_ip}",
+        flush=True,
+    )
+    return {
+        "local_ip": local_ip,
+        "remote_ip": remote_ip,
+        "web_ui_address": openbrew_studio_url,
+    }
 
 
 # Function to create and run the Tkinter window
-def run_GUI():
+def run_GUI(local_ip: str, remote_ip: str, webui_address: str):
+    color_bg = "#333333"
+    color_label = "#ffe135"
     root = tk.Tk()
     root.title("OpenBrew Server")
-    window = Window(root)
+    root.geometry("640x480")
+    # since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
+    root.iconbitmap(default=os.path.join(sys._MEIPASS, "public/favicon.ico"))
+    root.configure(bg=color_bg)
+    frame = tk.Frame(bg=color_bg)
+    # Labels
+    title_label = tk.Label(
+        frame,
+        text="Server Info",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 30),
+    )
+    local_label = tk.Label(
+        frame,
+        text="API Docs (Local)",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 16),
+    )
+    remote_label = tk.Label(
+        frame,
+        text="API Docs (Remote)",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 16),
+    )
+    webui_label = tk.Label(
+        frame,
+        text="WebUI Address",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 16),
+    )
+    # Inputs
+    local_entry = tk.Entry(frame, font=("Arial", 24))
+    local_entry.insert(0, local_ip)
+    remote_entry = tk.Entry(frame, font=("Arial", 24))
+    remote_entry.insert(0, remote_ip)
+    webui_entry = tk.Entry(frame, font=("Arial", 24))
+    webui_entry.insert(0, webui_address)
+    # Placement
+    title_label.grid(row=0, column=0, columnspan=2, sticky="news", pady=40)
+    local_label.grid(row=1, column=0, padx=20)
+    local_entry.grid(row=1, column=1, pady=20)
+    remote_label.grid(row=2, column=0, padx=20)
+    remote_entry.grid(row=2, column=1, pady=20)
+    webui_label.grid(row=3, column=0, padx=20)
+    webui_entry.grid(row=3, column=1, pady=20)
+    frame.pack()
+    # Render
     root.mainloop()
 
 
@@ -1297,9 +1345,15 @@ if __name__ == "__main__":
     # Start the API server in a separate thread
     fastapi_thread = threading.Thread(target=run_server)
     fastapi_thread.start()
-    # GUI window
+    # Find IP info
+    server_info = display_server_info()
+    # Render GUI window
     if isProd:
-        run_GUI()
+        run_GUI(
+            local_ip=server_info["local_ip"],
+            remote_ip=server_info["remote_ip"],
+            webui_address=server_info["web_ui_address"],
+        )
         # Handle stopping the server when window is closed
         print(f"{common.PRNT_API} Shutting down", flush=True)
         os.kill(os.getpid(), signal.SIGINT)
