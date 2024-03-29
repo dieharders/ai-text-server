@@ -36,6 +36,7 @@ from huggingface_hub import (
     HfApi,
 )
 
+server_thread = None
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
@@ -93,7 +94,7 @@ async def lifespan(application: FastAPI):
     app.state.loaded_text_model_data = {}
 
     yield
-
+    # Do shutdown cleanup here...
     print(f"{common.PRNT_API} Lifespan shutdown")
 
 
@@ -1242,11 +1243,19 @@ def get_bot_settings() -> classes.BotSettingsResponse:
 # Methods...
 
 
+def shutdown_server(*args):
+    print(f"{common.PRNT_API} Shutting down server...", flush=True)
+    # os.kill(os.getpid(), signal.SIGINT)
+    # server_thread.join()
+    print(f"{common.PRNT_API} Server shutdown complete.", flush=True)
+    sys.exit(0)
+
+
 def display_server_info():
     # Display where the admin can use the web UI
     openbrew_studio_url = "https://studio.openbrewai.com"
     print(
-        f"{common.PRNT_API} Navigate your browser to OpenBrew Studio\n-> {openbrew_studio_url} for the admin web UI.",
+        f"{common.PRNT_API} Navigate your browser to OpenBrew Studio for the admin web UI:\n-> {openbrew_studio_url}",
         flush=True,
     )
     # Display the local IP address of this server
@@ -1255,7 +1264,7 @@ def display_server_info():
     remote_ip = f"http://{IPAddr}:{SERVER_PORT}"
     local_ip = f"http://localhost:{SERVER_PORT}"
     print(
-        f"{common.PRNT_API} Refer to API docs for OpenBrew Server \n-> {local_ip} \nOR\n-> {remote_ip}",
+        f"{common.PRNT_API} Refer to API docs for OpenBrew Server:\n-> {local_ip} \nOR\n-> {remote_ip}",
         flush=True,
     )
     return {
@@ -1267,6 +1276,8 @@ def display_server_info():
 
 # Function to create and run the Tkinter window
 def run_GUI(local_ip: str, remote_ip: str, webui_address: str):
+    if not isProd:
+        return
     color_bg = "#333333"
     color_label = "#ffe135"
     root = tk.Tk()
@@ -1354,9 +1365,12 @@ def run_GUI(local_ip: str, remote_ip: str, webui_address: str):
     frame.pack()
     # Render
     root.mainloop()
+    # Handle stopping the server when window is closed
+    print(f"{common.PRNT_API} Shutting down GUI", flush=True)
+    shutdown_server()
 
 
-def run_server():
+def start_server():
     try:
         print(f"{common.PRNT_API} Starting API server...")
         # Start the ASGI server
@@ -1372,19 +1386,29 @@ def run_server():
         return False
 
 
-if __name__ == "__main__":
-    # Start the API server in a separate thread
-    fastapi_thread = threading.Thread(target=run_server)
+def run_server():
+    # Start the API server in a separate thread from GUI
+    fastapi_thread = threading.Thread(target=start_server)
+    fastapi_thread.daemon = True  # let the parent kill the child thread at exit
     fastapi_thread.start()
-    # Find IP info
-    server_info = display_server_info()
-    # Render GUI window
-    if isProd:
+    return fastapi_thread
+
+
+if __name__ == "__main__":
+    try:
+        # Start API server
+        server_thread = run_server()
+        # Find IP info
+        server_info = display_server_info()
+        # Render GUI window
         run_GUI(
             local_ip=server_info["local_ip"],
             remote_ip=server_info["remote_ip"],
             webui_address=server_info["web_ui_address"],
         )
-        # Handle stopping the server when window is closed
-        print(f"{common.PRNT_API} Shutting down", flush=True)
-        os.kill(os.getpid(), signal.SIGINT)
+        # Prevent main process from closing prematurely
+        while True:
+            pass
+    except KeyboardInterrupt:
+        print(f"{common.PRNT_API} User pressed Ctrl+C exiting...")
+        shutdown_server()
