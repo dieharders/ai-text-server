@@ -99,9 +99,12 @@ async def lifespan(application: FastAPI):
     print(f"{common.PRNT_API} Lifespan shutdown")
 
 
-app = FastAPI(title="🍺 HomeBrew API server", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="🍺 OpenBrew API server", version="0.3.2", lifespan=lifespan)
 
 
+# Get paths for SSL certificate
+SSL_KEY: str = "./key.pem"
+SSL_CERT: str = "./cert.pem"
 # Configure CORS settings
 CUSTOM_ORIGINS_ENV: str = os.getenv("CUSTOM_ORIGINS")
 CUSTOM_ORIGINS = CUSTOM_ORIGINS_ENV.split(",") if CUSTOM_ORIGINS_ENV else []
@@ -156,9 +159,9 @@ def connect() -> classes.ConnectResponse:
 
     return {
         "success": True,
-        "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'http://localhost:{SERVER_PORT}/docs' for api docs.",
+        "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'https://localhost:{SERVER_PORT}/docs' for api docs.",
         "data": {
-            "docs": f"http://localhost:{SERVER_PORT}/docs",
+            "docs": f"https://localhost:{SERVER_PORT}/docs",
             "version": version,
             # @TODO Lets just return everything that /services/api does.
             # "api": "/v1/services/api", # endpoint to tell front-end what all the endpoints are
@@ -1260,10 +1263,10 @@ def display_server_info():
     # Display the local IP address of this server
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
-    remote_ip = f"http://{IPAddr}:{SERVER_PORT}"
-    local_ip = f"http://localhost:{SERVER_PORT}"
+    remote_ip = f"https://{IPAddr}:{SERVER_PORT}"
+    local_ip = f"https://localhost:{SERVER_PORT}"
     print(
-        f"{common.PRNT_API} Refer to API docs for OpenBrew Server:\n-> {local_ip} \nOR\n-> {remote_ip}",
+        f"{common.PRNT_API} Refer to API docs for OpenBrew Server:\n-> {local_ip}/docs \nOR\n-> {remote_ip}/docs",
         flush=True,
     )
     return {
@@ -1379,6 +1382,9 @@ def start_server():
             host="0.0.0.0",
             port=SERVER_PORT,
             log_level="info",
+            # If server fails to start make sure the .pem files are generated in root dir
+            ssl_keyfile=SSL_KEY,
+            ssl_certfile=SSL_CERT,
         )
     except:
         print(f"{common.PRNT_API} Failed to start API server")
