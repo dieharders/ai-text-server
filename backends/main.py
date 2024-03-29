@@ -5,6 +5,7 @@ import threading
 import glob
 import json
 import uvicorn
+import webbrowser
 import httpx
 import shutil
 import socket
@@ -21,7 +22,6 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 import tkinter as tk
-from PIL import Image, ImageTk
 from contextlib import asynccontextmanager
 from inference import text_llama_index
 from embedding import embedding
@@ -1252,8 +1252,8 @@ def display_server_info():
     # Display the local IP address of this server
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
-    remote_ip = f"http://{IPAddr}:{SERVER_PORT}/docs"
-    local_ip = f"http://localhost:{SERVER_PORT}/docs"
+    remote_ip = f"http://{IPAddr}:{SERVER_PORT}"
+    local_ip = f"http://localhost:{SERVER_PORT}"
     print(
         f"{common.PRNT_API} Refer to API docs for OpenBrew Server \n-> {local_ip} \nOR\n-> {remote_ip}",
         flush=True,
@@ -1271,9 +1271,9 @@ def run_GUI(local_ip: str, remote_ip: str, webui_address: str):
     color_label = "#ffe135"
     root = tk.Tk()
     root.title("OpenBrew Server")
-    root.geometry("640x480")
+    root.geometry("1200x600")
     # since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
-    root.iconbitmap(default=os.path.join(sys._MEIPASS, "public/favicon.ico"))
+    root.iconbitmap(default=os.path.join(common.dep_path("public/favicon.ico")))
     root.configure(bg=color_bg)
     frame = tk.Frame(bg=color_bg)
     # Labels
@@ -1284,42 +1284,73 @@ def run_GUI(local_ip: str, remote_ip: str, webui_address: str):
         fg=color_label,
         font=("Arial", 30),
     )
-    local_label = tk.Label(
+    descr_label = tk.Label(
         frame,
-        text="API Docs (Local)",
+        text="Click the link below or navigate your browser to use the WebUI interface.",
+        bg=color_bg,
+        fg="white",
+        font=("Arial", 14),
+    )
+    docs_label = tk.Label(
+        frame,
+        text="API Docs:",
         bg=color_bg,
         fg=color_label,
-        font=("Arial", 16),
+        font=("Arial", 24),
+        width=24,
+    )
+    server_local_label = tk.Label(
+        frame,
+        text="Server (Local Address):",
+        bg=color_bg,
+        fg=color_label,
+        font=("Arial", 24),
+        width=24,
     )
     remote_label = tk.Label(
         frame,
-        text="API Docs (Remote)",
+        text="Server (Remote Address):",
         bg=color_bg,
         fg=color_label,
-        font=("Arial", 16),
+        font=("Arial", 24),
+        width=24,
     )
     webui_label = tk.Label(
         frame,
-        text="WebUI Address",
+        text="WebUI Address:",
         bg=color_bg,
         fg=color_label,
-        font=("Arial", 16),
+        font=("Arial", 24),
+        width=24,
     )
+    webui_link = tk.Label(
+        frame,
+        text=webui_address,
+        bg=color_bg,
+        fg="white",
+        font=("Arial", 24),
+        cursor="hand2",
+        width=24,
+    )
+    webui_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab(webui_address))
     # Inputs
-    local_entry = tk.Entry(frame, font=("Arial", 24))
-    local_entry.insert(0, local_ip)
-    remote_entry = tk.Entry(frame, font=("Arial", 24))
+    docs_entry = tk.Entry(frame, font=("Arial", 24), w="24")
+    docs_entry.insert(0, f"{local_ip}/docs")
+    server_local_entry = tk.Entry(frame, font=("Arial", 24), w="24")
+    server_local_entry.insert(0, f"{local_ip}")
+    remote_entry = tk.Entry(frame, font=("Arial", 24), w="24")
     remote_entry.insert(0, remote_ip)
-    webui_entry = tk.Entry(frame, font=("Arial", 24))
-    webui_entry.insert(0, webui_address)
     # Placement
     title_label.grid(row=0, column=0, columnspan=2, sticky="news", pady=40)
-    local_label.grid(row=1, column=0, padx=20)
-    local_entry.grid(row=1, column=1, pady=20)
-    remote_label.grid(row=2, column=0, padx=20)
-    remote_entry.grid(row=2, column=1, pady=20)
-    webui_label.grid(row=3, column=0, padx=20)
-    webui_entry.grid(row=3, column=1, pady=20)
+    descr_label.grid(row=1, column=0, columnspan=2, sticky="news", pady=40)
+    webui_label.grid(row=2, column=0, padx=20)
+    webui_link.grid(row=2, column=1, pady=20)
+    server_local_label.grid(row=3, column=0, padx=20)
+    server_local_entry.grid(row=3, column=1, padx=20)
+    remote_label.grid(row=4, column=0, padx=20)
+    remote_entry.grid(row=4, column=1, pady=20)
+    docs_label.grid(row=5, column=0, padx=20)
+    docs_entry.grid(row=5, column=1, pady=20)
     frame.pack()
     # Render
     root.mainloop()
