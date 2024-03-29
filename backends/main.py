@@ -1,6 +1,5 @@
 import os
 import sys
-import signal
 import threading
 import glob
 import json
@@ -48,6 +47,8 @@ TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
 SERVER_PORT = 8008
+# Display where the admin can use the web UI
+openbrew_studio_url = "https://studio.openbrewai.com"
 
 
 # Parse runtime arguments passed to script
@@ -1252,8 +1253,6 @@ def shutdown_server(*args):
 
 
 def display_server_info():
-    # Display where the admin can use the web UI
-    openbrew_studio_url = "https://studio.openbrewai.com"
     print(
         f"{common.PRNT_API} Navigate your browser to OpenBrew Studio for the admin web UI:\n-> {openbrew_studio_url}",
         flush=True,
@@ -1270,12 +1269,11 @@ def display_server_info():
     return {
         "local_ip": local_ip,
         "remote_ip": remote_ip,
-        "web_ui_address": openbrew_studio_url,
     }
 
 
 # Function to create and run the Tkinter window
-def run_GUI(local_ip: str, remote_ip: str, webui_address: str):
+def run_GUI(local_ip: str, remote_ip: str):
     if not isProd:
         return
     color_bg = "#333333"
@@ -1336,14 +1334,16 @@ def run_GUI(local_ip: str, remote_ip: str, webui_address: str):
     )
     webui_link = tk.Label(
         frame,
-        text=webui_address,
+        text=openbrew_studio_url,
         bg=color_bg,
         fg="white",
         font=("Arial", 24),
         cursor="hand2",
         width=24,
     )
-    webui_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab(webui_address))
+    webui_link.bind(
+        "<Button-1>", lambda e: webbrowser.open_new_tab(openbrew_studio_url)
+    )
     # Inputs
     docs_entry = tk.Entry(frame, font=("Arial", 24), w="24")
     docs_entry.insert(0, f"{local_ip}/docs")
@@ -1380,10 +1380,8 @@ def start_server():
             port=SERVER_PORT,
             log_level="info",
         )
-        return True
     except:
         print(f"{common.PRNT_API} Failed to start API server")
-        return False
 
 
 def run_server():
@@ -1404,8 +1402,12 @@ if __name__ == "__main__":
         run_GUI(
             local_ip=server_info["local_ip"],
             remote_ip=server_info["remote_ip"],
-            webui_address=server_info["web_ui_address"],
         )
+        # Open browser to WebUI
+        print(
+            f"{common.PRNT_API} API server started. Opening WebUI at {openbrew_studio_url}"
+        )
+        webbrowser.open(openbrew_studio_url, new=2)
         # Prevent main process from closing prematurely
         while True:
             pass
