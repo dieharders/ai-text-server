@@ -36,6 +36,7 @@ from huggingface_hub import (
 )
 
 server_thread = None
+api_version = "0.3.3"
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
@@ -99,7 +100,7 @@ async def lifespan(application: FastAPI):
     print(f"{common.PRNT_API} Lifespan shutdown")
 
 
-app = FastAPI(title="🍺 OpenBrew API server", version="0.3.2", lifespan=lifespan)
+app = FastAPI(title="🍺 OpenBrew API server", version=api_version, lifespan=lifespan)
 
 
 # Get paths for SSL certificate
@@ -155,14 +156,12 @@ def ping() -> classes.PingResponse:
 # Tell client we are ready to accept requests
 @app.get("/v1/connect")
 def connect() -> classes.ConnectResponse:
-    version = "0.2.0"
-
     return {
         "success": True,
         "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'https://localhost:{SERVER_PORT}/docs' for api docs.",
         "data": {
             "docs": f"https://localhost:{SERVER_PORT}/docs",
-            "version": version,
+            "version": api_version,
             # @TODO Lets just return everything that /services/api does.
             # "api": "/v1/services/api", # endpoint to tell front-end what all the endpoints are
         },
