@@ -58,3 +58,4 @@ next-env.d.ts
 /embed_models
 /text_models
 /output
+*.exe

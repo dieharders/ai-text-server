@@ -5,7 +5,7 @@
 #define MyAppVersion "0.3.3"
 #define MyAppPublisher "OpenBrewAi"
 #define MyAppURL "https://www.openbrewai.com/"
-#define MyAppExeName "OpenBrew-Server.exe"
+#define MyAppExeName "OpenBrewServer.WIN.Setup.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
