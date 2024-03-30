@@ -36,7 +36,7 @@ from huggingface_hub import (
 )
 
 server_thread = None
-api_version = "0.3.3"
+api_version = "0.4.0"
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
