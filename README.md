@@ -168,7 +168,7 @@ Run the command below in powershell to set your env variables:
 
 ### Python server
 
-#### Bundling the Python exe with PyInstaller:
+#### Packaging the Python exe with PyInstaller:
 
 This is handled automatically by npm scripts so you do not need to execute these manually. The -F flag bundles everything into one .exe file.
 
@@ -184,7 +184,7 @@ Then use it to bundle a python script:
 pyinstaller -c -F your_program.py
 ```
 
-#### Bundling with auto-py-to-exe:
+#### Packaging python server with auto-py-to-exe (recommended):
 
 This is a GUI tool that greatly simplifies the process. You can also save and load configs.
 
@@ -194,32 +194,22 @@ To install:
 auto-py-to-exe
 ```
 
-To run the debug build script:
+#### Packaging application with Electron for release (deprecated)
+
+This will build the production deps and then bundle them with pre-built Electron binaries into an installer/distributable.
+Please note, "yarn" should be used as the package manager as npm/pnpm will not work for packaging node_modules for some reason.
+Electron Builder commands: https://www.electron.build/cli.html
+
+This will create an installer (preferred). Copy the file from `/release/[app-name][version].exe` and put into your Github releases.
 
 ```bash
-yarn build:api:debug
+yarn release
 ```
 
-To run the production build script:
+This will create a folder with all the raw files in `/release/win-unpacked` (when built for windows). Useful for dev since you can inspect the loose files in folder.
 
 ```bash
-yarn build:api:prod
-```
-
-### Build scripts
-
-Building both front-end and server apps for production:
-
-```bash
-yarn build
-```
-
-Building just the python server for production. This will place the file(s) in `/includes` folder:
-
-```bash
-yarn build:api:dev
-# or
-yarn build:api:prod
+yarn unpacked
 ```
 
 ## Production
@@ -240,23 +230,17 @@ openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36
 
 This should be enough for any webapp served over https to access the server. If you see "Warning: Potential Security Risk Ahead" in your browser when using the webapp, you can ignore it by clicking `advanced` then `Accept the Risk` button to continue.
 
-### Package application with Electron for release
+### Inno Installer Setup Wizard
 
-This will build the production deps and then bundle them with pre-built Electron binaries into an installer/distributable.
-Please note, "yarn" should be used as the package manager as npm/pnpm will not work for packaging node_modules for some reason.
-Electron Builder commands: https://www.electron.build/cli.html
+1. Download Inno Setup from (here)[https://jrsoftware.org/isinfo.php]
 
-This will create an installer (preferred). Copy the file from `/release/[app-name][version].exe` and put into your Github releases.
+2. Install and run the setup wizard for a new script
 
-```bash
-yarn release
-```
+3. Follow the instructions and before it asks to compile the script, cancel and inspect the script where it points to your included files/folders
 
-This will create a folder with all the raw files in `/release/win-unpacked` (when built for windows). Useful for dev since you can inspect the loose files in folder.
+4. Be sure to append `/[your_included_folder_name]` after the `DestDir: "{app}"`. So instead of `{app}` we have `{app}/assets`. This will ensure it point to the correct paths of the added files you told pyinstaller to include.
 
-```bash
-yarn unpacked
-```
+5. After that compile the script and it should output your setup file where you specified.
 
 ### Create a release on Github with link to installer
 
