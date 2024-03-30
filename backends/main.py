@@ -104,8 +104,8 @@ app = FastAPI(title="🍺 OpenBrew API server", version=api_version, lifespan=li
 
 
 # Get paths for SSL certificate
-SSL_KEY: str = "./key.pem"
-SSL_CERT: str = "./cert.pem"
+SSL_KEY: str = common.dep_path("public/key.pem")
+SSL_CERT: str = common.dep_path("public/cert.pem")
 # Configure CORS settings
 CUSTOM_ORIGINS_ENV: str = os.getenv("CUSTOM_ORIGINS")
 CUSTOM_ORIGINS = CUSTOM_ORIGINS_ENV.split(",") if CUSTOM_ORIGINS_ENV else []
