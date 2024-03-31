@@ -28,6 +28,7 @@ APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 MODELS_CACHE_DIR = "text_models"
 INSTALLED_TEXT_MODELS = "installed_text_models"  # key in json file
+DEFAULT_SETTINGS_DICT = {"current_download_path": "", INSTALLED_TEXT_MODELS: []}
 DEFAULT_MAX_TOKENS = 128
 
 
@@ -258,7 +259,6 @@ class SaveTextModelRequestArgs(dict):
 
 # Index the path of the downloaded model in a file
 def save_text_model(data: SaveTextModelRequestArgs):
-    DEFAULT_SETTINGS_DICT = {"current_download_path": "", INSTALLED_TEXT_MODELS: []}
     repo_id = data["repoId"]
     folderpath = APP_SETTINGS_PATH
     filepath = MODEL_METADATAS_FILEPATH
