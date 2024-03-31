@@ -1290,7 +1290,7 @@ def run_GUI(local_ip: str, remote_ip: str):
     # Labels
     title_label = tk.Label(
         frame,
-        text="Server Info",
+        text="OpenBrew Server - Info",
         bg=color_bg,
         fg=color_label,
         font=("Arial", 30),
