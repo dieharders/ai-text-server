@@ -112,8 +112,8 @@ CUSTOM_ORIGINS = CUSTOM_ORIGINS_ENV.split(",") if CUSTOM_ORIGINS_ENV else []
 origins = [
     "http://localhost:3000",  # (optional) for testing client apps
     # "https://hoppscotch.io",  # (optional) for testing endpoints
-    "https://brain-dump-dieharders.vercel.app",  # (required) client app origin (preview)
-    "https://homebrew-ai-discover.vercel.app",  # (required) client app origin (production/alias)
+    "https://brain-dump-dieharders.vercel.app",  # (optional) client app origin (preview)
+    "https://homebrew-ai-discover.vercel.app",  # (optional) client app origin (production/alias)
     "https://studio.openbrewai.com",  # (required) client app origin (production/domain)
     *CUSTOM_ORIGINS,
 ]
@@ -1381,6 +1381,7 @@ def start_server():
             host="0.0.0.0",
             port=SERVER_PORT,
             log_level="info",
+            # Include these to host over https
             # If server fails to start make sure the .pem files are generated in root dir
             ssl_keyfile=SSL_KEY,
             ssl_certfile=SSL_CERT,
