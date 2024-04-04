@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from typing import List
 from fastapi import (
     FastAPI,
+    Request,
     HTTPException,
     BackgroundTasks,
     File,
@@ -20,6 +21,8 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 import tkinter as tk
 from contextlib import asynccontextmanager
 from inference import text_llama_index
@@ -35,6 +38,7 @@ from huggingface_hub import (
     HfApi,
 )
 
+server_info = None
 server_thread = None
 api_version = "0.4.0"
 VECTOR_DB_FOLDER = "chromadb"
@@ -101,7 +105,8 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(title="Obrew🍺Server", version=api_version, lifespan=lifespan)
-
+templates_dir = os.path.join(os.path.dirname(__file__), "templates")
+templates = Jinja2Templates(directory=templates_dir)
 
 # Get paths for SSL certificate
 SSL_KEY: str = common.dep_path("public/key.pem")
@@ -139,6 +144,24 @@ app.add_middleware(
 ##############
 
 app.include_router(endpoint_router)
+
+
+# Return a "connect" GUI page for user to config and startup the API server,
+# then return the user to the supplied callback url with query params of config added.
+@app.get("/", response_class=HTMLResponse)
+async def connect_page(request: Request):
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "title": "Connect to Obrew Server",
+            "app_name": "Obrew🍺Server",
+            "message": "Click the link below or navigate your browser to use the WebUI interface.",
+            "host": server_info["local_ip"],
+            "remote_host": server_info["remote_ip"],
+            "port": SERVER_PORT,
+        },
+    )
 
 
 # Keep server/database alive
@@ -1262,8 +1285,9 @@ def display_server_info():
     # Display the local IP address of this server
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
-    remote_ip = f"https://{IPAddr}:{SERVER_PORT}"
-    local_ip = f"https://localhost:{SERVER_PORT}"
+    # @TODO Can we infer the http protocol automatically somehow?
+    remote_ip = f"https://{IPAddr}"
+    local_ip = f"https://localhost"
     print(
         f"{common.PRNT_API} Refer to API docs for Obrew Server:\n-> {local_ip}/docs \nOR\n-> {remote_ip}/docs",
         flush=True,
@@ -1281,7 +1305,7 @@ def run_GUI(local_ip: str, remote_ip: str):
     color_bg = "#333333"
     color_label = "#ffe135"
     root = tk.Tk()
-    root.title("Obrew🍺Server")
+    root.title("Obrew Server")
     root.geometry("1200x600")
     # since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
     root.iconbitmap(default=os.path.join(common.dep_path("public/favicon.ico")))
@@ -1290,7 +1314,7 @@ def run_GUI(local_ip: str, remote_ip: str):
     # Labels
     title_label = tk.Label(
         frame,
-        text="Obrew🍺Server - Info",
+        text="Obrew Server - Info",
         bg=color_bg,
         fg=color_label,
         font=("Arial", 30),
@@ -1302,14 +1326,14 @@ def run_GUI(local_ip: str, remote_ip: str):
         fg="white",
         font=("Arial", 14),
     )
-    docs_label = tk.Label(
-        frame,
-        text="API Docs:",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 24),
-        width=24,
-    )
+    # docs_label = tk.Label(
+    #     frame,
+    #     text="API Docs:",
+    #     bg=color_bg,
+    #     fg=color_label,
+    #     font=("Arial", 24),
+    #     width=24,
+    # )
     server_local_label = tk.Label(
         frame,
         text="Server (Local Address):",
@@ -1347,12 +1371,12 @@ def run_GUI(local_ip: str, remote_ip: str):
         "<Button-1>", lambda e: webbrowser.open_new_tab(openbrew_studio_url)
     )
     # Inputs
-    docs_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    docs_entry.insert(0, f"{local_ip}/docs")
+    # docs_entry = tk.Entry(frame, font=("Arial", 24), w="24")
+    # docs_entry.insert(0, f"{local_ip}:{SERVER_PORT}/docs")
     server_local_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    server_local_entry.insert(0, f"{local_ip}")
+    server_local_entry.insert(0, f"{local_ip}:{SERVER_PORT}")
     remote_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    remote_entry.insert(0, remote_ip)
+    remote_entry.insert(0, f"{remote_ip}:{SERVER_PORT}")
     # Placement
     title_label.grid(row=0, column=0, columnspan=2, sticky="news", pady=40)
     descr_label.grid(row=1, column=0, columnspan=2, sticky="news", pady=40)
@@ -1362,8 +1386,8 @@ def run_GUI(local_ip: str, remote_ip: str):
     server_local_entry.grid(row=3, column=1, padx=20)
     remote_label.grid(row=4, column=0, padx=20)
     remote_entry.grid(row=4, column=1, pady=20)
-    docs_label.grid(row=5, column=0, padx=20)
-    docs_entry.grid(row=5, column=1, pady=20)
+    # docs_label.grid(row=5, column=0, padx=20)
+    # docs_entry.grid(row=5, column=1, pady=20)
     frame.pack()
     # Render
     root.mainloop()
@@ -1405,15 +1429,17 @@ if __name__ == "__main__":
         # Find IP info
         server_info = display_server_info()
         # Render GUI window
+        local_ip = server_info["local_ip"]
+        remote_ip = server_info["remote_ip"]
+        local_url = f"{local_ip}:{SERVER_PORT}"
+        remote_url = f"{remote_ip}:{SERVER_PORT}"
         run_GUI(
-            local_ip=server_info["local_ip"],
-            remote_ip=server_info["remote_ip"],
+            local_ip=local_url,
+            remote_ip=remote_url,
         )
         # Open browser to WebUI
-        print(
-            f"{common.PRNT_API} API server started. Opening WebUI at {openbrew_studio_url}"
-        )
-        webbrowser.open(openbrew_studio_url, new=2)
+        print(f"{common.PRNT_API} API server started. Opening WebUI at {local_url}")
+        webbrowser.open(local_url, new=2)
         # Prevent main process from closing prematurely
         while True:
             pass

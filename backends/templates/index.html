@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title }}</title>
+    <!-- Include the Google Font -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+    />
+    <style>
+      /* Center the content horizontally and vertically */
+      body {
+        font-family: 'Roboto', sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .content {
+        text-align: center;
+        padding: 2rem;
+        max-width: 30rem;
+        border: 0.25rem solid black;
+        background-color: white;
+        border-radius: 1rem;
+      }
+      .docs-link {
+        display: inline-block;
+        color: rgb(24, 10, 0);
+        text-decoration: none;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .docs-link:hover {
+        text-decoration: underline;
+      }
+      .button-container {
+        width: 100%;
+        text-align: center;
+        margin-top: 3rem;
+        margin-bottom: 1rem;
+      }
+      .connect-button {
+        display: inline-block;
+        background-color: #ffb327;
+        color: rgb(24, 10, 0);
+        padding: 10px 20px;
+        border: none;
+        border-radius: 0.85rem;
+        text-decoration: none;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      .connect-button:hover {
+        background-color: #f09c00;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="content">
+      <h1>{{ app_name }} - Info</h1>
+      <p>{{ message }}</p>
+      <h2>Local Host</h2>
+      <p>{{host}}:{{port}}</p>
+      <h2>Remote Host</h2>
+      <p>{{remote_host}}:{{port}}</p>
+      <h2>API Docs</h2>
+      <a class="docs-link" href="{{host}}:{{port}}/docs" target="_blank">
+        {{host}}:{{port}}/docs
+      </a>
+      <div class="button-container">
+        <a
+          class="connect-button"
+          href="https://studio.openbrewai.com/?hostname={{host}}&port={{port}}"
+          target="_blank"
+          >Go to Obrew Studio
+        </a>
+      </div>
+    </div>
+  </body>
+</html>
