@@ -1,4 +1,4 @@
-# 🍺 OpenBrew Server - Ai Inference Engine
+# 🍺 Obrew Server - Ai Inference Engine
 
 This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
 
@@ -28,9 +28,9 @@ Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examp
 
 - Startup and shutdown of the backend services are done via the front-end UI or REST api.
 
-- The Python/FastAPI server (OpenBrew api) operates under `localhost:8008`.
+- The Python/FastAPI server (Obrew api) operates under `localhost:8008`.
 
-- 3rd party client apps will call the OpenBrew api to perform all functions needed.
+- 3rd party client apps will call the Obrew api to perform all functions needed.
 
 ## Getting Started
 
@@ -83,7 +83,7 @@ yarn server:dev
 yarn server:prod
 ```
 
-The OpenBrew api server will be running on [https://localhost:8008](https://localhost:8008)
+The Obrew api server will be running on [https://localhost:8008](https://localhost:8008)
 
 \*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https. If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
 
@@ -276,7 +276,7 @@ https://github.com/[github-user]/[project-name]/releases/latest/download/[instal
 
 This project deploys several backend servers exposed using the `/v1` endpoint. The goal is to separate all OS level logic and processing from the client apps. This can make deploying new apps and swapping out engine functionality easier.
 
-A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after OpenBrew Server is started.
+A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after Obrew Server is started.
 
 ### /v1/connect
 
@@ -284,7 +284,7 @@ Used by client apps to detect when services are ready to be used.
 
 ### /v1/services/api
 
-Gets all parameters for making calls to the OpenBrew api.
+Gets all parameters for making calls to the Obrew api.
 
 ### /v1/text/load
 

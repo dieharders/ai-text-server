@@ -45,7 +45,7 @@ class bcolors:
     UNDERLINE = "\033[4m"
 
 
-PRNT_API = f"{bcolors.OKBLUE}[OPENBREW]{bcolors.ENDC}"
+PRNT_API = f"{bcolors.HEADER}[OBREW]{bcolors.ENDC}"
 
 
 # This will return a context window that is suited for a particular mode.

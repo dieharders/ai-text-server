@@ -100,7 +100,7 @@ async def lifespan(application: FastAPI):
     print(f"{common.PRNT_API} Lifespan shutdown")
 
 
-app = FastAPI(title="🍺 OpenBrew API server", version=api_version, lifespan=lifespan)
+app = FastAPI(title="Obrew🍺Server", version=api_version, lifespan=lifespan)
 
 
 # Get paths for SSL certificate
@@ -1256,7 +1256,7 @@ def shutdown_server(*args):
 
 def display_server_info():
     print(
-        f"{common.PRNT_API} Navigate your browser to OpenBrew Studio for the admin web UI:\n-> {openbrew_studio_url}",
+        f"{common.PRNT_API} Navigate your browser to Obrew Studio for the admin web UI:\n-> {openbrew_studio_url}",
         flush=True,
     )
     # Display the local IP address of this server
@@ -1265,7 +1265,7 @@ def display_server_info():
     remote_ip = f"https://{IPAddr}:{SERVER_PORT}"
     local_ip = f"https://localhost:{SERVER_PORT}"
     print(
-        f"{common.PRNT_API} Refer to API docs for OpenBrew Server:\n-> {local_ip}/docs \nOR\n-> {remote_ip}/docs",
+        f"{common.PRNT_API} Refer to API docs for Obrew Server:\n-> {local_ip}/docs \nOR\n-> {remote_ip}/docs",
         flush=True,
     )
     return {
@@ -1281,7 +1281,7 @@ def run_GUI(local_ip: str, remote_ip: str):
     color_bg = "#333333"
     color_label = "#ffe135"
     root = tk.Tk()
-    root.title("OpenBrew Server")
+    root.title("Obrew🍺Server")
     root.geometry("1200x600")
     # since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
     root.iconbitmap(default=os.path.join(common.dep_path("public/favicon.ico")))
@@ -1290,7 +1290,7 @@ def run_GUI(local_ip: str, remote_ip: str):
     # Labels
     title_label = tk.Label(
         frame,
-        text="OpenBrew Server - Info",
+        text="Obrew🍺Server - Info",
         bg=color_bg,
         fg=color_label,
         font=("Arial", 30),
