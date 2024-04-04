@@ -30,10 +30,11 @@ from llama_index.evaluation.faithfulness import FaithfulnessEvaluator, ResponseE
 from llama_index.ingestion import IngestionPipeline
 from llama_index.storage.docstore import SimpleDocumentStore
 from llama_index.embeddings import HuggingFaceEmbedding
-# from llama_index.response_synthesizers import ResponseMode
 from transformers import AutoModel, AutoTokenizer
 from server import classes
 from .chunking import markdown_heading_split, markdown_document_split
+
+# from llama_index.response_synthesizers import ResponseMode
 
 embed_model = None
 embedding_model_names = dict(BAAI="BAAI/bge-large-en", GTE="thenlper/gte-base")
@@ -161,8 +162,10 @@ def create_embed_model():
 
 
 # Create a ChromaDB client singleton
+# @TODO May need to create this at start of app first run to prevent race condition from using this when creating DB first time.
 def create_db_client(storage_directory: str):
     return PersistentClient(
+        # tenant="", # @TODO For multi-tenant db's
         path=storage_directory,
         settings=Settings(anonymized_telemetry=False, allow_reset=True),
     )
@@ -395,7 +398,10 @@ def create_embedding(
         )
         for ichunk, ch in enumerate(chunks):
             # .encode() prevents crash on undefined/unmapped string chars
-            print(f"[embedding api] Chunk ({ichunk}):\n\n{ch.get_content().encode('utf-8')}", flush=True)
+            print(
+                f"[embedding api] Chunk ({ichunk}):\n\n{ch.get_content().encode('utf-8')}",
+                flush=True,
+            )
 
         # Create document embeddings from chunks
         service_context = ServiceContext.from_defaults(
