@@ -1,4 +1,4 @@
-# 🍺 Obrew Server - Ai Inference Engine
+# 🍺 Obrew Studio - Server (Ai Inference Engine)
 
 This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
 
@@ -8,20 +8,18 @@ This is a hybrid Node.js + Python app that uses Next.js as the frontend and Fast
 
 Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examples/with-electron)
 
-## Main Features
+## Features Roadmap
 
 - ✅ Inference: Run open-source AI models for free
 - ✅ Provide easy to use desktop installers
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
 - ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
-- ❌ Threads: Save/Retrieve chat message history
-
-## Upcoming Features
-
-- ❌ Cloud platform (subscription, host your infra with us)
-- ❌ Enterprise service (subscription & paid support, bring your own infra)
-- ❌ Auto Agents
+  <!-- - ❌ Cloud platform (subscription, host your infra with us) -->
+  <!-- - ❌ Enterprise service (subscription & paid support, bring your own infra) -->
+- ❌ Auto Agents (Assistants)
+- ❌ Chats: Save/Retrieve chat message history
+- ❌ Agent Teams
 - ❌ Multi-Chat
 
 ## How It Works
@@ -165,6 +163,10 @@ Run the command below in powershell to set your env variables:
 ```
 
 ## Bundling
+
+<!-- ### Bundling Nvida CUDA toolkit deps:
+
+Instructions on how and what files to include in app bundle... -->
 
 ### Python server
 
