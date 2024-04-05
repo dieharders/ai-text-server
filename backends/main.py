@@ -1424,25 +1424,27 @@ def run_server():
 
 if __name__ == "__main__":
     try:
-        # Start API server
-        server_thread = run_server()
         # Find IP info
         server_info = display_server_info()
-        # Render GUI window
+        # remote_ip = server_info["remote_ip"]
+        # remote_url = f"{remote_ip}:{SERVER_PORT}"
         local_ip = server_info["local_ip"]
-        remote_ip = server_info["remote_ip"]
         local_url = f"{local_ip}:{SERVER_PORT}"
-        remote_url = f"{remote_ip}:{SERVER_PORT}"
-        run_GUI(
-            local_ip=local_url,
-            remote_ip=remote_url,
-        )
         # Open browser to WebUI
         print(f"{common.PRNT_API} API server started. Opening WebUI at {local_url}")
         webbrowser.open(local_url, new=2)
-        # Prevent main process from closing prematurely
-        while True:
-            pass
+        # Start API server
+        # server_thread = run_server()
+        start_server()
+
+        # Render GUI window
+        # run_GUI(
+        #     local_ip=local_url,
+        #     remote_ip=remote_url,
+        # )
+        # Prevent main process from closing prematurely (needed to keep UI)
+        # while True:
+        #     pass
     except KeyboardInterrupt:
         print(f"{common.PRNT_API} User pressed Ctrl+C exiting...")
         shutdown_server()
