@@ -8,6 +8,7 @@ import webbrowser
 import httpx
 import shutil
 import socket
+import pyqrcode
 from dotenv import load_dotenv
 from typing import List
 from fastapi import (
@@ -148,17 +149,28 @@ app.include_router(endpoint_router)
 
 # Return a "connect" GUI page for user to config and startup the API server,
 # then return the user to the supplied callback url with query params of config added.
+# QRcode generation -> https://github.com/arjones/qr-generator/tree/main
 @app.get("/", response_class=HTMLResponse)
 async def connect_page(request: Request):
+    remote_url = server_info["remote_ip"]
+    local_url = server_info["local_ip"]
+    # Generate QR code - direct to remote url
+    qr_code = pyqrcode.create(
+        f"{remote_url}:{SERVER_PORT}/?hostname={remote_url}&port={SERVER_PORT}"
+    )
+    qr_data = qr_code.png_as_base64_str(scale=5)
+    # qr_svg_data = qr_code.png("image.png", scale=8)
+
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
+            "qr_data": qr_data,
             "title": "Connect to Obrew Server",
             "app_name": "Obrew🍺Server",
             "message": "Click the link below or navigate your browser to use the WebUI interface.",
-            "host": server_info["local_ip"],
-            "remote_host": server_info["remote_ip"],
+            "host": local_url,
+            "remote_host": remote_url,
             "port": SERVER_PORT,
         },
     )

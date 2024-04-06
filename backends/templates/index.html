@@ -28,6 +28,12 @@
         background-color: white;
         border-radius: 1rem;
       }
+      .remote {
+        display: flex;
+        flex-direction: column;
+        justify-items: center;
+        align-items: center;
+      }
       .docs-link {
         display: inline-block;
         color: rgb(24, 10, 0);
@@ -67,8 +73,13 @@
       <p>{{ message }}</p>
       <h2>Local Host</h2>
       <p>{{host}}:{{port}}</p>
-      <h2>Remote Host</h2>
-      <p>{{remote_host}}:{{port}}</p>
+      <div class="remote">
+        <h2>Remote Host</h2>
+        {% if qr_data %}
+        <img src="data:image/png;base64,{{qr_data}}" alt="qr code for {{remote_host}}:{{port}}" />
+        {% endif %}
+        <p id="remote_host">{{remote_host}}:{{port}}</p>
+      </div>
       <h2>API Docs</h2>
       <a class="docs-link" href="{{host}}:{{port}}/docs" target="_blank">
         {{host}}:{{port}}/docs
@@ -82,5 +93,23 @@
         </a>
       </div>
     </div>
+    {% block javascript %}
+    <script>
+      // Function to get URL parameter value by name
+      function getUrlParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search)
+        return urlParams.get(name)
+      }
+
+      // Example usage
+      const hostValue = getUrlParameter('hostname')
+      const portValue = getUrlParameter('port')
+      const btn = document.querySelector('.connect-button')
+      if (hostValue && portValue && btn) {
+        // Change value of link to point to remote url (since this is prob someone not on host machine using QR code)
+        btn.href = `https://studio.openbrewai.com/?hostname=${hostValue}&port=${portValue}`
+      }
+    </script>
+    {% endblock %}
   </body>
 </html>
