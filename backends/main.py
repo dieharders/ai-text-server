@@ -24,7 +24,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import tkinter as tk
 from contextlib import asynccontextmanager
 from inference import text_llama_index
 from embedding import embedding
@@ -41,7 +40,7 @@ from huggingface_hub import (
 
 server_info = None
 server_thread = None
-api_version = "0.4.0"
+api_version = "0.4.2"
 VECTOR_DB_FOLDER = "chromadb"
 MEMORY_FOLDER = "memories"
 PARSED_FOLDER = "parsed"
@@ -159,7 +158,7 @@ async def connect_page(request: Request):
         f"{remote_url}:{SERVER_PORT}/?hostname={remote_url}&port={SERVER_PORT}"
     )
     qr_data = qr_code.png_as_base64_str(scale=5)
-    # qr_svg_data = qr_code.png("image.png", scale=8)
+    # qr_image = qr_code.png("image.png", scale=8) # Write image file to disk
 
     return templates.TemplateResponse(
         "index.html",
@@ -893,6 +892,31 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
         }
 
 
+# Get all chunks for a source document
+@app.post("/v1/memory/getChunks")
+def get_chunks(params: classes.GetDocumentChunksRequest):
+    collection_id = params.collectionId
+    document = params.document
+
+    try:
+        chunks = embedding.get_document_chunks(
+            collection_id=collection_id, document=document
+        )
+        num_chunks = len(chunks)
+        return {
+            "success": True,
+            "message": f"Returned {num_chunks} chunks for document.",
+            "data": chunks,
+        }
+    except Exception as e:
+        print(f"{common.PRNT_API} Error: {e}")
+        return {
+            "success": False,
+            "message": f"{e}",
+            "data": None,
+        }
+
+
 # Open an OS file exporer on host machine
 @app.get("/v1/memory/fileExplore")
 def explore_source_file(
@@ -1301,111 +1325,13 @@ def display_server_info():
     remote_ip = f"https://{IPAddr}"
     local_ip = f"https://localhost"
     print(
-        f"{common.PRNT_API} Refer to API docs for Obrew Server:\n-> {local_ip}/docs \nOR\n-> {remote_ip}/docs",
+        f"{common.PRNT_API} Refer to API docs for Obrew Server:\n-> {local_ip}:{SERVER_PORT}/docs \nOR\n-> {remote_ip}:{SERVER_PORT}/docs",
         flush=True,
     )
     return {
         "local_ip": local_ip,
         "remote_ip": remote_ip,
     }
-
-
-# Function to create and run the Tkinter window
-def run_GUI(local_ip: str, remote_ip: str):
-    if not isProd:
-        return
-    color_bg = "#333333"
-    color_label = "#ffe135"
-    root = tk.Tk()
-    root.title("Obrew Server")
-    root.geometry("1200x600")
-    # since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
-    root.iconbitmap(default=os.path.join(common.dep_path("public/favicon.ico")))
-    root.configure(bg=color_bg)
-    frame = tk.Frame(bg=color_bg)
-    # Labels
-    title_label = tk.Label(
-        frame,
-        text="Obrew Server - Info",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 30),
-    )
-    descr_label = tk.Label(
-        frame,
-        text="Click the link below or navigate your browser to use the WebUI interface.",
-        bg=color_bg,
-        fg="white",
-        font=("Arial", 14),
-    )
-    # docs_label = tk.Label(
-    #     frame,
-    #     text="API Docs:",
-    #     bg=color_bg,
-    #     fg=color_label,
-    #     font=("Arial", 24),
-    #     width=24,
-    # )
-    server_local_label = tk.Label(
-        frame,
-        text="Server (Local Address):",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 24),
-        width=24,
-    )
-    remote_label = tk.Label(
-        frame,
-        text="Server (Remote Address):",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 24),
-        width=24,
-    )
-    webui_label = tk.Label(
-        frame,
-        text="WebUI Address:",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 24),
-        width=24,
-    )
-    webui_link = tk.Label(
-        frame,
-        text=openbrew_studio_url,
-        bg=color_bg,
-        fg="white",
-        font=("Arial", 24),
-        cursor="hand2",
-        width=24,
-    )
-    webui_link.bind(
-        "<Button-1>", lambda e: webbrowser.open_new_tab(openbrew_studio_url)
-    )
-    # Inputs
-    # docs_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    # docs_entry.insert(0, f"{local_ip}:{SERVER_PORT}/docs")
-    server_local_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    server_local_entry.insert(0, f"{local_ip}:{SERVER_PORT}")
-    remote_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    remote_entry.insert(0, f"{remote_ip}:{SERVER_PORT}")
-    # Placement
-    title_label.grid(row=0, column=0, columnspan=2, sticky="news", pady=40)
-    descr_label.grid(row=1, column=0, columnspan=2, sticky="news", pady=40)
-    webui_label.grid(row=2, column=0, padx=20)
-    webui_link.grid(row=2, column=1, pady=20)
-    server_local_label.grid(row=3, column=0, padx=20)
-    server_local_entry.grid(row=3, column=1, padx=20)
-    remote_label.grid(row=4, column=0, padx=20)
-    remote_entry.grid(row=4, column=1, pady=20)
-    # docs_label.grid(row=5, column=0, padx=20)
-    # docs_entry.grid(row=5, column=1, pady=20)
-    frame.pack()
-    # Render
-    root.mainloop()
-    # Handle stopping the server when window is closed
-    print(f"{common.PRNT_API} Shutting down GUI", flush=True)
-    shutdown_server()
 
 
 def start_server():
@@ -1427,7 +1353,7 @@ def start_server():
 
 
 def run_server():
-    # Start the API server in a separate thread from GUI
+    # Start the API server in a separate thread from main
     fastapi_thread = threading.Thread(target=start_server)
     fastapi_thread.daemon = True  # let the parent kill the child thread at exit
     fastapi_thread.start()
@@ -1438,25 +1364,13 @@ if __name__ == "__main__":
     try:
         # Find IP info
         server_info = display_server_info()
-        # remote_ip = server_info["remote_ip"]
-        # remote_url = f"{remote_ip}:{SERVER_PORT}"
         local_ip = server_info["local_ip"]
         local_url = f"{local_ip}:{SERVER_PORT}"
         # Open browser to WebUI
         print(f"{common.PRNT_API} API server started. Opening WebUI at {local_url}")
         webbrowser.open(local_url, new=2)
         # Start API server
-        # server_thread = run_server()
         start_server()
-
-        # Render GUI window
-        # run_GUI(
-        #     local_ip=local_url,
-        #     remote_ip=remote_url,
-        # )
-        # Prevent main process from closing prematurely (needed to keep UI)
-        # while True:
-        #     pass
     except KeyboardInterrupt:
         print(f"{common.PRNT_API} User pressed Ctrl+C exiting...")
         shutdown_server()

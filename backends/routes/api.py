@@ -182,6 +182,11 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "method": "POST",
             },
             {
+                "name": "getChunks",
+                "urlPath": "/v1/memory/getChunks",
+                "method": "POST",
+            },
+            {
                 "name": "getDocument",
                 "urlPath": "/v1/memory/getDocument",
                 "method": "POST",

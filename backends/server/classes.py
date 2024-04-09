@@ -418,6 +418,25 @@ class GetCollectionResponse(BaseModel):
     }
 
 
+class GetDocumentChunksRequest(BaseModel):
+    collectionId: str
+    document: dict
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "collectionId": "coll_id",
+                    "document": {
+                        "name": "doc_id",
+                        "chunk_ids": ["id_1", "id_2"],
+                    },
+                }
+            ]
+        }
+    }
+
+
 class GetDocumentRequest(BaseModel):
     collection_id: str
     document_ids: List[str]

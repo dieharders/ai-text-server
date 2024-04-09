@@ -15,7 +15,6 @@ from llama_index import (
     SimpleDirectoryReader,
     ServiceContext,
     Document,
-    # set_global_service_context,
 )
 from llama_index.llms import LlamaCPP
 from llama_index.storage.index_store import SimpleIndexStore
@@ -119,7 +118,7 @@ def get_index_store(collection_name: str):
     return index_store
 
 
-def get_document_chunks(collection_id, document: Document):
+def get_document_chunks(collection_id: str, document: Document):
     chunk_list: List[BaseNode] = []
 
     if "chunk_ids" in document["metadata"]:
