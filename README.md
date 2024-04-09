@@ -87,7 +87,7 @@ The Obrew api server will be running on [https://localhost:8008](https://localho
 
 ### Run the Electron app (UI and Backend) in development
 
-This is the perferred method of running the app:
+This is the preferred method of running the app:
 
 ```bash
 yarn start
