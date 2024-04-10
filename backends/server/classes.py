@@ -307,6 +307,7 @@ class AddCollectionRequest(BaseModel):
     collectionName: str
     description: Optional[str] = ""
     tags: Optional[str] = ""
+    icon: Optional[str] = ""
 
 
 class AddCollectionResponse(BaseModel):

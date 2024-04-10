@@ -9,6 +9,7 @@ import httpx
 import shutil
 import socket
 import pyqrcode
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from typing import List
 from fastapi import (
@@ -658,6 +659,8 @@ def create_memory_collection(
             )
         # Create payload. ChromaDB only accepts strings, numbers, bools.
         metadata = {
+            "icon": form.icon or "",
+            "createdAt": datetime.now(timezone.utc).strftime("%B %d %Y - %H:%M:%S"),
             "tags": parsed_tags,
             "description": form.description,
             "sources": json.dumps([]),
@@ -669,14 +672,18 @@ def create_memory_collection(
             metadata=metadata,
             # embedding_function=custom_embed_function,
         )
+        msg = f'Successfully created new collection "{collection_name}"'
+        print(f"{common.PRNT_API} {msg}")
         return {
             "success": True,
-            "message": f"Successfully created new collection [{collection_name}]",
+            "message": msg,
         }
     except Exception as e:
+        msg = f'Failed to create new collection "{collection_name}": {e}'
+        print(f"{common.PRNT_API} {msg}")
         return {
             "success": False,
-            "message": f"Failed to create new collection [{collection_name}]: {e}",
+            "message": msg,
         }
 
 

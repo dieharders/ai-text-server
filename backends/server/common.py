@@ -46,6 +46,7 @@ class bcolors:
 
 
 PRNT_API = f"{bcolors.HEADER}[OBREW]{bcolors.ENDC}"
+PRNT_EMBED = f"{bcolors.OKCYAN}[EMBEDDING]{bcolors.ENDC}"
 
 
 # This will return a context window that is suited for a particular mode.

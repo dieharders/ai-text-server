@@ -3,7 +3,7 @@ import uuid
 import json
 import re
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from typing import Any, Type
 from chromadb import Documents, EmbeddingFunction, Embeddings, PersistentClient
@@ -30,7 +30,7 @@ from llama_index.ingestion import IngestionPipeline
 from llama_index.storage.docstore import SimpleDocumentStore
 from llama_index.embeddings import HuggingFaceEmbedding
 from transformers import AutoModel, AutoTokenizer
-from server import classes
+from server import common, classes
 from .chunking import markdown_heading_split, markdown_document_split
 
 # from llama_index.response_synthesizers import ResponseMode
@@ -135,7 +135,7 @@ def get_document_chunks(collection_id: str, document: Document):
                 )
                 chunk_list.append(n)
         except Exception as e:
-            print(f"[embedding] Error: {e}", flush=True)
+            print(f"{common.PRNT_EMBED} Error: {e}", flush=True)
             pass
     return chunk_list
 
@@ -268,7 +268,7 @@ def pre_process_documents(
         if not check_file_support(input_file_path):
             raise Exception("Unsupported file format.")
     except (Exception, ValueError, TypeError, KeyError) as error:
-        print(f"[embedding api] Pre-processing failed: {error}", flush=True)
+        print(f"{common.PRNT_EMBED} Pre-processing failed: {error}", flush=True)
         raise Exception(error)
     else:
         # Read the supplied id or assign a new one
@@ -308,14 +308,16 @@ def pre_process_documents(
         # Delete uploaded file
         if os.path.exists(input_file_path):
             os.remove(input_file_path)
-            print(f"[embedding api] Removed temp file upload.", flush=True)
+            print(f"{common.PRNT_EMBED} Removed temp file upload.", flush=True)
         else:
             print(
-                "[embedding api] Failed to delete temp file upload. The file does not exist.",
+                f"{common.PRNT_EMBED} Failed to delete temp file upload. The file does not exist.",
                 flush=True,
             )
 
-    print(f"[embedding api] Successfully processed {target_output_path}", flush=True)
+    print(
+        f"{common.PRNT_EMBED} Successfully processed {target_output_path}", flush=True
+    )
     return {
         "document_id": source_id,
         "file_name": new_filename,
@@ -334,10 +336,13 @@ def create_embedding(
         # File attributes
         file_name: str = processed_file["file_name"]
         file_path: str = processed_file["path_to_file"]
+        extension = os.path.splitext(file_name)[1]
+        fileType = extension[1:]
+        createdAt = datetime.now(timezone.utc).strftime("%B %d %Y - %H:%M:%S")
         checksum: str = processed_file["checksum"]
 
         # Create source document metadata
-        print("[embedding api] Creating sources metadata...", flush=True)
+        print(f"{common.PRNT_EMBED} Creating sources metadata...", flush=True)
         collection_name: str = form["collection_name"]
         document_name: str = form["document_name"]
         document_id: str = form["document_id"]
@@ -350,8 +355,10 @@ def create_embedding(
         )
         # @TODO Use this to set chunk_size, etc from doc metadata
         # is_update = form["is_update"]
+
         if not document_id or not collection_name or not document_name:
             raise Exception("Missing input values.")
+
         sources_metadata = {
             # Globally unique source document id
             "id": document_id,
@@ -363,8 +370,9 @@ def create_embedding(
             "description": description,
             "tags": tags,
             "checksum": checksum,
-            "createdAt": datetime.utcnow().strftime("%B %d %Y - %H:%M:%S"),
+            "createdAt": createdAt,
             "fileName": file_name,
+            "fileType": fileType,  # Remove the dot from the extension
             "chunk_ids": [],
         }
 
