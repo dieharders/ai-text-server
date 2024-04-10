@@ -6,8 +6,6 @@ This project handles all requests from client chat apps using a single api. The 
 
 This is a hybrid Node.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
-Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examples/with-electron)
-
 ## Features Roadmap
 
 - ✅ Inference: Run open-source AI models for free
@@ -83,7 +81,7 @@ yarn server:prod
 
 The Obrew api server will be running on [https://localhost:8008](https://localhost:8008)
 
-\*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https. If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
+\*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https (these go into `/public` folder). If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
 
 ### Run the Electron app (UI and Backend) in development
 
@@ -224,10 +222,12 @@ For production deployments you will either want to run the server behind a rever
 
 If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates.
 
-This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the root of app directory.
+This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `/public` folder.
 
 ```bash
 openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36500
+# OR
+yarn makecert
 ```
 
 This should be enough for any webapp served over https to access the server. If you see "Warning: Potential Security Risk Ahead" in your browser when using the webapp, you can ignore it by clicking `advanced` then `Accept the Risk` button to continue.
