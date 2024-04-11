@@ -326,7 +326,7 @@ def pre_process_documents(
     }
 
 
-# Create a vector embedding for the given document.
+# Create a vector embedding for the given document
 def create_embedding(
     processed_file: dict,
     form: dict,
@@ -384,7 +384,7 @@ def create_embedding(
         callback_manager = CallbackManager([llama_debug])
 
         # Create/load a vector store
-        print("[embedding api] Transforming data...", flush=True)
+        print(f"{common.PRNT_EMBED} Transforming data...", flush=True)
         # You MUST use the same embedding function to create as you do to get collection.
         db = get_vectordb_client(app)
         chroma_collection: Type[Collection] = db.get_or_create_collection(
@@ -394,19 +394,19 @@ def create_embedding(
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
         # Split documents text into chunks
-        print("[embedding api] Chunking documents...", flush=True)
+        print(f"{common.PRNT_EMBED} Chunking documents...", flush=True)
         llm: Type[LlamaCPP] = app.state.llm
         text_splitter = CHUNKING_STRATEGIES[chunk_strategy]
         parser = text_splitter(chunk_size, chunk_overlap)
         chunks = parser.get_nodes_from_documents(documents)
         print(
-            f"[embedding api] Loaded {len(documents)} document(s), {len(chunks)} chunk(s)",
+            f"{common.PRNT_EMBED} Loaded {len(documents)} document(s), {len(chunks)} chunk(s)",
             flush=True,
         )
         for ichunk, ch in enumerate(chunks):
             # .encode() prevents crash on undefined/unmapped string chars
             print(
-                f"[embedding api] Chunk ({ichunk}):\n\n{ch.get_content().encode('utf-8')}",
+                f"{common.PRNT_EMBED} Chunk ({ichunk}):\n\n{ch.get_content().encode('utf-8')}",
                 flush=True,
             )
 
@@ -418,7 +418,7 @@ def create_embedding(
             llama_logger=LlamaLogger,
             # node_parser=parser, # optional, pass custom parser
         )
-        print("[embedding api] Creating embedding...", flush=True)
+        print(f"{common.PRNT_EMBED} Creating embedding...", flush=True)
         vector_index = VectorStoreIndex(
             nodes=chunks,
             storage_context=storage_context,
@@ -428,7 +428,8 @@ def create_embedding(
         )
 
         # Update the collection's sources catalog
-        collection_metadata = dict(**chroma_collection.metadata)  # copy
+        m = chroma_collection.metadata or dict(sources="[]")
+        collection_metadata = dict(**m)  # copy
         collection_sources_json = collection_metadata["sources"]
         collection_sources: List = json.loads(collection_sources_json)
         # Find and replace source id or add it
@@ -441,7 +442,7 @@ def create_embedding(
         chroma_collection.modify(metadata=collection_metadata)
 
         # Store embeddings and text in vector storage
-        print("[embedding api] Storing vector embeddings...", flush=True)
+        print(f"{common.PRNT_EMBED} Storing vector embeddings...", flush=True)
         ids = []
         document_texts = []
         metadatas = []
@@ -461,7 +462,7 @@ def create_embedding(
             document_texts.append(d.text)
             metadatas.append(sources_metadata)
             embeddings.append(embedding_data[index])
-        # Insert new document(s)
+        # Insert new document(s) embeddings
         chroma_collection.upsert(
             ids=ids,
             documents=document_texts,
@@ -472,15 +473,15 @@ def create_embedding(
         # Save index to disk. We can read from disk later without needing to re-construct.
         storage_directory = app.state.storage_directory
         vector_index.storage_context.persist(
-            persist_dir=os.path.join(storage_directory, collection_name)
+            persist_dir=os.path.join(storage_directory, document_id)
         )
 
         # Done
-        print(f"[embedding api] Finished embedding, path: {file_path}", flush=True)
+        print(f"{common.PRNT_EMBED} Finished embedding, path: {file_path}", flush=True)
         return True
-    except Exception as e:
+    except (Exception, KeyError) as e:
         msg = f"Embedding failed:\n{e}"
-        print(f"[embedding api] {msg}", flush=True)
+        print(f"{common.PRNT_EMBED} {msg}", flush=True)
         raise Exception(msg)
 
 
@@ -606,6 +607,7 @@ def load_embedding(
         # Prompt helper kwargs
         llama_logger=LlamaLogger,
         # prompt_helper={},  # @TODO helps deal with LLM context window token limitations
+        # node_parser=parser, # optional, pass custom parser
     )
 
     # You MUST get() with the same embedding function you supplied while creating the collection.

@@ -902,7 +902,7 @@ def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentRespo
 # Get all chunks for a source document
 @app.post("/v1/memory/getChunks")
 def get_chunks(params: classes.GetDocumentChunksRequest):
-    collection_id = params.collectionId
+    collection_id = params.id
     document = params.document
 
     try:

@@ -420,16 +420,16 @@ class GetCollectionResponse(BaseModel):
 
 
 class GetDocumentChunksRequest(BaseModel):
-    collectionId: str
+    id: str
     document: dict
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "collectionId": "coll_id",
+                    "id": "unique_id",
                     "document": {
-                        "name": "doc_id",
+                        "name": "doc_name",
                         "chunk_ids": ["id_1", "id_2"],
                     },
                 }
