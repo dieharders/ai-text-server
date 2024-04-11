@@ -527,7 +527,7 @@ def query_embedding(
     options: classes.ContextRetrievalOptions,
 ):
     print(
-        f"[embedding api] Query Data: {prompt_template.text}\n{prompt_template.type}",
+        f"{common.PRNT_EMBED} Query Data: {prompt_template.text}\n{prompt_template.type}",
         flush=True,
     )
 
@@ -560,7 +560,7 @@ def query_embedding(
     custom_refine_prompt = PromptTemplate(refine_template_str)
 
     # Call query() in query mode
-    print(f"custom_qa_prompt:{custom_qa_prompt}", flush=True)
+    print(f"{common.PRNT_EMBED} custom_qa_prompt:{custom_qa_prompt}", flush=True)
     query_engine = index.as_query_engine(
         streaming=True,
         # service_context=service_context,
@@ -577,7 +577,7 @@ def query_embedding(
     streaming_response = query_engine.query(query)
     for node in streaming_response.source_nodes:
         print(
-            f"[embedding api] chunk id::{node.id_} | score={node.score}\ntext=\n{node.text}",
+            f"{common.PRNT_EMBED} chunk id::{node.id_} | score={node.score}\ntext=\n{node.text}",
             flush=True,
         )
     return streaming_response
