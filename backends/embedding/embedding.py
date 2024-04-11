@@ -337,7 +337,7 @@ def create_embedding(
         file_name: str = processed_file["file_name"]
         file_path: str = processed_file["path_to_file"]
         extension = os.path.splitext(file_name)[1]
-        fileType = extension[1:]
+        fileType = extension[1:]  # Remove the dot from the extension
         createdAt = datetime.now(timezone.utc).strftime("%B %d %Y - %H:%M:%S")
         checksum: str = processed_file["checksum"]
 
@@ -372,7 +372,7 @@ def create_embedding(
             "checksum": checksum,
             "createdAt": createdAt,
             "fileName": file_name,
-            "fileType": fileType,  # Remove the dot from the extension
+            "fileType": fileType,
             "chunk_ids": [],
         }
 
