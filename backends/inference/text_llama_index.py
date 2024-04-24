@@ -5,9 +5,9 @@
 import os
 import json
 from typing import List, Optional, Sequence
-from llama_index.llms import LlamaCPP
-from llama_index.core.llms.types import ChatMessage, MessageRole
-from llama_index.callbacks import CallbackManager, LlamaDebugHandler
+from llama_index.llms.llama_cpp import LlamaCPP
+from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.callbacks import CallbackManager
 from server import common, classes
 
 # These generic helper funcs wont add End_of_seq tokens etc but construct the Prompt/Message
@@ -25,6 +25,7 @@ DEFAULT_SYSTEM_MESSAGE = """You are an AI assistant that answers questions in a 
 
 
 # Format the prompt for completion
+# @TODO Could also use: from llama_index.llms.llama_cpp.llama_utils import completion_to_prompt
 def completion_to_prompt(
     completion: Optional[str] = "",
     system_prompt: Optional[str] = None,
@@ -49,6 +50,7 @@ def completion_to_prompt(
 
 
 # Format the prompt for chat conversations
+# @TODO Could also use: from llama_index.llms.llama_cpp.llama_utils import messages_to_prompt
 def messages_to_prompt(
     messages: Sequence[ChatMessage],
     system_prompt: Optional[str] = DEFAULT_SYSTEM_MESSAGE,
@@ -107,17 +109,16 @@ def messages_to_prompt(
 # Return a model trained for instruction and RAG, a High level llama-cpp-python object wrapped in LlamaIndex class
 def load_text_retrieval_model(
     options: dict,
+    callback_manager: CallbackManager = None,  # Optional, debugging
 ):
     # @TODO We hardcode this until we support user specified model/file. Determine path from HF cache.
-    PATH_TO_RETRIEVAL_MODEL = os.path.join(
-        os.getcwd(), common.MODELS_CACHE_DIR, "zephyr-7b-beta.Q4_K_M.gguf"
+    PATH_TO_RETRIEVAL_MODEL = common.app_path(
+        os.path.join(common.TEXT_MODELS_CACHE_DIR, "zephyr-7b-beta.Q4_K_M.gguf")
     )
     if not os.path.isfile(PATH_TO_RETRIEVAL_MODEL):
         print(f"{common.PRNT_API} No embedding model exists.")
         # @TODO Will need to await downloading model here if none exists
         raise Exception("No embedding model exists")
-    llama_debug = LlamaDebugHandler(print_trace_on_end=True)
-    callback_manager = CallbackManager([llama_debug])
     return LlamaCPP(
         # Provide a url to download a model from
         model_url=None,
@@ -143,11 +144,13 @@ def load_text_retrieval_model(
 
 
 # High level llama-cpp-python object wrapped in LlamaIndex class
+# https://docs.llamaindex.ai/en/stable/examples/llm/llama_2_llama_cpp/?h=llamacpp
 def load_text_model(
     path_to_model: str,
     mode: str,
     init_settings: classes.LoadTextInferenceInit,  # init settings
     gen_settings: classes.LoadTextInferenceCall,  # generation settings
+    callback_manager: CallbackManager = None,  # Optional, debugging
 ):
     n_ctx = init_settings.n_ctx or classes.DEFAULT_CONTEXT_WINDOW
     if n_ctx <= 0:
@@ -193,9 +196,6 @@ def load_text_model(
         "torch_dtype": "auto",  # if using CUDA (reduces memory usage)
         # "load_in_8bit": True,
     }
-
-    llama_debug = LlamaDebugHandler(print_trace_on_end=True)
-    callback_manager = CallbackManager([llama_debug])
 
     # @TODO Can we update these without needing to unload model?
     # From: https://docs.llamaindex.ai/en/stable/examples/llm/llama_2_llama_cpp.html
@@ -244,8 +244,8 @@ def token_streamer(token_generator):
         raise Exception(msg)
 
 
-# Perform a normal text completion on a prompt
-def text_completion(
+# Perform a normal text completion on a prompt (trained data only)
+def text_stream_completion(
     prompt_str: str,
     prompt_template: str,
     system_message: str,

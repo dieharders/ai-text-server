@@ -15,14 +15,16 @@ This is a hybrid Node.js + Python app that uses Next.js as the frontend and Fast
 - ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
   <!-- - ❌ Cloud platform (subscription, host your infra with us) -->
   <!-- - ❌ Enterprise service (subscription & paid support, bring your own infra) -->
-- ❌ Auto Agents (Assistants)
 - ❌ Chats: Save/Retrieve chat message history
+- ❌ Auto Agents (Assistants)
 - ❌ Agent Teams
 - ❌ Multi-Chat
+- ❌ Long-term memory across Agent conversations
+- ❌ UI generation
 
 ## How It Works
 
-- Startup and shutdown of the backend services are done via the front-end UI or REST api.
+- Startup and shutdown of the backend services is done via the front-end UI or REST api.
 
 - The Python/FastAPI server (Obrew api) operates under `localhost:8008`.
 
@@ -280,21 +282,39 @@ This project deploys several backend servers exposed using the `/v1` endpoint. T
 
 A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after Obrew Server is started.
 
-### /v1/connect
+## Managing Python dependencies
 
-Used by client apps to detect when services are ready to be used.
+It is highly recommended to use an package/environment manager like Anaconda to manage Python installations and the versions of dependencies they require. This allows you to create virtual environments from which you can install different versions of software and build/deploy from within this sandboxed environment.
 
-### /v1/services/api
+### Switching between virtual environments
 
-Gets all parameters for making calls to the Obrew api.
+The following commands should be done in `Anaconda Prompt` terminal. If on Windows, `run as Admin`.
 
-### /v1/text/load
+1. Create a new environment:
 
-Load a model into the text inference service.
+```bash
+conda create --name env1 python=3.10
+```
 
-### /v1/text/start
+2. To work in this env, activate it:
 
-Start the text inference server.
+```bash
+conda activate env1
+```
+
+3. When you are done using it, deactivate it:
+
+```bash
+conda deactivate
+```
+
+4. If using VSCode, you must apply your newly created virtual environment by selecting the `python interpreter` button at the bottom when inside your project directory.
+
+To update PIP package installer:
+
+```bash
+conda update pip
+```
 
 ## Learn More
 

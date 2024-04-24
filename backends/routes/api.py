@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from server import classes
 from embedding.embedding import CHUNKING_STRATEGIES
-from llama_index.response_synthesizers import ResponseMode
+from llama_index.core.response_synthesizers import ResponseMode
 
 router = APIRouter()
 
@@ -162,14 +162,14 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "method": "GET",
             },
             {
-                "name": "getAllCollections",
-                "urlPath": "/v1/memory/getAllCollections",
-                "method": "GET",
-            },
-            {
                 "name": "getCollection",
                 "urlPath": "/v1/memory/getCollection",
                 "method": "POST",
+            },
+            {
+                "name": "getAllCollections",
+                "urlPath": "/v1/memory/getAllCollections",
+                "method": "GET",
             },
             {
                 "name": "deleteCollection",
@@ -187,11 +187,6 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "method": "POST",
             },
             {
-                "name": "getDocument",
-                "urlPath": "/v1/memory/getDocument",
-                "method": "POST",
-            },
-            {
                 "name": "deleteDocuments",
                 "urlPath": "/v1/memory/deleteDocuments",
                 "method": "POST",
@@ -201,11 +196,12 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/memory/fileExplore",
                 "method": "GET",
             },
-            {
-                "name": "updateDocument",
-                "urlPath": "/v1/memory/updateDocument",
-                "method": "POST",
-            },
+            # Temp disabled until we add support
+            # {
+            #     "name": "updateDocument",
+            #     "urlPath": "/v1/memory/updateDocument",
+            #     "method": "POST",
+            # },
             {
                 "name": "wipe",
                 "urlPath": "/v1/memory/wipe",
