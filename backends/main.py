@@ -1,13 +1,13 @@
 import os
 import sys
 import threading
-import glob
 import json
 import uvicorn
 import webbrowser
 import httpx
-import shutil
 import socket
+import pyqrcode
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from typing import List
 from fastapi import (
@@ -23,13 +23,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import tkinter as tk
 from contextlib import asynccontextmanager
 from inference import text_llama_index
-from embedding import embedding
+from embedding import embedding, storage, query, file_parsers
 from server import common, classes
 from routes import router as endpoint_router
-from llama_index.response_synthesizers import ResponseMode
 from huggingface_hub import (
     hf_hub_download,
     get_hf_file_metadata,
@@ -40,15 +38,7 @@ from huggingface_hub import (
 
 server_info = None
 server_thread = None
-api_version = "0.4.0"
-VECTOR_DB_FOLDER = "chromadb"
-MEMORY_FOLDER = "memories"
-PARSED_FOLDER = "parsed"
-TMP_FOLDER = "tmp"
-VECTOR_STORAGE_PATH = os.path.join(os.getcwd(), VECTOR_DB_FOLDER)
-MEMORY_PATH = os.path.join(os.getcwd(), MEMORY_FOLDER)
-PARSED_DOCUMENT_PATH = os.path.join(MEMORY_PATH, PARSED_FOLDER)
-TMP_DOCUMENT_PATH = os.path.join(MEMORY_PATH, TMP_FOLDER)
+api_version = "0.4.2"
 PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
 SERVER_PORT = 8008
@@ -92,11 +82,11 @@ async def lifespan(application: FastAPI):
     app.requests_client = httpx.Client()
     # Store some state here if you want...
     application.state.PORT_HOMEBREW_API = SERVER_PORT
-    application.state.storage_directory = VECTOR_STORAGE_PATH
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
     application.state.path_to_model = ""  # Set each time user loads a model
     application.state.model_id = ""
+    application.state.embed_model = None
     app.state.loaded_text_model_data = {}
 
     yield
@@ -130,6 +120,40 @@ origins = [
 #     return await redirects.text(request, call_next, str(app.PORT_TEXT_INFERENCE))
 
 
+###############
+### Methods ###
+###############
+
+
+# Given source(s), delete all associated document chunks, metadata and files
+def delete_sources(collection_name: str, sources: List[classes.SourceMetadata]):
+    db = storage.get_vector_db_client(app)
+    collection = db.get_collection(name=collection_name)
+    vector_index = embedding.load_embedding(app, collection_name)
+    # Delete each source
+    for source in sources:
+        chunk_ids = source.get("chunkIds")
+        # Delete all chunks
+        storage.delete_chunks(
+            collection=collection,
+            vector_index=vector_index,
+            chunk_ids=chunk_ids,
+        )
+        # Delete associated files
+        storage.delete_source_files(source)
+    # Update collection metadata.sources to remove this source
+    storage.update_collection_sources(
+        collection=collection,
+        sources=sources,
+        mode="delete",
+    )
+
+
+##############
+### Routes ###
+##############
+
+
 # Add CORS support
 app.add_middleware(
     CORSMiddleware,
@@ -139,26 +163,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-##############
-### Routes ###
-##############
-
 app.include_router(endpoint_router)
 
 
 # Return a "connect" GUI page for user to config and startup the API server,
 # then return the user to the supplied callback url with query params of config added.
+# QRcode generation -> https://github.com/arjones/qr-generator/tree/main
 @app.get("/", response_class=HTMLResponse)
 async def connect_page(request: Request):
+    remote_url = server_info["remote_ip"]
+    local_url = server_info["local_ip"]
+    # Generate QR code - direct to remote url
+    qr_code = pyqrcode.create(
+        f"{remote_url}:{SERVER_PORT}/?hostname={remote_url}&port={SERVER_PORT}"
+    )
+    qr_data = qr_code.png_as_base64_str(scale=5)
+    # qr_image = qr_code.png("image.png", scale=8) # Write image file to disk
+
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
+            "qr_data": qr_data,
             "title": "Connect to Obrew Server",
             "app_name": "Obrew🍺Server",
             "message": "Click the link below or navigate your browser to use the WebUI interface.",
-            "host": server_info["local_ip"],
-            "remote_host": server_info["remote_ip"],
+            "host": local_url,
+            "remote_host": remote_url,
             "port": SERVER_PORT,
         },
     )
@@ -168,7 +199,7 @@ async def connect_page(request: Request):
 @app.get("/v1/ping")
 def ping() -> classes.PingResponse:
     try:
-        db = embedding.get_vectordb_client(app)
+        db = storage.get_vector_db_client(app)
         db.heartbeat()
         return {"success": True, "message": "pong"}
     except Exception as e:
@@ -274,6 +305,7 @@ def load_text_inference(
         model_id = data.modelId
         mode = data.mode
         modelPath = data.modelPath
+        callback_manager = embedding.create_index_callback_manager()
         # Record model's save path
         app.state.model_id = model_id
         app.state.path_to_model = modelPath
@@ -288,7 +320,11 @@ def load_text_inference(
             model_settings = data.init
             generate_settings = data.call
             app.state.llm = text_llama_index.load_text_model(
-                modelPath, mode, model_settings, generate_settings
+                modelPath,
+                mode,
+                model_settings,
+                generate_settings,
+                callback_manager=callback_manager,
             )
             # Record the currently loaded model
             app.state.loaded_text_model_data = {
@@ -310,7 +346,7 @@ def load_text_inference(
 # Open OS file explorer on host machine
 @app.get("/v1/text/modelExplore")
 def explore_text_model_dir() -> classes.FileExploreResponse:
-    filePath = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
+    filePath = common.app_path(common.TEXT_MODELS_CACHE_DIR)
 
     if not os.path.exists(filePath):
         return {
@@ -387,7 +423,7 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
     try:
         repo_id = payload.repo_id
         filename = payload.filename
-        cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
+        cache_dir = common.app_path(common.TEXT_MODELS_CACHE_DIR)
         resume_download = False
         # repo_type = "model" # optional, specify type of data, defaults to model
         # local_dir = "" # optional, downloaded file will be placed under this directory
@@ -416,7 +452,10 @@ def download_text_model(payload: classes.DownloadTextModelRequest):
         [model_cache_info, repo_revisions] = common.scan_cached_repo(
             cache_dir=cache_dir, repo_id=repo_id
         )
-        # file_path = os.path.join(os.getcwd(), download_path)
+        # Get from dl path
+        # file_path = common.app_path(download_path)
+
+        # Get from huggingface hub managed cache dir
         file_path = common.get_cached_blob_path(
             repo_revisions=repo_revisions, filename=filename
         )
@@ -450,7 +489,7 @@ def delete_text_model(payload: classes.DeleteTextModelRequest):
     repo_id = payload.repoId
 
     try:
-        cache_dir = os.path.join(os.getcwd(), common.MODELS_CACHE_DIR)
+        cache_dir = common.app_path(common.TEXT_MODELS_CACHE_DIR)
 
         # Checks file and throws if not found
         common.check_cached_file_exists(
@@ -500,9 +539,10 @@ async def text_inference(payload: classes.InferenceRequest):
         message_format = payload.messageFormat  # format wrapper for full prompt
         m_tokens = payload.max_tokens
         n_ctx = payload.n_ctx
+        streaming = payload.stream
         max_tokens = common.calc_max_tokens(m_tokens, n_ctx, mode)
         options = dict(
-            stream=payload.stream,
+            stream=streaming,
             temperature=payload.temperature,
             max_tokens=max_tokens,
             stop=payload.stop,
@@ -535,35 +575,53 @@ async def text_inference(payload: classes.InferenceRequest):
             collection_name = collection_names[0]
             # Set LLM settings
             retrieval_options = dict(
-                similarity_top_k=payload.similarity_top_k or 1,
-                response_mode=payload.response_mode or ResponseMode.COMPACT,
+                similarity_top_k=payload.similarity_top_k,
+                response_mode=payload.response_mode,
             )
             # Update LLM generation options
             # app.state.llm.generate_kwargs.update(options)
 
-            # Load the vector index
-            indexDB = embedding.load_embedding(app, collection_name)
+            # Load embedding model for context retrieval
+            embedding.define_embedding_model(app)
+
+            # Load the vector index. @TODO Load multiple collections
+            vector_index = embedding.load_embedding(app, collection_name)
 
             # Call LLM query engine
-            res = embedding.query_embedding(
-                prompt, rag_prompt_template, indexDB, retrieval_options
+            res = query.query_embedding(
+                llm=app.state.llm,
+                query=prompt,
+                prompt_template=rag_prompt_template,
+                index=vector_index,
+                options=retrieval_options,
+                streaming=streaming,
             )
-            token_generator = res.response_gen
-            response = text_llama_index.token_streamer(token_generator)
-            return EventSourceResponse(response)
+            # Return streaming response
+            if streaming:
+                token_generator = res.response_gen
+                response = text_llama_index.token_streamer(token_generator)
+                return EventSourceResponse(response)
+            # Return non-stream response
+            else:
+                return res
         # Call LLM in raw completion mode
         elif mode == classes.CHAT_MODES.INSTRUCT.value:
             options["n_ctx"] = n_ctx
-            return EventSourceResponse(
-                text_llama_index.text_completion(
-                    prompt,
-                    prompt_template,
-                    system_message,
-                    message_format,
-                    app,
-                    options,
+            # Return streaming response
+            if streaming:
+                return EventSourceResponse(
+                    text_llama_index.text_stream_completion(
+                        prompt,
+                        prompt_template,
+                        system_message,
+                        message_format,
+                        app,
+                        options,
+                    )
                 )
-            )
+            # @TODO Return non-stream response
+            else:
+                raise Exception("Non-streaming completion not supported.")
         # Call LLM in raw chat mode
         elif mode == classes.CHAT_MODES.CHAT.value:
             options["n_ctx"] = n_ctx
@@ -585,51 +643,6 @@ async def text_inference(payload: classes.InferenceRequest):
         )
 
 
-# Pre-process supplied files into a text format and save to disk for embedding later.
-@app.post("/v1/embeddings/preProcess")
-def pre_process_documents(
-    form: classes.PreProcessRequest = Depends(),
-) -> classes.PreProcessResponse:
-    try:
-        # Validate inputs
-        document_id = form.document_id
-        file_path = form.filePath
-        collection_name = form.collection_name
-        document_name = form.document_name
-        if not common.check_valid_id(collection_name) or not common.check_valid_id(
-            document_name
-        ):
-            raise Exception(
-                "Invalid input. No '--', uppercase, spaces or special chars allowed."
-            )
-        # Validate tags
-        parsed_tags = common.parse_valid_tags(form.tags)
-        if parsed_tags == None:
-            raise Exception("Invalid value for 'tags' input.")
-        # Process files
-        processed_file = embedding.pre_process_documents(
-            document_id=document_id,
-            document_name=document_name,
-            collection_name=collection_name,
-            description=form.description,
-            tags=parsed_tags,
-            input_file_path=file_path,
-            output_folder_path=PARSED_DOCUMENT_PATH,
-        )
-
-        return {
-            "success": True,
-            "message": f"Successfully processed {file_path}",
-            "data": processed_file,
-        }
-    except (Exception, ValueError, TypeError, KeyError) as error:
-        return {
-            "success": False,
-            "message": f"There was an internal server error uploading the file:\n{error}",
-            "data": {},
-        }
-
-
 @app.get("/v1/memory/addCollection")
 def create_memory_collection(
     form: classes.AddCollectionRequest = Depends(),
@@ -647,25 +660,29 @@ def create_memory_collection(
             )
         # Create payload. ChromaDB only accepts strings, numbers, bools.
         metadata = {
+            "icon": form.icon or "",
+            "createdAt": datetime.now(timezone.utc).strftime("%B %d %Y - %H:%M:%S"),
             "tags": parsed_tags,
             "description": form.description,
             "sources": json.dumps([]),
         }
-        # Apply input values to collection metadata
-        db_client = embedding.get_vectordb_client(app)
+        db_client = storage.get_vector_db_client(app)
         db_client.create_collection(
             name=collection_name,
             metadata=metadata,
-            # embedding_function=custom_embed_function,
         )
+        msg = f'Successfully created new collection "{collection_name}"'
+        print(f"{common.PRNT_API} {msg}")
         return {
             "success": True,
-            "message": f"Successfully created new collection [{collection_name}]",
+            "message": msg,
         }
     except Exception as e:
+        msg = f'Failed to create new collection "{collection_name}": {e}'
+        print(f"{common.PRNT_API} {msg}")
         return {
             "success": False,
-            "message": f"Failed to create new collection [{collection_name}]: {e}",
+            "message": msg,
         }
 
 
@@ -686,10 +703,11 @@ async def create_memory(
         tags = common.parse_valid_tags(form.tags)
         url_path = form.urlPath
         text_input = form.textInput
-        tmp_input_file_path = ""
         chunk_size = form.chunkSize
         chunk_overlap = form.chunkOverlap
         chunk_strategy = form.chunkStrategy
+        filename = file_parsers.create_parsed_filename(collection_name, document_name)
+        tmp_input_file_path = os.path.join(file_parsers.TMP_DOCUMENT_PATH, filename)
 
         if file == None and url_path == "" and text_input == "":
             raise Exception("You must supply a file upload, url or text.")
@@ -702,48 +720,23 @@ async def create_memory(
                 "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
             )
 
-        # Save temp files to disk first. The filename doesnt matter much.
-        tmp_folder = TMP_DOCUMENT_PATH
-        filename = embedding.create_parsed_filename(collection_name, document_name)
-        tmp_input_file_path = os.path.join(tmp_folder, filename)
-        if url_path:
-            print(
-                f"{common.PRNT_API} Downloading file from url {url_path} to {tmp_input_file_path}"
-            )
-            if not os.path.exists(tmp_folder):
-                os.makedirs(tmp_folder)
-            # Download the file and save to disk
-            await common.get_file_from_url(url_path, tmp_input_file_path, app)
-        elif text_input:
-            print(f"{common.PRNT_API} Saving raw text to file...\n{text_input}")
-            if not os.path.exists(tmp_folder):
-                os.makedirs(tmp_folder)
-            # Write to file
-            with open(tmp_input_file_path, "w") as f:
-                f.write(text_input)
-        elif file:
-            print(f"{common.PRNT_API} Saving uploaded file to disk...")
-            # Read the uploaded file in chunks of 1mb,
-            # store to a tmp dir for processing later
-            if not os.path.exists(tmp_folder):
-                os.makedirs(tmp_folder)
-            with open(tmp_input_file_path, "wb") as f:
-                while contents := file.file.read(1024 * 1024):
-                    f.write(contents)
-            file.file.close()
-        else:
-            raise Exception("No file or url supplied")
-
-        # Parse/Process input files
-        processed_file = embedding.pre_process_documents(
+        # Process and write to disk
+        await file_parsers.process_file_to_disk(
+            app=app,
+            url_path=url_path,
+            text_input=text_input,
+            file=file,
+            filename=filename,
+        )
+        # Parse/Pre-Process/Structure source files for embedding/retrieval
+        # @TODO Define a dynamic file parser to convert any files contents to text as a .md file.
+        processed_file = file_parsers.pre_process_documents(
             document_name=document_name,
             collection_name=collection_name,
             description=description,
             tags=tags,
             input_file_path=tmp_input_file_path,
-            output_folder_path=PARSED_DOCUMENT_PATH,
         )
-
         # Create embeddings
         print(f"{common.PRNT_API} Start embedding...")
         embed_form = {
@@ -757,8 +750,11 @@ async def create_memory(
             "chunk_overlap": chunk_overlap,
             "chunk_strategy": chunk_strategy,
         }
+        # @TODO Note that you must NOT perform CPU intensive computations in the background_tasks of the app,
+        # because it runs in the same async event loop that serves the requests and it will stall your app.
+        # Instead submit them to a thread pool or a process pool.
         background_tasks.add_task(
-            embedding.create_embedding,
+            embedding.create_new_embedding,
             processed_file,
             embed_form,
             app,
@@ -788,16 +784,7 @@ async def create_memory(
 @app.get("/v1/memory/getAllCollections")
 def get_all_collections() -> classes.GetAllCollectionsResponse:
     try:
-        db = embedding.get_vectordb_client(app)
-        collections = db.list_collections()
-
-        # Parse json data
-        for collection in collections:
-            metadata = collection.metadata
-            if "sources" in metadata:
-                sources_json = metadata["sources"]
-                sources_data = json.loads(sources_json)
-                metadata["sources"] = sources_data
+        collections = storage.get_all_collections(app=app)
 
         return {
             "success": True,
@@ -819,27 +806,13 @@ def get_collection(
     props: classes.GetCollectionRequest,
 ) -> classes.GetCollectionResponse:
     try:
-        db = embedding.get_vectordb_client(app)
-        id = props.id
-        collection = db.get_collection(id)
-        num_items = 0
-        metadata = collection.metadata
-        if metadata == None:
-            raise Exception("No metadata found for collection")
-
-        if "sources" in metadata:
-            sources_json = metadata["sources"]
-            sources_data = json.loads(sources_json)
-            num_items = len(sources_data)
-            metadata["sources"] = sources_data
+        name = props.id
+        collection = storage.get_collection(app=app, name=name)
 
         return {
             "success": True,
-            "message": f"Returned {num_items} source(s) in collection [{id}]",
-            "data": {
-                "collection": collection,
-                "numItems": num_items,
-            },
+            "message": f"Returned collection(s) {name}",
+            "data": collection,
         }
     except Exception as e:
         print(f"{common.PRNT_API} Error: {e}")
@@ -850,34 +823,31 @@ def get_collection(
         }
 
 
-# Get one or more documents by id.
-@app.post("/v1/memory/getDocument")
-def get_document(params: classes.GetDocumentRequest) -> classes.GetDocumentResponse:
+# Get all chunks for a source document
+@app.post("/v1/memory/getChunks")
+def get_chunks(params: classes.GetDocumentChunksRequest):
+    collection_id = params.collectionId
+    document_id = params.documentId
+    num_chunks = 0
+
     try:
-        collection_id = params.collection_id
-        document_ids = params.document_ids
-        include = params.include
-
-        documents = embedding.get_document(
-            collection_name=collection_id,
-            document_ids=document_ids,
-            app=app,
-            include=include,
+        chunks = storage.get_source_chunks(
+            app, collection_name=collection_id, source_id=document_id
         )
-
-        num_documents = len(documents)
+        if chunks != None:
+            num_chunks = len(chunks)
 
         return {
             "success": True,
-            "message": f"Returned {num_documents} document(s)",
-            "data": documents,
+            "message": f"Returned {num_chunks} chunks for document.",
+            "data": chunks,
         }
     except Exception as e:
         print(f"{common.PRNT_API} Error: {e}")
         return {
             "success": False,
-            "message": str(e),
-            "data": [],
+            "message": f"{e}",
+            "data": None,
         }
 
 
@@ -903,173 +873,28 @@ def explore_source_file(
     }
 
 
-# Re-process and re-embed existing document(s) from /parsed directory or url link
-@app.post("/v1/memory/updateDocument")
-async def update_memory(
-    form: classes.UpdateEmbeddedDocumentRequest,
-    background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
-) -> classes.UpdateDocumentResponse:
-    try:
-        collection_name = form.collectionName
-        document_id = form.documentId
-        document_name = form.documentName
-        metadata = form.metadata  # @TODO Should we re-create this?
-        url_path = form.urlPath
-        file_path = form.filePath
-        chunk_size = form.chunkSize
-        chunk_overlap = form.chunkOverlap
-        chunk_strategy = form.chunkStrategy
-        document = None
-        document_metadata = {}
-
-        # Verify id's
-        if not collection_name or not document_name or not document_id:
-            raise Exception(
-                "Please supply a collection name, document name, and document id"
-            )
-        if not common.check_valid_id(document_name):
-            raise Exception(
-                "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
-            )
-
-        # Retrieve document data
-        documents = embedding.get_document(
-            collection_name=collection_name,
-            document_ids=[document_id],
-            app=app,
-            include=["documents", "metadatas"],
-        )
-        if len(documents) >= 1:
-            document = documents[0]
-            document_metadata = document["metadata"]
-
-        if not document:
-            raise Exception("No record could be found for that memory")
-
-        # Fetch file(s)
-        new_file_name = embedding.create_parsed_filename(collection_name, document_id)
-        tmp_folder = TMP_DOCUMENT_PATH
-        tmp_file_path = os.path.join(TMP_DOCUMENT_PATH, new_file_name)
-        if url_path:
-            # Download the file and save to disk
-            print(f"{common.PRNT_API} Downloading file to {tmp_file_path} ...")
-            await common.get_file_from_url(url_path, tmp_file_path, app)
-        elif file_path:
-            # Copy file from provided location to /tmp dir, only if paths differ
-            print(f"{common.PRNT_API} Loading local file from disk {file_path} ...")
-            if file_path != tmp_file_path:
-                if not os.path.exists(tmp_folder):
-                    os.makedirs(tmp_folder)
-                shutil.copy(file_path, tmp_file_path)
-            print(f"{common.PRNT_API} File to be copied already in /tmp dir")
-        else:
-            raise Exception("Please supply a local path or url to a file")
-
-        # Compare checksums
-        updated_document_metadata = {}
-        new_file_hash = embedding.create_checksum(tmp_file_path)
-        stored_file_hash = document_metadata["checksum"]
-        if new_file_hash != stored_file_hash:
-            # Pass provided metadata or stored
-            updated_document_metadata = metadata or document_metadata
-            description = updated_document_metadata["description"]
-            # Validate tags
-            updated_tags = common.parse_valid_tags(updated_document_metadata["tags"])
-            if updated_tags == None:
-                raise Exception("Invalid value for 'tags' input.")
-            # Process input documents
-            processed_file = embedding.pre_process_documents(
-                document_id=document_id,
-                document_name=document_name,
-                collection_name=collection_name,
-                description=description,
-                tags=updated_tags,
-                input_file_path=tmp_file_path,
-                output_folder_path=PARSED_DOCUMENT_PATH,
-            )
-            # Create text embeddings
-            form = {
-                "collection_name": collection_name,
-                "document_name": document_name,
-                "document_id": document_id,
-                "description": description,
-                "tags": updated_tags,
-                "is_update": True,
-                "chunk_size": chunk_size,
-                "chunk_overlap": chunk_overlap,
-                "chunk_strategy": chunk_strategy,
-            }
-            background_tasks.add_task(
-                embedding.create_embedding,
-                processed_file,
-                form,
-                app,
-            )
-        else:
-            # Delete tmp files if exist
-            if os.path.exists(tmp_file_path):
-                os.remove(tmp_file_path)
-            # If same input file, abort
-            raise Exception("Input file has not changed.")
-
-        return {
-            "success": True,
-            "message": f"Updated memories [{document_name}]",
-        }
-    except Exception as e:
-        print(f"{common.PRNT_API} Error: {e}")
-        return {
-            "success": False,
-            "message": f"{e}",
-        }
-
-
-# Delete a document by id
-@app.post("/v1/memory/deleteDocuments")
-def delete_documents(
+# Delete one or more sources by id
+@app.post("/v1/memory/deleteSources")
+def delete_document_sources(
     params: classes.DeleteDocumentsRequest,
 ) -> classes.DeleteDocumentsResponse:
     try:
-        collection_id = params.collection_id
-        document_ids = params.document_ids
-        num_documents = len(document_ids)
-        document = None
-        db = embedding.get_vectordb_client(app)
-        collection = db.get_collection(collection_id)
-        sources: List[str] = json.loads(collection.metadata["sources"])
-        source_file_path = ""
-        documents = embedding.get_document(
-            collection_name=collection_id,
-            document_ids=document_ids,
-            app=app,
-            include=["metadatas"],
-        )
-        # Delete all files and references associated with embedded docs
-        for document in documents:
-            document_metadata = document["metadata"]
-            source_file_path = document_metadata["filePath"]
-            document_id = document_metadata["id"]
-            # Remove file from disk
-            print(
-                f"{common.PRNT_API} Remove file {document_id} from {source_file_path}"
-            )
-            if os.path.exists(source_file_path):
-                os.remove(source_file_path)
-            # Remove source reference from collection array
-            sources.remove(document_id)
-            # Update collection
-            sources_json = json.dumps(sources)
-            collection.metadata["sources"] = sources_json
-            collection.modify(metadata=collection.metadata)
-            # Delete embeddings from llama-index @TODO Verify this works
-            index = embedding.load_embedding(app, collection_id)
-            index.delete(document_id)
-        # Delete the embeddings from collection
-        collection.delete(ids=document_ids)
+        collection_name = params.collection_id
+        source_ids = params.document_ids
+        num_documents = len(source_ids)
+        # Find source data
+        collection = storage.get_collection(app, name=collection_name)
+        all_sources = storage.get_collection_sources(collection)
+        sources = []
+        for s in all_sources:
+            if s.get("id") in source_ids:
+                sources.append(s)
+        # Remove specified source(s)
+        delete_sources(collection_name=collection_name, sources=sources)
 
         return {
             "success": True,
-            "message": f"Removed {num_documents} document(s): {document_ids}",
+            "message": f"Removed {num_documents} source(s): {source_ids}",
         }
     except Exception as e:
         print(f"{common.PRNT_API} Error: {e}")
@@ -1086,26 +911,16 @@ def delete_collection(
 ) -> classes.DeleteCollectionResponse:
     try:
         collection_id = params.collection_id
-        db = embedding.get_vectordb_client(app)
+        db = storage.get_vector_db_client(app)
         collection = db.get_collection(collection_id)
-        sources: List[str] = json.loads(collection.metadata["sources"])
-        include = ["documents", "metadatas"]
+        # Remove all the sources in this collection
+        sources = storage.get_collection_sources(collection)
         # Remove all associated source files
-        documents = embedding.get_document(
-            collection_name=collection_id,
-            document_ids=sources,
-            app=app,
-            include=include,
-        )
-        for document in documents:
-            document_metadata = document["metadata"]
-            filePath = document_metadata["filePath"]
-            os.remove(filePath)
+        delete_sources(collection_name=collection_id, sources=sources)
         # Remove the collection
         db.delete_collection(name=collection_id)
         # Remove persisted vector index from disk
-        common.delete_vector_store(collection_id, VECTOR_STORAGE_PATH)
-
+        common.delete_vector_store(collection_id, storage.VECTOR_STORAGE_PATH)
         return {
             "success": True,
             "message": f"Removed collection [{collection_id}]",
@@ -1123,32 +938,12 @@ def delete_collection(
 def wipe_all_memories() -> classes.WipeMemoriesResponse:
     try:
         # Delete all db values
-        db = embedding.get_vectordb_client(app)
+        db = storage.get_vector_db_client(app)
         db.reset()
-        # Delete all parsed documents/files in /memories
-        if os.path.exists(TMP_DOCUMENT_PATH):
-            files = glob.glob(f"{TMP_DOCUMENT_PATH}/*")
-            for f in files:
-                os.remove(f)  # del files
-            os.rmdir(TMP_DOCUMENT_PATH)  # del folder
-        if os.path.exists(PARSED_DOCUMENT_PATH):
-            files = glob.glob(f"{PARSED_DOCUMENT_PATH}/*.md")
-            for f in files:
-                os.remove(f)  # del all .md files
-            os.rmdir(PARSED_DOCUMENT_PATH)  # del folder
+        # Delete all parsed files in /memories
+        file_parsers.delete_all_files()
         # Remove all vector storage collections and folders
-        if os.path.exists(VECTOR_STORAGE_PATH):
-            folders = glob.glob(f"{VECTOR_STORAGE_PATH}/*")
-            for dir in folders:
-                if "chroma.sqlite3" not in dir:
-                    files = glob.glob(f"{dir}/*")
-                    for f in files:
-                        os.remove(f)  # del files
-                    os.rmdir(dir)  # del collection folder
-        # Remove root vector storage folder and database file
-        # os.remove(os.path.join(app.state.storage_directory, "chroma.sqlite3"))
-        # os.rmdir(app.state.storage_directory)
-
+        storage.delete_all_vector_storage()
         # Acknowledge success
         return {
             "success": True,
@@ -1289,111 +1084,13 @@ def display_server_info():
     remote_ip = f"https://{IPAddr}"
     local_ip = f"https://localhost"
     print(
-        f"{common.PRNT_API} Refer to API docs for Obrew Server:\n-> {local_ip}/docs \nOR\n-> {remote_ip}/docs",
+        f"{common.PRNT_API} Refer to API docs for Obrew Server:\n-> {local_ip}:{SERVER_PORT}/docs \nOR\n-> {remote_ip}:{SERVER_PORT}/docs",
         flush=True,
     )
     return {
         "local_ip": local_ip,
         "remote_ip": remote_ip,
     }
-
-
-# Function to create and run the Tkinter window
-def run_GUI(local_ip: str, remote_ip: str):
-    if not isProd:
-        return
-    color_bg = "#333333"
-    color_label = "#ffe135"
-    root = tk.Tk()
-    root.title("Obrew Server")
-    root.geometry("1200x600")
-    # since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
-    root.iconbitmap(default=os.path.join(common.dep_path("public/favicon.ico")))
-    root.configure(bg=color_bg)
-    frame = tk.Frame(bg=color_bg)
-    # Labels
-    title_label = tk.Label(
-        frame,
-        text="Obrew Server - Info",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 30),
-    )
-    descr_label = tk.Label(
-        frame,
-        text="Click the link below or navigate your browser to use the WebUI interface.",
-        bg=color_bg,
-        fg="white",
-        font=("Arial", 14),
-    )
-    # docs_label = tk.Label(
-    #     frame,
-    #     text="API Docs:",
-    #     bg=color_bg,
-    #     fg=color_label,
-    #     font=("Arial", 24),
-    #     width=24,
-    # )
-    server_local_label = tk.Label(
-        frame,
-        text="Server (Local Address):",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 24),
-        width=24,
-    )
-    remote_label = tk.Label(
-        frame,
-        text="Server (Remote Address):",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 24),
-        width=24,
-    )
-    webui_label = tk.Label(
-        frame,
-        text="WebUI Address:",
-        bg=color_bg,
-        fg=color_label,
-        font=("Arial", 24),
-        width=24,
-    )
-    webui_link = tk.Label(
-        frame,
-        text=openbrew_studio_url,
-        bg=color_bg,
-        fg="white",
-        font=("Arial", 24),
-        cursor="hand2",
-        width=24,
-    )
-    webui_link.bind(
-        "<Button-1>", lambda e: webbrowser.open_new_tab(openbrew_studio_url)
-    )
-    # Inputs
-    # docs_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    # docs_entry.insert(0, f"{local_ip}:{SERVER_PORT}/docs")
-    server_local_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    server_local_entry.insert(0, f"{local_ip}:{SERVER_PORT}")
-    remote_entry = tk.Entry(frame, font=("Arial", 24), w="24")
-    remote_entry.insert(0, f"{remote_ip}:{SERVER_PORT}")
-    # Placement
-    title_label.grid(row=0, column=0, columnspan=2, sticky="news", pady=40)
-    descr_label.grid(row=1, column=0, columnspan=2, sticky="news", pady=40)
-    webui_label.grid(row=2, column=0, padx=20)
-    webui_link.grid(row=2, column=1, pady=20)
-    server_local_label.grid(row=3, column=0, padx=20)
-    server_local_entry.grid(row=3, column=1, padx=20)
-    remote_label.grid(row=4, column=0, padx=20)
-    remote_entry.grid(row=4, column=1, pady=20)
-    # docs_label.grid(row=5, column=0, padx=20)
-    # docs_entry.grid(row=5, column=1, pady=20)
-    frame.pack()
-    # Render
-    root.mainloop()
-    # Handle stopping the server when window is closed
-    print(f"{common.PRNT_API} Shutting down GUI", flush=True)
-    shutdown_server()
 
 
 def start_server():
@@ -1415,7 +1112,7 @@ def start_server():
 
 
 def run_server():
-    # Start the API server in a separate thread from GUI
+    # Start the API server in a separate thread from main
     fastapi_thread = threading.Thread(target=start_server)
     fastapi_thread.daemon = True  # let the parent kill the child thread at exit
     fastapi_thread.start()
@@ -1424,25 +1121,16 @@ def run_server():
 
 if __name__ == "__main__":
     try:
-        # Start API server
-        server_thread = run_server()
         # Find IP info
         server_info = display_server_info()
-        # Render GUI window
         local_ip = server_info["local_ip"]
-        remote_ip = server_info["remote_ip"]
         local_url = f"{local_ip}:{SERVER_PORT}"
-        remote_url = f"{remote_ip}:{SERVER_PORT}"
-        run_GUI(
-            local_ip=local_url,
-            remote_ip=remote_url,
-        )
         # Open browser to WebUI
         print(f"{common.PRNT_API} API server started. Opening WebUI at {local_url}")
         webbrowser.open(local_url, new=2)
-        # Prevent main process from closing prematurely
-        while True:
-            pass
+        print(f"{common.PRNT_API} Close this window to shutdown server.")
+        # Start API server
+        start_server()
     except KeyboardInterrupt:
         print(f"{common.PRNT_API} User pressed Ctrl+C exiting...")
         shutdown_server()

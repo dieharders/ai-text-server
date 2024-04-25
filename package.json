@@ -1,6 +1,6 @@
 {
   "name": "openbrew-server",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": "Spread Shot Studios",
   "license": "MIT",
   "productName": "OpenBrew Server",
@@ -18,7 +18,7 @@
     "python-deps": "pip install -r requirements.txt",
     "release": "yarn run build && electron-builder",
     "release:win": "yarn run build && electron-builder --win --x64",
-    "makecert": "openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36500",
+    "makecert": "openssl req -x509 -newkey rsa:4096 -nodes -out public/cert.pem -keyout public/key.pem -days 36500",
     "unpacked": "yarn run build && electron-builder --dir",
     "export": "next export",
     "start": "electron .",

@@ -2,12 +2,26 @@ from types import NoneType
 from pydantic import BaseModel
 from typing import List, Optional
 from enum import Enum
+from chromadb import Collection
+from chromadb.api import ClientAPI
+from llama_index.llms.llama_cpp import LlamaCPP
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 DEFAULT_TEMPERATURE = 0.2
 DEFAULT_CONTEXT_WINDOW = 2000
 DEFAULT_SEED = 1337
 DEFAULT_MAX_TOKENS = 0  # 0 means we should calc it
 DEFAULT_CHAT_MODE = "instruct"
+
+
+class AppState(dict):
+    PORT_HOMEBREW_API: int
+    db_client: ClientAPI
+    llm: LlamaCPP | str
+    path_to_model: str
+    model_id: str
+    embed_model: HuggingFaceEmbedding | str
+    loaded_text_model_data: dict
 
 
 class CHAT_MODES(Enum):
@@ -307,6 +321,7 @@ class AddCollectionRequest(BaseModel):
     collectionName: str
     description: Optional[str] = ""
     tags: Optional[str] = ""
+    icon: Optional[str] = ""
 
 
 class AddCollectionResponse(BaseModel):
@@ -370,8 +385,15 @@ class GetAllCollectionsResponse(BaseModel):
                             "id": "1010-10101",
                             "metadata": {
                                 "description": "A description.",
-                                "sources": ["document-id"],
                                 "tags": "html5 react",
+                                "sources": [
+                                    {
+                                        "id": "document-id",
+                                        "name": "document-name",
+                                        "description": "Some description.",
+                                        "chunkIds": ["id1", "id2"],
+                                    }
+                                ],
                             },
                         }
                     ],
@@ -400,22 +422,40 @@ class GetCollectionRequest(BaseModel):
 class GetCollectionResponse(BaseModel):
     success: bool
     message: str
-    data: dict
+    data: Collection
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "message": "Returned 5 source(s) in collection",
+                    "message": "Returned collection",
                     "success": True,
-                    "data": {
-                        "collection": {},
-                        "numItems": 5,
-                    },
+                    "data": {},
                 }
             ]
         }
     }
+
+
+class GetDocumentChunksRequest(BaseModel):
+    collectionId: str
+    documentId: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "collectionId": "coll-id",
+                    "documentId": "doc-id",
+                }
+            ]
+        }
+    }
+
+
+class GetAllDocumentsRequest(BaseModel):
+    collection_id: str
+    include: Optional[List[str]] = None
 
 
 class GetDocumentRequest(BaseModel):
@@ -452,6 +492,21 @@ class GetDocumentResponse(BaseModel):
             ]
         }
     }
+
+
+class SourceMetadata(dict):
+    id: str
+    checksum: str
+    fileType: str  # type of the source (ingested) file
+    filePath: str  # path to parsed file
+    fileName: str  # name of parsed file
+    fileSize: int  # bytes
+    name: str  # document name
+    description: str
+    tags: str
+    createdAt: str
+    modifiedLast: str
+    chunkIds = List[str]
 
 
 class FileExploreRequest(BaseModel):
@@ -634,7 +689,7 @@ class PromptSettings(BaseModel):
 
 class KnowledgeSettings(BaseModel):
     type: str = None
-    index: List[str] = None
+    index: List[str | None] = None
 
 
 class ResponseSettings(BaseModel):

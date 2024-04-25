@@ -1,4 +1,4 @@
-# 🍺 Obrew Server - Ai Inference Engine
+# 🍺 Obrew Studio - Server (Ai Inference Engine)
 
 This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
 
@@ -6,27 +6,25 @@ This project handles all requests from client chat apps using a single api. The 
 
 This is a hybrid Node.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
-Forked from vercel [project](https://github.com/vercel/next.js/tree/canary/examples/with-electron)
-
-## Main Features
+## Features Roadmap
 
 - ✅ Inference: Run open-source AI models for free
 - ✅ Provide easy to use desktop installers
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
 - ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
-- ❌ Threads: Save/Retrieve chat message history
-
-## Upcoming Features
-
-- ❌ Cloud platform (subscription, host your infra with us)
-- ❌ Enterprise service (subscription & paid support, bring your own infra)
-- ❌ Auto Agents
+  <!-- - ❌ Cloud platform (subscription, host your infra with us) -->
+  <!-- - ❌ Enterprise service (subscription & paid support, bring your own infra) -->
+- ❌ Chats: Save/Retrieve chat message history
+- ❌ Auto Agents (Assistants)
+- ❌ Agent Teams
 - ❌ Multi-Chat
+- ❌ Long-term memory across Agent conversations
+- ❌ UI generation
 
 ## How It Works
 
-- Startup and shutdown of the backend services are done via the front-end UI or REST api.
+- Startup and shutdown of the backend services is done via the front-end UI or REST api.
 
 - The Python/FastAPI server (Obrew api) operates under `localhost:8008`.
 
@@ -85,11 +83,11 @@ yarn server:prod
 
 The Obrew api server will be running on [https://localhost:8008](https://localhost:8008)
 
-\*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https. If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
+\*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https (these go into `/public` folder). If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
 
 ### Run the Electron app (UI and Backend) in development
 
-This is the perferred method of running the app:
+This is the preferred method of running the app:
 
 ```bash
 yarn start
@@ -123,9 +121,9 @@ Follow these steps to build llama-cpp-python for your hardware and platform.
 - If the installation fails, you will need to uncheck everything and only install `visual_studio_integration`. Next proceed to install packages one at a time or in batches until everything is installed.
 - Add CUDA_PATH (C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2) to your environment variables
 
-3. llama-cpp-python installation steps:
+3. llama-cpp-python build steps:
 
-If on windows, run the following using "Command Prompt" commandline tool
+If on Windows, run the following using "Command Prompt" tool. If you are developing in a python virtual or Anaconda env, be sure you have the env activated first and then run from Windows cmd prompt.
 
 ```cmd
 set FORCE_CMAKE=1 && set CMAKE_ARGS=-DLLAMA_CUBLAS=on && pip install llama-cpp-python --force-reinstall --ignore-installed --upgrade --no-cache-dir --verbose
@@ -165,6 +163,10 @@ Run the command below in powershell to set your env variables:
 ```
 
 ## Bundling
+
+<!-- ### Bundling Nvida CUDA toolkit deps:
+
+Instructions on how and what files to include in app bundle... -->
 
 ### Python server
 
@@ -222,10 +224,12 @@ For production deployments you will either want to run the server behind a rever
 
 If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates.
 
-This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the root of app directory.
+This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `/public` folder.
 
 ```bash
 openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36500
+# OR
+yarn makecert
 ```
 
 This should be enough for any webapp served over https to access the server. If you see "Warning: Potential Security Risk Ahead" in your browser when using the webapp, you can ignore it by clicking `advanced` then `Accept the Risk` button to continue.
@@ -278,21 +282,39 @@ This project deploys several backend servers exposed using the `/v1` endpoint. T
 
 A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after Obrew Server is started.
 
-### /v1/connect
+## Managing Python dependencies
 
-Used by client apps to detect when services are ready to be used.
+It is highly recommended to use an package/environment manager like Anaconda to manage Python installations and the versions of dependencies they require. This allows you to create virtual environments from which you can install different versions of software and build/deploy from within this sandboxed environment.
 
-### /v1/services/api
+### Switching between virtual environments
 
-Gets all parameters for making calls to the Obrew api.
+The following commands should be done in `Anaconda Prompt` terminal. If on Windows, `run as Admin`.
 
-### /v1/text/load
+1. Create a new environment:
 
-Load a model into the text inference service.
+```bash
+conda create --name env1 python=3.10
+```
 
-### /v1/text/start
+2. To work in this env, activate it:
 
-Start the text inference server.
+```bash
+conda activate env1
+```
+
+3. When you are done using it, deactivate it:
+
+```bash
+conda deactivate
+```
+
+4. If using VSCode, you must apply your newly created virtual environment by selecting the `python interpreter` button at the bottom when inside your project directory.
+
+To update PIP package installer:
+
+```bash
+conda update pip
+```
 
 ## Learn More
 

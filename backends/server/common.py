@@ -22,11 +22,30 @@ from huggingface_hub import (
     CachedFileInfo,
 )
 
+
+# Pass relative string to get absolute path
+def app_path(relative_path):
+    return os.path.join(os.getcwd(), relative_path)
+
+
+# Pass a relative path to resource and return the correct absolute path. Works for dev and for PyInstaller
+# If you use pyinstaller, it bundles deps into a folder alongside the binary (not --onefile mode).
+# This path is set to sys._MEIPASS and any python modules or added files are put in here (runtime writes, db still go where they should).
+def dep_path(relative_path):
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
 MODEL_METADATAS_FILENAME = "installed_models.json"
 APP_SETTINGS_FOLDER = "settings"
-APP_SETTINGS_PATH = os.path.join(os.getcwd(), APP_SETTINGS_FOLDER)
+APP_SETTINGS_PATH = app_path(APP_SETTINGS_FOLDER)
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
-MODELS_CACHE_DIR = "text_models"
+TEXT_MODELS_CACHE_DIR = "text_models"
 INSTALLED_TEXT_MODELS = "installed_text_models"  # key in json file
 DEFAULT_SETTINGS_DICT = {"current_download_path": "", INSTALLED_TEXT_MODELS: []}
 DEFAULT_MAX_TOKENS = 128
@@ -46,6 +65,7 @@ class bcolors:
 
 
 PRNT_API = f"{bcolors.HEADER}[OBREW]{bcolors.ENDC}"
+PRNT_EMBED = f"{bcolors.OKCYAN}[EMBEDDING]{bcolors.ENDC}"
 
 
 # This will return a context window that is suited for a particular mode.
@@ -198,7 +218,7 @@ def check_valid_id(input: str):
         print(f"{PRNT_API} Found hyphens at start/end in [id]")
         return False
     # No whitespace allowed
-    matches_whitespace = re.findall("\s", input)
+    matches_whitespace = re.findall("\\s", input)
     if matches_whitespace:
         print(f"{PRNT_API} Found whitespace in [id]")
         return False
@@ -473,20 +493,6 @@ def get_model_config(id: str, folderpath, filepath) -> ModelConfig:
     return config
 
 
-# Read the version from package.json file
-def read_api_version():
-    try:
-        # @TODO Reading json from place other than the origin or the path is constructed incorrect...same issue in node.js app
-        file_path = os.path.join(os.getcwd(), "package.json")
-        with open(file_path, "r") as file:
-            loaded_data = json.load(file)
-            version = loaded_data["version"]
-    except FileNotFoundError:
-        # If the file doesn't exist
-        version = "0"
-    return version
-
-
 def read_constants(app):
     # Determine path to file based on prod or dev
     current_directory = os.getcwd()
@@ -503,16 +509,3 @@ def read_constants(app):
     with open(path, "r") as json_file:
         data = json.load(json_file)
         app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]
-
-
-# Pass a relative path to resource and return the correct absolute path. Works for dev and for PyInstaller
-# If you use pyinstaller, it bundles deps into a folder alongside the binary (not --onefile mode).
-# This path is set to sys._MEIPASS and any python modules or added files are put in here (runtime writes, db still go where they should).
-def dep_path(relative_path):
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
