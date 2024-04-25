@@ -2,6 +2,8 @@ from typing import List
 from llama_index.core import SimpleDirectoryReader, Document
 
 
+# Read in source file(s) and build a document node with metadata.
+# We will use this later to base our chunks off of.
 def documents_from_sources(
     sources: List[str], source_id, source_metadata: dict
 ) -> List[Document]:
@@ -9,7 +11,8 @@ def documents_from_sources(
     reader = SimpleDirectoryReader(input_files=sources)
     # Process each files nodes as they load
     for loaded_nodes in reader.iter_data():
-        # Build a document from loaded file (reader splits into text nodes)
+        # Build a document from loaded file
+        # Reader splits into text nodes which we use to rebuild text content
         document_node = loaded_nodes[0]
         doc_text = [d.get_content() for d in loaded_nodes]
         # Create metadata

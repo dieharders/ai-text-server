@@ -109,7 +109,7 @@ def load_embedding(app: dict, collection_name: str) -> VectorStoreIndex:
             # store_nodes_override=True,  # this populates docstore.json with chunk nodes
         )
     except Exception as e:
-        print(f"Failed to load vector index: {e}")
+        print(f"{common.PRNT_EMBED} Failed to load vector index: {e}", flush=True)
     return vector_index
 
 

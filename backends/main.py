@@ -721,7 +721,6 @@ async def create_memory(
             )
 
         # Process and write to disk
-        # @TODO Define a dynamic file parser to convert any files contents to text as a .md file.
         await file_parsers.process_file_to_disk(
             app=app,
             url_path=url_path,
@@ -729,7 +728,8 @@ async def create_memory(
             file=file,
             filename=filename,
         )
-        # Parse/Pre-Process input files
+        # Parse/Pre-Process/Structure source files for embedding/retrieval
+        # @TODO Define a dynamic file parser to convert any files contents to text as a .md file.
         processed_file = file_parsers.pre_process_documents(
             document_name=document_name,
             collection_name=collection_name,
