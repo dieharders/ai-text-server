@@ -187,8 +187,8 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "method": "POST",
             },
             {
-                "name": "deleteDocuments",
-                "urlPath": "/v1/memory/deleteDocuments",
+                "name": "deleteSources",
+                "urlPath": "/v1/memory/deleteSources",
                 "method": "POST",
             },
             {

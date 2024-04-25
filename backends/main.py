@@ -125,34 +125,33 @@ origins = [
 ###############
 
 
-# Delete all source metadata and associated files
-def delete_sources(ids: List[str], collection_name: str):
+# Given source(s), delete all associated document chunks, metadata and files
+def delete_sources(collection_name: str, sources: List[classes.SourceMetadata]):
     db = storage.get_vector_db_client(app)
     collection = db.get_collection(name=collection_name)
-    sources = storage.get_collection_sources(collection)
     vector_index = embedding.load_embedding(app, collection_name)
     # Delete each source
-    for document_id in ids:
-        source = None
-        for s in sources:
-            if s["id"] == document_id:
-                source = s
-                break
+    for source in sources:
+        chunk_ids = source.get("chunkIds")
         # Delete all chunks
-        chunk_ids = source["chunkIds"]
         storage.delete_chunks(
-            collection,
-            collectionchunk_ids=chunk_ids,
+            collection=collection,
             vector_index=vector_index,
+            chunk_ids=chunk_ids,
         )
         # Delete associated files
         storage.delete_source_files(source)
-        # Update collection metadata.sources to remove this source
-        storage.update_collection_sources(
-            collection=collection,
-            sources=[source],
-            mode="delete",
-        )
+    # Update collection metadata.sources to remove this source
+    storage.update_collection_sources(
+        collection=collection,
+        sources=sources,
+        mode="delete",
+    )
+
+
+##############
+### Routes ###
+##############
 
 
 # Add CORS support
@@ -163,10 +162,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-##############
-### Routes ###
-##############
 
 app.include_router(endpoint_router)
 
@@ -836,8 +831,8 @@ def get_chunks(params: classes.GetDocumentChunksRequest):
     num_chunks = 0
 
     try:
-        chunks = storage.get_document_chunks(
-            app, collection_name=collection_id, document_id=document_id
+        chunks = storage.get_source_chunks(
+            app, collection_name=collection_id, source_id=document_id
         )
         if chunks != None:
             num_chunks = len(chunks)
@@ -878,22 +873,28 @@ def explore_source_file(
     }
 
 
-# Delete a document by id
-@app.post("/v1/memory/deleteDocuments")
-def delete_documents(
+# Delete one or more sources by id
+@app.post("/v1/memory/deleteSources")
+def delete_document_sources(
     params: classes.DeleteDocumentsRequest,
 ) -> classes.DeleteDocumentsResponse:
     try:
         collection_name = params.collection_id
-        document_ids = params.document_ids
-        num_documents = len(document_ids)
-
-        # Remove each source
-        delete_sources(collection_name=collection_name, ids=document_ids)
+        source_ids = params.document_ids
+        num_documents = len(source_ids)
+        # Find source data
+        collection = storage.get_collection(app, name=collection_name)
+        all_sources = storage.get_collection_sources(collection)
+        sources = []
+        for s in all_sources:
+            if s.get("id") in source_ids:
+                sources.append(s)
+        # Remove specified source(s)
+        delete_sources(collection_name=collection_name, sources=sources)
 
         return {
             "success": True,
-            "message": f"Removed {num_documents} document(s): {document_ids}",
+            "message": f"Removed {num_documents} source(s): {source_ids}",
         }
     except Exception as e:
         print(f"{common.PRNT_API} Error: {e}")
@@ -912,17 +913,14 @@ def delete_collection(
         collection_id = params.collection_id
         db = storage.get_vector_db_client(app)
         collection = db.get_collection(collection_id)
+        # Remove all the sources in this collection
         sources = storage.get_collection_sources(collection)
-        source_ids = []
-        for s in sources:
-            source_ids.append(s["id"])
         # Remove all associated source files
-        delete_sources(ids=source_ids, collection_name=collection_id)
+        delete_sources(collection_name=collection_id, sources=sources)
         # Remove the collection
         db.delete_collection(name=collection_id)
         # Remove persisted vector index from disk
         common.delete_vector_store(collection_id, storage.VECTOR_STORAGE_PATH)
-
         return {
             "success": True,
             "message": f"Removed collection [{collection_id}]",

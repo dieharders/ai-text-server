@@ -91,6 +91,8 @@ def create_index_callback_manager() -> CallbackManager:
 def load_embedding(app: dict, collection_name: str) -> VectorStoreIndex:
     vector_index = None
     try:
+        # Initialize embedding func
+        define_embedding_model(app)
         # Initialize client
         db = get_vector_db_client(app)
         # Get collection

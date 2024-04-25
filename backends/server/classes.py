@@ -494,6 +494,21 @@ class GetDocumentResponse(BaseModel):
     }
 
 
+class SourceMetadata(dict):
+    id: str
+    checksum: str
+    fileType: str  # type of the source (ingested) file
+    filePath: str  # path to parsed file
+    fileName: str  # name of parsed file
+    fileSize: int  # bytes
+    name: str  # document name
+    description: str
+    tags: str
+    createdAt: str
+    modifiedLast: str
+    chunkIds = List[str]
+
+
 class FileExploreRequest(BaseModel):
     filePath: str
 

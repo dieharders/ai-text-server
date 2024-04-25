@@ -121,9 +121,9 @@ Follow these steps to build llama-cpp-python for your hardware and platform.
 - If the installation fails, you will need to uncheck everything and only install `visual_studio_integration`. Next proceed to install packages one at a time or in batches until everything is installed.
 - Add CUDA_PATH (C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2) to your environment variables
 
-3. llama-cpp-python installation steps:
+3. llama-cpp-python build steps:
 
-If on windows, run the following using "Command Prompt" commandline tool
+If on Windows, run the following using "Command Prompt" tool. If you are developing in a python virtual or Anaconda env, be sure you have the env activated first and then run from Windows cmd prompt.
 
 ```cmd
 set FORCE_CMAKE=1 && set CMAKE_ARGS=-DLLAMA_CUBLAS=on && pip install llama-cpp-python --force-reinstall --ignore-installed --upgrade --no-cache-dir --verbose
