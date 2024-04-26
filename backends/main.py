@@ -1020,6 +1020,54 @@ def save_bot_settings(settings: dict) -> classes.BotSettingsResponse:
     }
 
 
+# Delete bot settings
+@app.delete("/v1/persist/bot-settings")
+def delete_bot_settings(name: str) -> classes.BotSettingsResponse:
+    new_settings = []
+    # Paths
+    base_path = common.APP_SETTINGS_PATH
+    file_name = BOT_SETTINGS_FILE_NAME
+    file_path = os.path.join(base_path, file_name)
+    try:
+        # Try to open the file (if it exists)
+        if os.path.exists(base_path):
+            prev_settings = None
+            with open(file_path, "r") as file:
+                prev_settings = json.load(file)
+                for setting in prev_settings:
+                    if name == setting.get("model").get("botName"):
+                        # Delete setting dict
+                        del_index = prev_settings.index(setting)
+                        del prev_settings[del_index]
+                        # Save new settings
+                        new_settings = prev_settings
+                        break
+            # Save new settings to file
+            with open(file_path, "w") as file:
+                if new_settings is not None:
+                    json.dump(new_settings, file, indent=2)
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "message": "Failed to delete bot setting. File does not exist.",
+            "data": None,
+        }
+    except json.JSONDecodeError:
+        return {
+            "success": False,
+            "message": "Failed to delete bot setting. Invalid JSON format or empty file.",
+            "data": None,
+        }
+
+    msg = "Removed bot setting."
+    print(f"{common.PRNT_API} {msg}")
+    return {
+        "success": True,
+        "message": f"Success: {msg}",
+        "data": new_settings,
+    }
+
+
 # Load bot settings
 @app.get("/v1/persist/bot-settings")
 def get_bot_settings() -> classes.BotSettingsResponse:
