@@ -144,6 +144,12 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/persist/bot-settings",
                 "method": "POST",
             },
+            # Delete bot settings
+            {
+                "name": "deleteBotSettings",
+                "urlPath": "/v1/persist/bot-settings",
+                "method": "DELETE",
+            },
         ],
     }
     data.append(storage_api)
