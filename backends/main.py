@@ -130,7 +130,7 @@ def delete_sources(collection_name: str, sources: List[classes.SourceMetadata]):
     db = storage.get_vector_db_client(app)
     collection = db.get_collection(name=collection_name)
     vector_index = embedding.load_embedding(app, collection_name)
-    # Delete each source
+    # Delete each source chunk and parsed file
     for source in sources:
         chunk_ids = source.get("chunkIds")
         # Delete all chunks
@@ -187,7 +187,7 @@ async def connect_page(request: Request):
             "qr_data": qr_data,
             "title": "Connect to Obrew Server",
             "app_name": "Obrew🍺Server",
-            "message": "Click the link below or navigate your browser to use the WebUI interface.",
+            "message": "Scan the code with your mobile device to access the WebUI remotely and/or click the link below.",
             "host": local_url,
             "remote_host": remote_url,
             "port": SERVER_PORT,
@@ -706,8 +706,8 @@ async def create_memory(
         chunk_size = form.chunkSize
         chunk_overlap = form.chunkOverlap
         chunk_strategy = form.chunkStrategy
-        filename = file_parsers.create_parsed_filename(collection_name, document_name)
-        tmp_input_file_path = os.path.join(file_parsers.TMP_DOCUMENT_PATH, filename)
+        file_name = file_parsers.create_parsed_filename(collection_name, document_name)
+        tmp_input_file_path = os.path.join(file_parsers.TMP_DOCUMENT_PATH, file_name)
 
         if file == None and url_path == "" and text_input == "":
             raise Exception("You must supply a file upload, url or text.")
@@ -720,13 +720,13 @@ async def create_memory(
                 "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
             )
 
-        # Process and write to disk
+        # Process and write file to disk
         await file_parsers.process_file_to_disk(
             app=app,
             url_path=url_path,
             text_input=text_input,
             file=file,
-            filename=filename,
+            file_name=file_name,
         )
         # Parse/Pre-Process/Structure source files for embedding/retrieval
         # @TODO Define a dynamic file parser to convert any files contents to text as a .md file.
@@ -745,7 +745,6 @@ async def create_memory(
             "document_id": processed_file["document_id"],
             "description": description,
             "tags": tags,
-            "is_update": False,
             "chunk_size": chunk_size,
             "chunk_overlap": chunk_overlap,
             "chunk_strategy": chunk_strategy,
@@ -769,6 +768,117 @@ async def create_memory(
         }
     else:
         msg = "A new memory has been added to the queue. It will be available for use shortly."
+        print(f"{common.PRNT_API} {msg}", flush=True)
+        return {
+            "success": True,
+            "message": msg,
+        }
+    finally:
+        # Delete uploaded tmp file
+        if os.path.exists(tmp_input_file_path):
+            os.remove(tmp_input_file_path)
+            print(f"{common.PRNT_API} Removed temp file.")
+
+
+# Re-process and re-embed document
+@app.post("/v1/memory/updateDocument")
+async def update_memory(
+    form: classes.EmbedDocumentRequest = Depends(),
+    file: UploadFile = File(None),  # File(...) means required
+    background_tasks: BackgroundTasks = None,  # This prop is auto populated by FastAPI
+) -> classes.AddDocumentResponse:
+    try:
+        # Need the prev source id
+        document_id = form.documentId
+        document_name = form.documentName
+        collection_name = form.collectionName
+        description = form.description
+        tags = common.parse_valid_tags(form.tags)
+        # Pass a new file or a filename to a file already on server's local disk
+        local_file_path = form.filePath
+        url_path = form.urlPath
+        text_input = form.textInput
+        chunk_size = form.chunkSize
+        chunk_overlap = form.chunkOverlap
+        chunk_strategy = form.chunkStrategy
+        file_name = file_parsers.create_parsed_filename(collection_name, document_name)
+        tmp_input_file_path = os.path.join(file_parsers.TMP_DOCUMENT_PATH, file_name)
+
+        # Verify inputs
+        if (
+            file == None
+            and local_file_path == ""
+            and url_path == ""
+            and text_input == ""
+        ):
+            raise Exception("Please supply a file upload, file path, url or text.")
+        if not collection_name or not document_name or not document_id:
+            raise Exception(
+                "Please supply a collection name, document name, and document id"
+            )
+        if not common.check_valid_id(document_name):
+            raise Exception(
+                "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
+            )
+        if tags == None:
+            raise Exception("Invalid value for 'tags' input.")
+
+        # First remove specified source(s) from database
+        collection = storage.get_collection(app, name=collection_name)
+        sources_to_delete = storage.get_sources_from_ids(
+            collection=collection, source_ids=[document_id]
+        )
+        delete_sources(collection_name=collection_name, sources=sources_to_delete)
+
+        # Process and write file to disk
+        await file_parsers.process_file_to_disk(
+            app=app,
+            url_path=url_path,
+            file_path=local_file_path,
+            text_input=text_input,
+            file=file,
+            file_name=file_name,
+        )
+        # Parse/Pre-Process/Structure source files for embedding/retrieval
+        # @TODO Define a dynamic file parser to convert any files contents to text as a .md file.
+        processed_file = file_parsers.pre_process_documents(
+            document_name=document_name,
+            collection_name=collection_name,
+            description=description,
+            tags=tags,
+            input_file_path=tmp_input_file_path,
+        )
+        # Create embedding metadata
+        print(f"{common.PRNT_API} Start embedding...")
+        embed_form = {
+            "collection_name": collection_name,
+            "document_name": document_name,
+            "document_id": document_id,
+            "description": description,
+            "tags": tags,
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap,
+            "chunk_strategy": chunk_strategy,
+        }
+        # @TODO Note that you must NOT perform CPU intensive computations in the background_tasks of the app,
+        # because it runs in the same async event loop that serves the requests and it will stall your app.
+        # Instead submit them to a thread pool or a process pool.
+        background_tasks.add_task(
+            embedding.create_new_embedding,
+            processed_file,
+            embed_form,
+            app,
+        )
+    except (Exception, KeyError) as e:
+        # Error
+        msg = f"Failed to update memory: {e}"
+        print(f"{common.PRNT_API} {msg}", flush=True)
+        return {
+            "success": False,
+            "message": msg,
+        }
+    else:
+        msg = "A memory has been added to the update queue. It will be available for use shortly."
         print(f"{common.PRNT_API} {msg}", flush=True)
         return {
             "success": True,
@@ -873,8 +983,8 @@ def explore_source_file(
     }
 
 
-# Delete one or more sources by id
-@app.post("/v1/memory/deleteSources")
+# Delete one or more source documents by id
+@app.post("/v1/memory/deleteDocuments")
 def delete_document_sources(
     params: classes.DeleteDocumentsRequest,
 ) -> classes.DeleteDocumentsResponse:
@@ -884,13 +994,11 @@ def delete_document_sources(
         num_documents = len(source_ids)
         # Find source data
         collection = storage.get_collection(app, name=collection_name)
-        all_sources = storage.get_collection_sources(collection)
-        sources = []
-        for s in all_sources:
-            if s.get("id") in source_ids:
-                sources.append(s)
+        sources_to_delete = storage.get_sources_from_ids(
+            collection=collection, source_ids=source_ids
+        )
         # Remove specified source(s)
-        delete_sources(collection_name=collection_name, sources=sources)
+        delete_sources(collection_name=collection_name, sources=sources_to_delete)
 
         return {
             "success": True,

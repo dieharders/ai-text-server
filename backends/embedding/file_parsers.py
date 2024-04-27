@@ -1,6 +1,7 @@
 import os
 import glob
-from typing import Any
+import shutil
+from typing import Any, Optional
 import uuid
 import hashlib
 import re
@@ -32,7 +33,8 @@ def create_checksum(file_path: str):
 
 # Create a filename for a parsed document memory
 def create_parsed_filename(collection_name: str, document_name: str):
-    # Causing issues reading?
+    # @TODO If we ever submit multiple files for the same source, append a file number.
+    # @TODO Actually why do we even need to keep around the parsed file after embedding?
     return f"{document_name}.md"
 
 
@@ -140,11 +142,12 @@ async def process_file_to_disk(
     url_path: str,
     text_input: str,
     file: UploadFile,
-    filename: str,
+    file_name: str,
+    file_path: Optional[str] = "",  # local path on server
 ):
     # Save temp files to disk first. The filename doesnt matter much.
     tmp_folder = TMP_DOCUMENT_PATH
-    tmp_input_file_path = os.path.join(tmp_folder, filename)
+    tmp_input_file_path = os.path.join(tmp_folder, file_name)
     # Process file and write to disk
     if url_path:
         print(
@@ -161,6 +164,13 @@ async def process_file_to_disk(
         # Write to file
         with open(tmp_input_file_path, "w") as f:
             f.write(text_input)
+    elif file_path:
+        # Read file from local path
+        print(f"{common.PRNT_API} Reading local file from disk...{file_path}")
+        # Copy the file to the destination folder
+        if not os.path.exists(tmp_folder):
+            os.makedirs(tmp_folder)
+        shutil.copyfile(file_path, tmp_input_file_path)
     elif file:
         print(f"{common.PRNT_API} Saving uploaded file to disk...")
         # Read the uploaded file in chunks of 1mb,
@@ -173,6 +183,7 @@ async def process_file_to_disk(
         file.file.close()
     else:
         raise Exception("Please supply a file path or url.")
+    return
 
 
 # Wipe all parsed files
