@@ -118,7 +118,6 @@ def create_new_embedding(
     processed_file: dict,
     form: dict,
     app: Any,
-    is_update=False,
 ):
     try:
         # File attributes
@@ -200,7 +199,7 @@ def create_new_embedding(
         update_collection_sources(
             collection=collection,
             sources=[source_record],
-            mode="update" if is_update else "add",
+            mode="add",
         )
         print(f"{common.PRNT_EMBED} Embedding succeeded!", flush=True)
     except (Exception, KeyError) as e:

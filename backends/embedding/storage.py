@@ -17,15 +17,16 @@ VECTOR_STORAGE_PATH = common.app_path(VECTOR_DB_FOLDER)
 # Helpers
 
 
-# Return a source given an id in a collection
-def get_source(collection: Collection, source_id: str) -> classes.SourceMetadata | None:
-    sources = get_collection_sources(collection)
-    source = None
-    for x in sources:
-        if x.get("id") == source_id:
-            source = x
-            break
-    return source
+# Return source(s) given id(s) in a collection
+def get_sources_from_ids(
+    collection: Collection, source_ids: str
+) -> List[classes.SourceMetadata]:
+    all_sources = get_collection_sources(collection)
+    sources = []
+    for s in all_sources:
+        if s.get("id") in source_ids:
+            sources.append(s)
+    return sources
 
 
 # Return the list of sources in this collection
@@ -81,27 +82,32 @@ def add_chunks_to_collection(
 
 
 # Add/remove or update Collection's metadata.sources list
-def update_collection_sources(collection: Collection, sources: List[dict], mode="add"):
+def update_collection_sources(
+    collection: Collection,
+    sources: List[classes.SourceMetadata],
+    mode="add",
+):
     # Get current collection's sources
     prev_sources = get_collection_sources(collection)
     new_sources = []
-    # Create new sources
-    if mode == "update":
-        # @TODO implement updating prev added source
-        new_sources = []
-        print(f"{common.PRNT_API} Updated sources:\n{new_sources}")
-    elif mode == "add":
+    # Set new sources
+    if mode == "add":
         if prev_sources:
             prev_sources.extend(sources)
             new_sources = prev_sources
         else:
             new_sources = sources
-        print(f"{common.PRNT_API} Added new sources to collection:\n{new_sources}")
+        print(
+            f"{common.PRNT_API} Added new sources to collection:\nNew sources: {new_sources}"
+        )
     elif mode == "delete":
         for i in sources:
-            if i not in prev_sources:
-                new_sources.append(i)
-        print(f"{common.PRNT_API} Updated collection sources list:\n{new_sources}")
+            if i in prev_sources:
+                prev_sources.remove(i)
+        new_sources = prev_sources
+        print(
+            f"{common.PRNT_API} Removed sources from collection:\nNew sources: {new_sources}"
+        )
     # Update the collection's metadata
     collection.metadata["sources"] = json.dumps(new_sources)
     collection.modify(metadata=collection.metadata)
@@ -169,8 +175,7 @@ def get_source_chunks(app: Any, collection_name: str, source_id: str):
         )
         chunks.append(result)
     # Return all chunks for this source
-    print(f"Chunk ids: {doc_chunk_ids}")
-    print(f"Returned {len(chunks)} chunks")
+    print(f"{common.PRNT_API} Returned {len(chunks)} chunks")
     return chunks
 
 

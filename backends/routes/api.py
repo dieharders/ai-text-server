@@ -193,8 +193,8 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "method": "POST",
             },
             {
-                "name": "deleteSources",
-                "urlPath": "/v1/memory/deleteSources",
+                "name": "deleteDocuments",
+                "urlPath": "/v1/memory/deleteDocuments",
                 "method": "POST",
             },
             {
@@ -202,12 +202,11 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/memory/fileExplore",
                 "method": "GET",
             },
-            # Temp disabled until we add support
-            # {
-            #     "name": "updateDocument",
-            #     "urlPath": "/v1/memory/updateDocument",
-            #     "method": "POST",
-            # },
+            {
+                "name": "updateDocument",
+                "urlPath": "/v1/memory/updateDocument",
+                "method": "POST",
+            },
             {
                 "name": "wipe",
                 "urlPath": "/v1/memory/wipe",

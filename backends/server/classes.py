@@ -343,9 +343,15 @@ class AddCollectionResponse(BaseModel):
 class EmbedDocumentRequest(BaseModel):
     collectionName: str
     documentName: str
+    # optional for add, required for update
+    documentId: Optional[str] = ""
     description: Optional[str] = ""
     tags: Optional[str] = ""
+    # need oneof urlPath/fileName/textInput
     urlPath: Optional[str] = ""
+    # need oneof urlPath/fileName/textInput
+    filePath: Optional[str] = ""
+    # need oneof urlPath/fileName/textInput
     textInput: Optional[str] = ""
     chunkSize: Optional[int] = None
     chunkOverlap: Optional[int] = None
@@ -522,34 +528,6 @@ class FileExploreResponse(BaseModel):
             "examples": [
                 {
                     "message": "Opened file explorer",
-                    "success": True,
-                }
-            ]
-        }
-    }
-
-
-class UpdateEmbeddedDocumentRequest(EmbedDocumentRequest):
-    collectionName: str
-    documentId: str
-    documentName: Optional[str] = ""
-    metadata: Optional[dict] = {}  # @TODO What data struct ?
-    urlPath: Optional[str] = ""
-    filePath: Optional[str]
-    chunkSize: Optional[int] = 300
-    chunkOverlap: Optional[int] = 0
-    chunkStrategy: Optional[str] = ""
-
-
-class UpdateDocumentResponse(BaseModel):
-    success: bool
-    message: str
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "message": "Updated memories",
                     "success": True,
                 }
             ]

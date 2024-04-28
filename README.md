@@ -1,4 +1,4 @@
-# 🍺 Obrew Studio - Server (Ai Inference Engine)
+# 🍺 Obrew Server - Ai Engine
 
 This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
 
@@ -318,5 +318,5 @@ conda update pip
 
 ## Learn More
 
-- Server uses [FastAPI Documentation](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
-- Text Inference uses [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for ai text inference.
+- Server uses [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+- Engine uses [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for Ai inference.
