@@ -33,8 +33,8 @@ def create_checksum(file_path: str):
 
 # Create a filename for a parsed document memory
 def create_parsed_filename(collection_name: str, document_name: str):
-    # @TODO If we ever submit multiple files for the same source, append a file number.
-    # @TODO Actually why do we even need to keep around the parsed file after embedding?
+    # @TODO If we ever submit multiple files for the same source, make sure chunks have unique ids.
+    # @TODO Do we need to keep around the parsed file after embedding?
     return f"{document_name}.md"
 
 

@@ -175,8 +175,7 @@ def get_source_chunks(app: Any, collection_name: str, source_id: str):
         )
         chunks.append(result)
     # Return all chunks for this source
-    print(f"Chunk ids: {doc_chunk_ids}")
-    print(f"Returned {len(chunks)} chunks")
+    print(f"{common.PRNT_API} Returned {len(chunks)} chunks")
     return chunks
 
 
