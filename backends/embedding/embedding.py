@@ -115,18 +115,18 @@ def load_embedding(app: dict, collection_name: str) -> VectorStoreIndex:
 
 # Create embeddings for one file (input) at a time
 def create_new_embedding(
-    processed_file: dict,
+    input_file: dict,
     form: dict,
     app: Any,
 ):
     try:
         # File attributes
-        checksum: str = processed_file["checksum"]
+        checksum: str = input_file["checksum"]
         document_id: str = form["document_id"]
         document_name: str = form["document_name"]
         description: str = form["description"]
         tags: str = form["tags"]
-        source_file_path: str = processed_file.get("path_to_file")
+        source_file_path: str = input_file.get("path_to_file")
         chunk_size: int = form["chunk_size"] or 300
         chunk_overlap: int = form["chunk_overlap"] or 0
         chunk_strategy: str = (
@@ -145,13 +145,12 @@ def create_new_embedding(
         # Read in source files and build documents
         print(f"{common.PRNT_EMBED} Reading source files...", flush=True)
         source_paths = [source_file_path]
-
         source_metadata = dict(
             name=document_name,
             description=description,
             checksum=checksum,
-            fileName=processed_file["file_name"],
-            filePath=processed_file["path_to_file"],
+            fileName=input_file["file_name"],
+            filePath=input_file["path_to_file"],
             tags=tags,
         )
         file_nodes = documents_from_sources(

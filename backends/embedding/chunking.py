@@ -41,6 +41,14 @@ def chunks_from_documents(
             # Tell query engine to ignore these metadata keys
             chunk_node.excluded_llm_metadata_keys = excluded_llm_metadata_keys
             chunk_node.excluded_embed_metadata_keys = excluded_embed_metadata_keys
+            # Once your metadata is converted into a string using metadata_seperator
+            # and metadata_template, the metadata_templates controls what that metadata
+            # looks like when joined with the text content
+            chunk_node.metadata_seperator = "::"
+            chunk_node.metadata_template = "{key}=>{value}"
+            chunk_node.text_template = (
+                "Metadata: {metadata_str}\n-----\nContent: {content}"
+            )
             # Return chunk `IndexNode`
             chunk_nodes.append(chunk_node)
             chunks_ids.append(chunk_node.node_id)  # or id_
