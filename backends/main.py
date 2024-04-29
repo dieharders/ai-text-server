@@ -167,10 +167,23 @@ async def modify_document(
     chunk_size = form.chunkSize
     chunk_overlap = form.chunkOverlap
     chunk_strategy = form.chunkStrategy
-    document_id = file_parsers.create_parsed_id(
-        collection_name=collection_name, document_name=document_name
-    )
-    # Verify inputs
+    new_document_id = file_parsers.create_parsed_id(collection_name=collection_name)
+    if is_update:
+        source_id = prev_document_id
+    else:
+        source_id = new_document_id
+    source_metadata = {
+        "collection_name": collection_name,
+        "document_name": document_name,
+        "document_id": source_id,
+        "description": description,
+        "tags": tags,
+        "embedder": app.state.embed_model,
+        "chunk_size": chunk_size,
+        "chunk_overlap": chunk_overlap,
+        "chunk_strategy": chunk_strategy,
+    }
+    # Verify input values
     if (
         file == None  # file from client
         and url_path == ""  # file on web
@@ -178,10 +191,14 @@ async def modify_document(
         and local_file_path == ""  # file on server disk
     ):
         raise Exception("Please supply a file upload, file path, url or text.")
-    if not collection_name or not source_name:
-        raise Exception("Please supply a collection name and memory name.")
+    if not collection_name or collection_name == "undefined" or not source_name:
+        raise Exception("Please supply a collection name and/or memory name.")
     if is_update and not prev_document_id:
         raise Exception("Please supply a document id.")
+    if not document_name:
+        raise Exception("Please supply a document name.")
+    if not source_id:
+        raise Exception("Server error, id misconfigured.")
     if not common.check_valid_id(source_name):
         raise Exception(
             "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
@@ -195,41 +212,35 @@ async def modify_document(
             collection=collection, source_ids=[prev_document_id]
         )
         delete_sources(collection_name=collection_name, sources=sources_to_delete)
-    # Write file to disk
+    # Write uploaded file to disk temporarily
     input_file = await file_parsers.copy_file_to_disk(
         app=app,
         url_path=url_path,
         file_path=local_file_path,
         text_input=text_input,
         file=file,
-        id=prev_document_id or document_id,
+        id=source_id,
     )
+    path_to_parsed_file = input_file.get("path_to_file")
+    # Read in files and create index nodes
+    nodes = embedding.create_index_nodes(
+        input_file=input_file,
+        form=source_metadata,
+    )
+    # Process/Structure source text for optimal embedding/retrieval
+    # @TODO This will be CPU intensive and should be done in thread
+    processed_docs = file_parsers.process_documents(nodes=nodes)
     # Create embeddings
-    print(f"{common.PRNT_API} Start embedding...")
-    embed_form = {
-        "collection_name": collection_name,
-        "document_name": document_name,
-        "document_id": document_id,
-        "description": description,
-        "tags": tags,
-        "chunk_size": chunk_size,
-        "chunk_overlap": chunk_overlap,
-        "chunk_strategy": chunk_strategy,
-    }
     # @TODO Note that you must NOT perform CPU intensive computations in the background_tasks of the app,
     # because it runs in the same async event loop that serves the requests and it will stall your app.
     # Instead submit them to a thread pool or a process pool.
-    # @TODO Pull out the logic that read/loads the files and creates nodes and put here. Move this after `process_documents`
     background_tasks.add_task(
         embedding.create_new_embedding,
-        input_file,
-        embed_form,
-        app,
+        nodes=processed_docs,
+        form=source_metadata,
+        app=app,
     )
-    # Process/Structure source text for optimal embedding/retrieval
-    # @TODO Embedding should occur after this but node creation should occur before this
-    file_parsers.process_documents(input_file_path=input_file.get("tmp_file_path"))
-    return input_file.get("path_to_file")
+    return path_to_parsed_file
 
 
 ##############

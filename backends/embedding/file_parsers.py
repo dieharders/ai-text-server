@@ -38,11 +38,10 @@ def create_file_name(id: str, input_file_name: str):
 
 
 # Create a filename for a parsed markdown document
-def create_parsed_id(collection_name: str, document_name: str):
-    # @TODO If we ever submit multiple files for the same source, make sure chunks have unique ids.
-    doc_name = document_name or str(uuid.uuid4()).replace("-", "")
-    # return f"{collection_name}--{doc_name}"
-    return doc_name
+def create_parsed_id(collection_name: str):
+    id = str(uuid.uuid4()).replace("-", "")
+    # return f"{collection_name}--{id}"
+    return id
 
 
 def check_file_support(filePath: str):
@@ -62,6 +61,7 @@ def check_file_support(filePath: str):
         "xml",
         "xls",
         "html",
+        "htm",
         # "orc",
     )
     is_supported = file_extension.lower().endswith(supported_ext)
@@ -71,16 +71,16 @@ def check_file_support(filePath: str):
 
 
 # @TODO Define a dynamic document parser to convert basic text contents to markdown format
-def process_documents(input_documents: List[Document]):
+def process_documents(nodes: List[Document]) -> List[Document]:
     try:
-        # Parsed document contents
+        # Loop thru parsed document contents
+        # ...
         # @TODO Copied text should be parsed and edited to include markdown syntax to describe important bits (headings, attribution, links)
         # @TODO Copied contents may include things like images/graphs that need special parsing to generate an effective text description
         # @TODO Generate name, descr, tags if not present based on parsed text content ...
         # @TODO Save the file to disk as a .md
-        print(
-            f"{common.PRNT_EMBED} Successfully processed {input_documents}", flush=True
-        )
+        print(f"{common.PRNT_EMBED} Successfully processed {nodes}", flush=True)
+        return nodes
     except (Exception, ValueError, TypeError, KeyError) as error:
         print(f"{common.PRNT_EMBED} Document processing failed: {error}", flush=True)
 

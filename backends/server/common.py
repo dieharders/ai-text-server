@@ -138,7 +138,6 @@ async def get_file_from_url(url: str, pathname: str, app):
     headers = {
         "Content-Type": "application/octet-stream",
     }
-    # @TODO Verify stored checksum before downloading
     head_res = client.head(url)
     total_file_size = head_res.headers.get("content-length")
     if int(total_file_size) > TOO_LONG:

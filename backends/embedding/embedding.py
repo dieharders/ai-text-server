@@ -55,8 +55,10 @@ def embed_pipeline(parser, vector_store, documents: List[Document]):
 
 # Define a specific embedding method globally
 # @TODO In future could return different models for different tasks.
+# @TODO Use the embedder recorded in the metadata (when retrieving)
 def define_embedding_model(app: Any):
     # from transformers import AutoModel, AutoTokenizer
+    print(f"{common.PRNT_EMBED} Initializing embed model...", flush=True)
     embed_model = "local"
 
     if app.state.embed_model:
@@ -113,20 +115,47 @@ def load_embedding(app: dict, collection_name: str) -> VectorStoreIndex:
     return vector_index
 
 
-# Create embeddings for one file (input) at a time
-def create_new_embedding(
+# Create nodes from a single source Document
+def create_index_nodes(
     input_file: dict,
+    form: dict,
+) -> List[Document]:
+    print(f"{common.PRNT_EMBED} Creating nodes...", flush=True)
+    # File attributes
+    checksum: str = input_file["checksum"]
+    document_id: str = form["document_id"]
+    document_name: str = form["document_name"]
+    description: str = form["description"]
+    tags: str = form["tags"]
+    source_file_path: str = input_file.get("path_to_file")
+    # Read in source files and build documents
+    source_paths = [source_file_path]
+    source_metadata = dict(
+        name=document_name,
+        description=description,
+        checksum=checksum,
+        fileName=input_file["file_name"],
+        filePath=input_file["path_to_file"],
+        tags=tags,
+    )
+    file_nodes = documents_from_sources(
+        sources=source_paths,
+        source_id=document_id,
+        source_metadata=source_metadata,
+    )
+    return file_nodes
+
+
+# Create embeddings for one file (input) at a time
+# We create one source per upload
+def create_new_embedding(
+    nodes: List[Document],
     form: dict,
     app: Any,
 ):
     try:
+        print(f"{common.PRNT_EMBED} Creating embeddings...", flush=True)
         # File attributes
-        checksum: str = input_file["checksum"]
-        document_id: str = form["document_id"]
-        document_name: str = form["document_name"]
-        description: str = form["description"]
-        tags: str = form["tags"]
-        source_file_path: str = input_file.get("path_to_file")
         chunk_size: int = form["chunk_size"] or 300
         chunk_overlap: int = form["chunk_overlap"] or 0
         chunk_strategy: str = (
@@ -134,72 +163,46 @@ def create_new_embedding(
         )
         text_splitter = CHUNKING_STRATEGIES[chunk_strategy]
         collection_name: str = form["collection_name"]
-        # Validate req args
-        if (
-            not document_id
-            or not collection_name
-            or collection_name == "undefined"
-            or not document_name
-        ):
-            raise Exception("Missing input values.")
-        # Read in source files and build documents
-        print(f"{common.PRNT_EMBED} Reading source files...", flush=True)
-        source_paths = [source_file_path]
-        source_metadata = dict(
-            name=document_name,
-            description=description,
-            checksum=checksum,
-            fileName=input_file["file_name"],
-            filePath=input_file["path_to_file"],
-            tags=tags,
-        )
-        file_nodes = documents_from_sources(
-            sources=source_paths,
-            source_id=document_id,
-            source_metadata=source_metadata,
-        )
-        # We create one source per upload
-        file_node = file_nodes[0]
-        # Create source document records for Collection metadata
-        print(f"{common.PRNT_EMBED} Creating source metadata...", flush=True)
-        source_record = create_source_record(document=file_node)
-        # Split document texts
-        splitter = text_splitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
-        # Build chunks
-        print(f"{common.PRNT_EMBED} Chunking text...", flush=True)
-        parsed_nodes = splitter.get_nodes_from_documents(
-            documents=[file_node],  # pass list of files (in Document format)
-            show_progress=True,
-        )
-        [chunks_ids, chunk_nodes] = chunks_from_documents(
-            source_record=source_record,
-            parsed_nodes=parsed_nodes,  # pass in text nodes to return as chunks
-            documents=[file_node],
-        )
-        # Record the ids of each chunk
-        source_record["chunkIds"] = chunks_ids
-        # Setup embedding model
-        print(f"{common.PRNT_EMBED} Initializing embed model...", flush=True)
-        define_embedding_model(app)
-        # Create/load a vector index, add chunks and persist to storage
-        print(f"{common.PRNT_EMBED} Adding chunks to collection...", flush=True)
-        db = get_vector_db_client(app)
-        collection = db.get_collection(name=collection_name)
-        vector_index = add_chunks_to_collection(
-            collection=collection,
-            nodes=chunk_nodes,
-            callback_manager=create_index_callback_manager(),
-        )
-        # Add/update `collection.metadata.sources` list
-        print(f"{common.PRNT_EMBED} Updating collection metadata...", flush=True)
-        update_collection_sources(
-            collection=collection,
-            sources=[source_record],
-            mode="add",
-        )
+        # Loop through each file
+        for node in nodes:
+            # Create source document records for Collection metadata
+            source_record = create_source_record(document=node)
+            # Split document texts
+            splitter = text_splitter(
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+            )
+            # Build chunks
+            print(f"{common.PRNT_EMBED} Chunking text...", flush=True)
+            parsed_nodes = splitter.get_nodes_from_documents(
+                documents=[node],  # pass list of files (in Document format)
+                show_progress=True,
+            )
+            [chunks_ids, chunk_nodes] = chunks_from_documents(
+                source_record=source_record,
+                parsed_nodes=parsed_nodes,  # pass in text nodes to return as chunks
+                documents=[node],
+            )
+            # Record the ids of each chunk
+            source_record["chunkIds"] = chunks_ids
+            # Setup embedding model
+            define_embedding_model(app)
+            # Create/load a vector index, add chunks and persist to storage
+            print(f"{common.PRNT_EMBED} Adding chunks to collection...", flush=True)
+            db = get_vector_db_client(app)
+            collection = db.get_collection(name=collection_name)
+            vector_index = add_chunks_to_collection(
+                collection=collection,
+                nodes=chunk_nodes,
+                callback_manager=create_index_callback_manager(),
+            )
+            # Add/update `collection.metadata.sources` list
+            print(f"{common.PRNT_EMBED} Updating collection metadata...", flush=True)
+            update_collection_sources(
+                collection=collection,
+                sources=[source_record],
+                mode="add",
+            )
         print(f"{common.PRNT_EMBED} Embedding succeeded!", flush=True)
     except (Exception, KeyError) as e:
         msg = f"Embedding failed: {e}"

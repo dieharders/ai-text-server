@@ -8,12 +8,11 @@ from llama_index.readers.file import PyMuPDFReader
 ###########
 
 
-def create_source_document(text: str, source_id: str, metadata: dict, embedder: str):
+def create_source_document(text: str, source_id: str, metadata: dict):
     # Create metadata
     document_metadata = {
         **metadata,
         "sourceId": source_id,  # track this document
-        "embedder": embedder,  # track which model embedded
     }
     # Create source document
     source_doc = Document(
@@ -26,8 +25,8 @@ def create_source_document(text: str, source_id: str, metadata: dict, embedder: 
 
 def set_ignored_metadata(source_document: Document, ignore_metadata: dict):
     # Tell query engine to ignore these metadata keys
-    source_document.excluded_llm_metadata_keys.append("sourceId", "embedder")
-    source_document.excluded_embed_metadata_keys.append("sourceId", "embedder")
+    source_document.excluded_llm_metadata_keys.extend(["sourceId", "embedder"])
+    source_document.excluded_embed_metadata_keys.extend(["sourceId", "embedder"])
     # Insert user submitted metadata into document
     source_document.metadata.update(ignore_metadata)
     source_document.excluded_llm_metadata_keys.extend(ignore_metadata)
@@ -40,7 +39,11 @@ def set_ignored_metadata(source_document: Document, ignore_metadata: dict):
 ###########
 
 
-def simple_file_loader(sources: List[str], source_id, source_metadata: dict):
+def simple_file_loader(
+    sources: List[str],
+    source_id,
+    source_metadata: dict,
+):
     documents = []
     reader = SimpleDirectoryReader(input_files=sources)
     # Process each files nodes as they load
@@ -51,7 +54,9 @@ def simple_file_loader(sources: List[str], source_id, source_metadata: dict):
         doc_text = [d.get_content() for d in loaded_nodes]
         # Create document node
         source_doc = create_source_document(
-            text="".join(doc_text), source_id=source_id, metadata=document_node.metadata
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=document_node.metadata,
         )
         # Set ignored metadata
         source_doc = set_ignored_metadata(
@@ -62,26 +67,34 @@ def simple_file_loader(sources: List[str], source_id, source_metadata: dict):
     return documents
 
 
-def pdf_loader(path: str, source_id: str, source_metadata: dict, make_metadata=True):
+def pdf_loader(
+    path: str,
+    source_id: str,
+    source_metadata: dict,
+    make_metadata=True,
+):
     reader = PyMuPDFReader()
-    documents = reader.load_data(
-        file_path=path, metadata=make_metadata, extra_info=source_metadata
-    )
-    print(f"pdf::{documents}")
-    # Process document
+    documents = reader.load_data(file_path=path, metadata=make_metadata)
     document_results = []
-    for document in documents:
-        doc_text = [d.get_content() for d in documents]
-        # Create document node
-        source_doc = create_source_document(
-            text="".join(doc_text), source_id=source_id, metadata=document.metadata
-        )
-        # Set ignored metadata
-        source_doc = set_ignored_metadata(
-            source_document=source_doc, ignore_metadata=source_metadata
-        )
-        document_results.append(source_doc)
-    return documents
+    # Create document node from file source
+    doc_text = [d.get_content() for d in documents]
+    # Combine all nodes into one document
+    source_doc = create_source_document(
+        text="".join(doc_text),
+        source_id=source_id,
+        metadata={
+            "total_pages": documents[0].metadata.get("total_pages"),
+            # "page": documents[0].metadata.get("source"), # not rly useful
+            **source_metadata,
+        },
+    )
+    # Set ignored metadata
+    source_doc = set_ignored_metadata(
+        source_document=source_doc,
+        ignore_metadata=source_metadata,
+    )
+    document_results.append(source_doc)
+    return document_results
 
 
 # Read in source file(s) and build a document node with metadata.
@@ -93,22 +106,23 @@ def documents_from_sources(
     for source in sources:
         filename = os.path.basename(source)
         file_extension = filename.split(".")[-1]
-        print(f"file_extension::{file_extension}")
         # Use loader solution based on file type
         match file_extension:
-            case ".md":
+            case "md":
                 pass
-            case ".txt":
+            case "txt":
                 # If text file
                 documents = simple_file_loader(
                     sources=[source],
                     source_id=source_id,
                     source_metadata=source_metadata,
                 )
-            case ".pdf":
+            case "pdf":
                 # If PDF
                 documents = pdf_loader(
-                    path=source, source_id=source_id, source_metadata=source_metadata
+                    path=source,
+                    source_id=source_id,
+                    source_metadata=source_metadata,
                 )
             case _:
                 # default
