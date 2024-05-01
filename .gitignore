@@ -59,4 +59,6 @@ next-env.d.ts
 /embed_models
 /text_models
 /output
+/examples/models_cache
+/examples/parsed_data
 *.exe
