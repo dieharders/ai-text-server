@@ -223,20 +223,18 @@ async def modify_document(
     )
     path_to_parsed_file = input_file.get("path_to_file")
     # Read in files and create index nodes
-    nodes = embedding.create_index_nodes(
+    nodes = await embedding.create_index_nodes(
+        app=app,
         input_file=input_file,
         form=source_metadata,
     )
-    # Process/Structure source text for optimal embedding/retrieval
-    # @TODO This will be CPU intensive and should be done in thread
-    processed_docs = file_parsers.process_documents(nodes=nodes)
     # Create embeddings
     # @TODO Note that you must NOT perform CPU intensive computations in the background_tasks of the app,
     # because it runs in the same async event loop that serves the requests and it will stall your app.
     # Instead submit them to a thread pool or a process pool.
     background_tasks.add_task(
         embedding.create_new_embedding,
-        nodes=processed_docs,
+        nodes=nodes,
         form=source_metadata,
         app=app,
     )

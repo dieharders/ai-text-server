@@ -24,6 +24,12 @@ class AppState(dict):
     loaded_text_model_data: dict
 
 
+class FILE_LOADER_SOLUTIONS(Enum):
+    LLAMA_PARSE = "llama-parse"
+    READER = "reader"
+    AUTO = "auto"
+
+
 class CHAT_MODES(Enum):
     INSTRUCT = "instruct"
     CHAT = "chat"

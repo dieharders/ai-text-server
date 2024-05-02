@@ -17,6 +17,7 @@ from .storage import (
     add_chunks_to_collection,
     update_collection_sources,
 )
+from .file_parsers import process_documents
 from .text_splitters import markdown_heading_split, markdown_document_split
 from .chunking import chunks_from_documents, create_source_record
 from .file_loaders import documents_from_sources
@@ -116,33 +117,40 @@ def load_embedding(app: dict, collection_name: str) -> VectorStoreIndex:
 
 
 # Create nodes from a single source Document
-def create_index_nodes(
+async def create_index_nodes(
+    app: dict,
     input_file: dict,
     form: dict,
 ) -> List[Document]:
     print(f"{common.PRNT_EMBED} Creating nodes...", flush=True)
     # File attributes
-    checksum: str = input_file["checksum"]
+    checksum: str = input_file.get("checksum")
+    file_name = input_file.get("file_name")
+    source_file_path: str = input_file.get("path_to_file")
     document_id: str = form["document_id"]
     document_name: str = form["document_name"]
     description: str = form["description"]
     tags: str = form["tags"]
-    source_file_path: str = input_file.get("path_to_file")
     # Read in source files and build documents
     source_paths = [source_file_path]
     source_metadata = dict(
         name=document_name,
         description=description,
         checksum=checksum,
-        fileName=input_file["file_name"],
-        filePath=input_file["path_to_file"],
+        fileName=file_name,
+        filePath=source_file_path,
         tags=tags,
     )
-    file_nodes = documents_from_sources(
+    file_nodes = await documents_from_sources(
+        app=app,
         sources=source_paths,
         source_id=document_id,
         source_metadata=source_metadata,
     )
+    # Optional step, Post-Process source text for optimal embedding/retrieval for LLM
+    is_dirty = False  # @TODO Have `documents_from_sources` determine when docs are already processed
+    if is_dirty:
+        file_nodes = process_documents(nodes=file_nodes)
     return file_nodes
 
 
