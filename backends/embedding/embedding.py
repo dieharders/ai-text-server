@@ -1,4 +1,5 @@
 # @TODO Rename this file to main.py
+import os
 from typing import List, Any
 from llama_index.core import (
     VectorStoreIndex,
@@ -139,6 +140,7 @@ async def create_index_nodes(
         checksum=checksum,
         fileName=file_name,
         filePath=source_file_path,
+        fileSize=os.path.getsize(source_file_path),
         tags=tags,
     )
     file_nodes = await documents_from_sources(

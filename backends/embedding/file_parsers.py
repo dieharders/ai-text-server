@@ -66,16 +66,14 @@ def check_is_url_file(path_ext: str):
         "csv",
         "json",
         "xml",
-        "xls",
     )
     is_supported_file = file_extension.lower().endswith(supported_ext)
     print(f"{common.PRNT_EMBED} Check is url a file: {file_extension}", flush=True)
     return is_supported_file
 
 
-def check_file_support(file_ext: str):
+def check_file_support(file_extension: str):
     # Check supported file types
-    file_extension = get_file_type_from_path(file_ext)
     supported_ext = (
         "txt",
         "md",
@@ -87,7 +85,7 @@ def check_file_support(file_ext: str):
         "csv",
         "json",
         "xml",
-        "xls",
+        # "xls", # convert file to CSV before reading
         "pptx",
         "jpg",
         "jpeg",
@@ -193,7 +191,7 @@ async def copy_file_to_disk(
         else:
             raise Exception("Please supply a file path or url.")
         return {
-            "document_id": file_name,
+            "document_id": id,
             "file_name": file_name,
             "path_to_file": tmp_input_file_path,
             "checksum": create_checksum(tmp_input_file_path),

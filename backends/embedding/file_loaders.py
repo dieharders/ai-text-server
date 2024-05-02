@@ -144,11 +144,6 @@ def xml_loader():
     return None
 
 
-# Consider converting file to CSV then reading
-def xls_loader():
-    return None
-
-
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/slides
 def pptx_slides_loader():
     return None
@@ -290,25 +285,14 @@ async def documents_from_sources(
         file_extension = filename.split(".")[-1]
         # Use loader solution based on file type
         match file_extension:
-            case "mdx":
-                pass
-            case "md":
-                # Markdown file
-                documents = simple_file_loader(
-                    sources=[source],
-                    source_id=source_id,
-                    source_metadata=source_metadata,
-                )
-            case "txt":
+            case "mdx" | "md" | "txt":
                 # Regular text file
                 documents = simple_file_loader(
                     sources=[source],
                     source_id=source_id,
                     source_metadata=source_metadata,
                 )
-            case "doc":
-                pass
-            case "docx":
+            case "doc" | "docx":
                 ms_doc_loader()
             case "rtf":
                 rtf_loader()
@@ -318,21 +302,11 @@ async def documents_from_sources(
                 xml_loader()
             case "json":
                 json_loader()
-            case "xls":
-                xls_loader()
             case "pptx":
                 pptx_slides_loader()
-            case "jpg":
-                pass
-            case "jpeg":
-                pass
-            case "png":
-                pass
-            case "gif":
+            case "png" | "jpg" | "jpeg" | "gif":
                 simple_image_loader()
-            case "mp4":
-                pass
-            case "mp3":
+            case "mp4" | "mp3":
                 simple_audio_video_loader()
             case "pdf":
                 # PDF file
@@ -365,6 +339,8 @@ async def documents_from_sources(
                     )
                 # Unsupported
                 else:
-                    raise Exception("The supplied file is not currently supported.")
+                    raise Exception(
+                        f"The supplied file is not currently supported: {filename}"
+                    )
     # Return list of Documents
     return documents

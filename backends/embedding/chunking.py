@@ -70,10 +70,13 @@ def create_source_record(document: Document) -> dict:
     tags = metadata.get("tags") or ""
     checksum = metadata.get("checksum") or ""
     file_path = metadata.get("filePath") or ""
-    file_size = metadata.get("file_size") or 0
+    file_size = metadata.get("fileSize") or 0
+    total_pages = metadata.get("total_pages")
     created_at = datetime.now(timezone.utc).strftime("%B %d %Y - %H:%M:%S") or ""
-    modified_last = metadata.get("last_modified_date") or ""
-    # Create a document object to store metadata
+    modified_last = (
+        metadata.get("last_modified_date") or metadata.get("modifiedLast") or ""
+    )
+    # Create an object to store metadata
     source_record = dict(
         id=document.id_,
         checksum=checksum,  # the hash of the parsed file
@@ -88,6 +91,8 @@ def create_source_record(document: Document) -> dict:
         modifiedLast=modified_last,
         chunkIds=[],  # filled in after chunks created
     )
+    if total_pages:
+        source_record.update(totalPages=total_pages)
     # Return result
     print(f"{common.PRNT_EMBED} Created document record:\n{source_record}", flush=True)
     return source_record
