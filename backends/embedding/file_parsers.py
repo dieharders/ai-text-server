@@ -41,12 +41,6 @@ def create_checksum(file_path: str):
         return ""
 
 
-def create_file_name(id: str, input_file_name: str):
-    file_extension = input_file_name.rsplit(".", 1)[1]
-    file_name = f"{id}.{file_extension}"
-    return file_name
-
-
 # Create a filename for a parsed markdown document
 def create_parsed_id(collection_name: str):
     id = str(uuid.uuid4()).replace("-", "")
@@ -59,6 +53,12 @@ def get_file_type_from_path(path: str):
     end = len(split_path)
     file_extension = split_path[end - 1]
     return file_extension
+
+
+def create_file_name(id: str, input_file_name: str):
+    file_extension = get_file_type_from_path(input_file_name)
+    file_name = f"{id}.{file_extension}"
+    return file_name
 
 
 def check_is_url_file(path_ext: str):
