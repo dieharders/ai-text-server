@@ -20,6 +20,12 @@ PARSED_DOCUMENT_PATH = common.app_path(os.path.join(MEMORY_FOLDER, PARSED_FOLDER
 def create_checksum(file_path: str):
     BUF_SIZE = 65536
     try:
+        # If a url path
+        if not os.path.exists(file_path):
+            print(
+                f"{common.PRNT_EMBED} No file exists for path: {file_path}", flush=True
+            )
+            return ""
         sha1 = hashlib.sha1()
         with open(file_path, "rb") as f:
             while True:
@@ -31,7 +37,7 @@ def create_checksum(file_path: str):
         print(f"{common.PRNT_EMBED} SHA1: {digest}", flush=True)
         return digest
     except Exception as err:
-        print(f"{common.PRNT_EMBED} Failed to hash as file {err}", flush=True)
+        print(f"{common.PRNT_EMBED} Failed to hash as file. {err}", flush=True)
         return ""
 
 
@@ -49,7 +55,9 @@ def create_parsed_id(collection_name: str):
 
 
 def get_file_type_from_path(path: str):
-    file_extension = path.rsplit(".", 1)[1]
+    split_path = path.rsplit(".", 1)
+    end = len(split_path)
+    file_extension = split_path[end - 1]
     return file_extension
 
 
@@ -132,17 +140,17 @@ async def copy_file_to_disk(
         # Save temp files to disk first
         if url_path:
             ext = get_file_type_from_path(url_path)
-            if not check_file_support(ext):
-                raise Exception("Unsupported file format.")
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             # Download asset from url or use external service for websites
-            file_name = create_file_name(id=id, input_file_name=url_path)
             if check_is_url_file(ext):
+                if not check_file_support(ext):
+                    raise Exception("Unsupported file format.")
                 print(
                     f"{common.PRNT_API} Downloading file from url {url_path} to {tmp_input_file_path}"
                 )
                 # Download the file and save to disk
+                file_name = create_file_name(id=id, input_file_name=url_path)
                 tmp_input_file_path = os.path.join(tmp_folder, file_name)
                 await common.get_file_from_url(url_path, tmp_input_file_path, app)
             else:

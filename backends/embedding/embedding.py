@@ -56,7 +56,7 @@ def embed_pipeline(parser, vector_store, documents: List[Document]):
 
 
 # Define a specific embedding method globally
-# @TODO In future could return different models for different tasks.
+# @TODO Allow user to determine which model to use.
 # @TODO Use the embedder recorded in the metadata (when retrieving)
 def define_embedding_model(app: Any):
     # from transformers import AutoModel, AutoTokenizer
@@ -132,6 +132,10 @@ async def create_index_nodes(
     document_name: str = form["document_name"]
     description: str = form["description"]
     tags: str = form["tags"]
+    is_file = os.path.isfile(source_file_path)
+    file_size = 0
+    if is_file:
+        file_size = os.path.getsize(source_file_path)
     # Read in source files and build documents
     source_paths = [source_file_path]
     source_metadata = dict(
@@ -140,7 +144,7 @@ async def create_index_nodes(
         checksum=checksum,
         fileName=file_name,
         filePath=source_file_path,
-        fileSize=os.path.getsize(source_file_path),
+        fileSize=file_size,
         tags=tags,
     )
     file_nodes = await documents_from_sources(

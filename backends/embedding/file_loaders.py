@@ -1,11 +1,22 @@
 import os
 import httpx
 from typing import List, Optional
+from pathlib import Path
 from dotenv import load_dotenv
 from llama_index.core import SimpleDirectoryReader, Document
-from llama_index.readers.file import PyMuPDFReader
+from llama_index.readers.file import (
+    PyMuPDFReader,
+    DocxReader,
+    CSVReader,
+    RTFReader,
+    UnstructuredReader,
+    XMLReader,
+    PptxReader,
+    ImageReader,
+    VideoAudioReader,
+)
 from llama_parse import LlamaParse
-from server import classes
+from server import classes, common
 
 ###########
 # METHODS #
@@ -73,12 +84,12 @@ def simple_file_loader(
 
 # https://github.com/run-llama/llama_index/tree/4f967b839f7e986f178f24cae2038224eb33147f/llama-index-integrations/readers/llama-index-readers-smart-pdf-loader
 def smart_pdf_loader():
-    return None
+    return []
 
 
 # https://github.com/run-llama/llama_index/tree/4f967b839f7e986f178f24cae2038224eb33147f/llama-index-integrations/readers/llama-index-readers-nougat-ocr
 def scientific_pdf_loader():
-    return None
+    return []
 
 
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/pymu_pdf
@@ -114,54 +125,227 @@ def simple_pdf_loader(
 
 
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/docs
-def ms_doc_loader():
-    return None
+def ms_doc_loader(
+    sources: str,
+    source_id: str,
+    source_metadata: dict,
+):
+    document_results: List[Document] = []
+    reader = DocxReader()
+    for path in sources:
+        documents = reader.load_data(file=Path(path))
+        # Create document node from file source
+        doc_text = [d.get_content() for d in documents]
+        # Combine all nodes into one document
+        source_doc = create_source_document(
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=source_metadata,
+        )
+        # Set ignored metadata
+        source_doc = set_ignored_metadata(
+            source_document=source_doc,
+            ignore_metadata=source_metadata,
+        )
+        document_results.append(source_doc)
+    return document_results
 
 
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/rtf
-def rtf_loader():
-    return None
+def rtf_loader(
+    sources: str,
+    source_id: str,
+    source_metadata: dict,
+):
+    document_results: List[Document] = []
+    reader = RTFReader()
+    for path in sources:
+        documents = reader.load_data(input_file=path)
+        # Create document node from file source
+        doc_text = [d.get_content() for d in documents]
+        # Combine all nodes into one document
+        source_doc = create_source_document(
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=source_metadata,
+        )
+        # Set ignored metadata
+        source_doc = set_ignored_metadata(
+            source_document=source_doc,
+            ignore_metadata=source_metadata,
+        )
+        document_results.append(source_doc)
+    return document_results
 
 
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/tabular
-def csv_loader():
-    return None
+def csv_loader(
+    sources: str,
+    source_id: str,
+    source_metadata: dict,
+):
+    document_results: List[Document] = []
+    reader = CSVReader()
+    for path in sources:
+        print(document_results)
+        documents = reader.load_data(file=Path(path))
+        # Create document node from file source
+        doc_text = [d.get_content() for d in documents]
+        # Combine all nodes into one document
+        source_doc = create_source_document(
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=source_metadata,
+        )
+        # Set ignored metadata
+        source_doc = set_ignored_metadata(
+            source_document=source_doc,
+            ignore_metadata=source_metadata,
+        )
+        document_results.append(source_doc)
+    return document_results
 
 
 # Can handle .txt, .docx, .pptx, .jpg, .png, .eml, .html, and .pdf
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/unstructured
-def unstructured_loader():
-    return None
-
-
-# https://github.com/run-llama/llama_index/blob/4f967b839f7e986f178f24cae2038224eb33147f/llama-index-core/llama_index/core/readers/json.py
-def json_loader():
-    return None
+def unstructured_loader(
+    sources: str,
+    source_id: str,
+    source_metadata: dict,
+):
+    document_results: List[Document] = []
+    reader = UnstructuredReader()
+    for path in sources:
+        documents = reader.load_data(file=Path(path))
+        # Create document node from file source
+        doc_text = [d.get_content() for d in documents]
+        # Combine all nodes into one document
+        source_doc = create_source_document(
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=source_metadata,
+        )
+        # Set ignored metadata
+        source_doc = set_ignored_metadata(
+            source_document=source_doc,
+            ignore_metadata=source_metadata,
+        )
+        document_results.append(source_doc)
+    return document_results
 
 
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/xml
-def xml_loader():
-    return None
+def xml_loader(
+    sources: str,
+    source_id: str,
+    source_metadata: dict,
+):
+    document_results: List[Document] = []
+    reader = XMLReader()
+    for path in sources:
+        documents = reader.load_data(file=Path(path))
+        # Create document node from file source
+        doc_text = [d.get_content() for d in documents]
+        # Combine all nodes into one document
+        source_doc = create_source_document(
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=source_metadata,
+        )
+        # Set ignored metadata
+        source_doc = set_ignored_metadata(
+            source_document=source_doc,
+            ignore_metadata=source_metadata,
+        )
+        document_results.append(source_doc)
+    return document_results
 
 
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/slides
-def pptx_slides_loader():
-    return None
+def pptx_slides_loader(
+    sources: str,
+    source_id: str,
+    source_metadata: dict,
+):
+    document_results: List[Document] = []
+    reader = PptxReader()
+    for path in sources:
+        documents = reader.load_data(file=Path(path))
+        # Create document node from file source
+        doc_text = [d.get_content() for d in documents]
+        # Combine all nodes into one document
+        source_doc = create_source_document(
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=source_metadata,
+        )
+        # Set ignored metadata
+        source_doc = set_ignored_metadata(
+            source_document=source_doc,
+            ignore_metadata=source_metadata,
+        )
+        document_results.append(source_doc)
+    return document_results
 
 
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/image
-def simple_image_loader():
-    return None
+def simple_image_loader(
+    sources: str,
+    source_id: str,
+    source_metadata: dict,
+):
+    document_results: List[Document] = []
+    reader = ImageReader()
+    for path in sources:
+        documents = reader.load_data(file=Path(path))
+        # Create document node from file source
+        doc_text = [d.get_content() for d in documents]
+        # Combine all nodes into one document
+        source_doc = create_source_document(
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=source_metadata,
+        )
+        # Set ignored metadata
+        source_doc = set_ignored_metadata(
+            source_document=source_doc,
+            ignore_metadata=source_metadata,
+        )
+        document_results.append(source_doc)
+    return document_results
 
 
 # https://github.com/run-llama/llama_index/blob/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/image_vision_llm/base.py
 def image_vision_loader():
-    return None
+    return []
 
 
+# Requires OpenAI models
 # https://github.com/run-llama/llama_index/tree/40913847ba47d435b40b7fac3ae83eba89b56bb9/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/video_audio
-def simple_audio_video_loader():
-    return None
+def simple_audio_video_loader(
+    sources: str,
+    source_id: str,
+    source_metadata: dict,
+):
+    document_results: List[Document] = []
+    reader = VideoAudioReader()
+    for path in sources:
+        documents = reader.load_data(file=Path(path))
+        # Create document node from file source
+        doc_text = [d.get_content() for d in documents]
+        # Combine all nodes into one document
+        source_doc = create_source_document(
+            text="".join(doc_text),
+            source_id=source_id,
+            metadata=source_metadata,
+        )
+        # Set ignored metadata
+        source_doc = set_ignored_metadata(
+            source_document=source_doc,
+            ignore_metadata=source_metadata,
+        )
+        document_results.append(source_doc)
+    return document_results
 
 
 def llama_parse_loader(
@@ -227,7 +411,7 @@ def llama_parse_loader(
 
 # Free, no api key required
 # https://jina.ai/reader/#apiform
-async def jina_reader_loader(
+def jina_reader_loader(
     app: dict,
     sources: List[str],
     source_id: str,
@@ -236,7 +420,6 @@ async def jina_reader_loader(
     document_results: List[Document] = []
     # Create documents
     for path in sources:
-        print(f"Reading website: {req_url}")
         # Make an http request with the target address appended to `https://r.jina.ai/`
         req_url = f"https://r.jina.ai/{path}"
         headers = {
@@ -244,13 +427,18 @@ async def jina_reader_loader(
             "Content-Type": "application/octet-stream",
         }
         client: httpx.Client = app.requests_client
-        res = await client.get(url=req_url, headers=headers)
-        if res.status_code != httpx.codes.OK:
-            raise Exception("Something went wrong fetching file")
-        print(f"res::{res}")
+        text = ""
+        with client.stream(method="GET", url=req_url, headers=headers) as res:
+            res.raise_for_status()
+            if res.status_code == 200:
+                # Write data
+                res.read()
+                text = res.text
+            else:
+                raise Exception("Something went wrong reading data.")
         # Create document node
         source_doc = create_source_document(
-            text="".join(res),
+            text=text,
             source_id=source_id,
             metadata=source_metadata,
         )
@@ -279,51 +467,43 @@ async def documents_from_sources(
     source_metadata: dict,
     loader_solution: Optional[classes.FILE_LOADER_SOLUTIONS] = None,
 ) -> List[Document]:
+    print(f"{common.PRNT_EMBED} Reading files...", flush=True)
     documents = []
     for source in sources:
         filename = os.path.basename(source)
-        file_extension = filename.split(".")[-1]
+        file_extension = filename.split(".")[-1].lower()
+        payload = dict(
+            sources=[source],
+            source_id=source_id,
+            source_metadata=source_metadata,
+        )
         # Use loader solution based on file type
         match file_extension:
-            case "mdx" | "md" | "txt":
+            case "mdx" | "md" | "json" | "txt":
                 # Regular text file
-                documents = simple_file_loader(
-                    sources=[source],
-                    source_id=source_id,
-                    source_metadata=source_metadata,
-                )
+                documents = simple_file_loader(**payload)
             case "doc" | "docx":
-                ms_doc_loader()
+                documents = ms_doc_loader(**payload)
             case "rtf":
-                rtf_loader()
+                documents = rtf_loader(**payload)
             case "csv":
-                csv_loader()
+                documents = csv_loader(**payload)
             case "xml":
-                xml_loader()
-            case "json":
-                json_loader()
+                documents = xml_loader(**payload)
             case "pptx":
-                pptx_slides_loader()
+                documents = pptx_slides_loader(**payload)
             case "png" | "jpg" | "jpeg" | "gif":
-                simple_image_loader()
+                documents = simple_image_loader(**payload)
             case "mp4" | "mp3":
-                simple_audio_video_loader()
+                documents = simple_audio_video_loader(**payload)
             case "pdf":
                 # PDF file
                 match (loader_solution):
                     case classes.FILE_LOADER_SOLUTIONS.LLAMA_PARSE:
-                        documents = llama_parse_loader(
-                            sources=[source],
-                            source_id=source_id,
-                            source_metadata=source_metadata,
-                        )
+                        documents = llama_parse_loader(**payload)
                     case _:
                         # default
-                        documents = simple_pdf_loader(
-                            sources=[source],
-                            source_id=source_id,
-                            source_metadata=source_metadata,
-                        )
+                        documents = simple_pdf_loader(**payload)
             case _:
                 file_name_start = source[:4]
                 # Read from website using service
@@ -331,11 +511,9 @@ async def documents_from_sources(
                     file_name_start == "http"
                     and loader_solution == classes.FILE_LOADER_SOLUTIONS.READER
                 ):
-                    documents = await jina_reader_loader(
+                    documents = jina_reader_loader(
                         app=app,
-                        sources=[source],
-                        source_id=source_id,
-                        source_metadata=source_metadata,
+                        **payload,
                     )
                 # Unsupported
                 else:
