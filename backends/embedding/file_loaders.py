@@ -187,7 +187,6 @@ def csv_loader(
     document_results: List[Document] = []
     reader = CSVReader()
     for path in sources:
-        print(document_results)
         documents = reader.load_data(file=Path(path))
         # Create document node from file source
         doc_text = [d.get_content() for d in documents]
@@ -348,7 +347,7 @@ def simple_audio_video_loader(
     return document_results
 
 
-def llama_parse_loader(
+async def llama_parse_loader(
     sources: List[str],
     source_id: str,
     source_metadata: dict,
@@ -388,10 +387,8 @@ def llama_parse_loader(
 
     # FYI, results can take some time
     for path in sources:
-        results = parser.load_data(path)  # or aload_data()
-        document_results.append(results)
-
-    print(f"parsed docs::{document_results}")
+        results = await parser.aload_data(path)
+        document_results.extend(results)
 
     # Finalize documents
     for source_doc in document_results:
@@ -404,8 +401,6 @@ def llama_parse_loader(
             source_document=source_doc,
             ignore_metadata=source_metadata,
         )
-    print(f"final docs::{document_results}")
-
     return document_results
 
 
@@ -500,7 +495,7 @@ async def documents_from_sources(
                 # PDF file
                 match (parsing_method):
                     case classes.FILE_LOADER_SOLUTIONS.LLAMA_PARSE.value:
-                        documents = llama_parse_loader(**payload)
+                        documents = await llama_parse_loader(**payload)
                     case _:
                         # default
                         documents = simple_pdf_loader(**payload)
