@@ -465,13 +465,13 @@ async def documents_from_sources(
     sources: List[str],
     source_id,
     source_metadata: dict,
-    loader_solution: Optional[classes.FILE_LOADER_SOLUTIONS] = None,
+    parsing_method: Optional[classes.FILE_LOADER_SOLUTIONS] = None,
 ) -> List[Document]:
     print(f"{common.PRNT_EMBED} Reading files...", flush=True)
     documents = []
     for source in sources:
         filename = os.path.basename(source)
-        file_extension = filename.split(".")[-1].lower()
+        file_extension = common.get_file_extension_from_path(filename).lower()
         payload = dict(
             sources=[source],
             source_id=source_id,
@@ -498,18 +498,18 @@ async def documents_from_sources(
                 documents = simple_audio_video_loader(**payload)
             case "pdf":
                 # PDF file
-                match (loader_solution):
-                    case classes.FILE_LOADER_SOLUTIONS.LLAMA_PARSE:
+                match (parsing_method):
+                    case classes.FILE_LOADER_SOLUTIONS.LLAMA_PARSE.value:
                         documents = llama_parse_loader(**payload)
                     case _:
                         # default
                         documents = simple_pdf_loader(**payload)
             case _:
-                file_name_start = source[:4]
+                is_url = source[:4] == "http"
                 # Read from website using service
                 if (
-                    file_name_start == "http"
-                    and loader_solution == classes.FILE_LOADER_SOLUTIONS.READER
+                    is_url
+                    and parsing_method == classes.FILE_LOADER_SOLUTIONS.READER.value
                 ):
                     documents = jina_reader_loader(
                         app=app,
@@ -518,7 +518,7 @@ async def documents_from_sources(
                 # Unsupported
                 else:
                     raise Exception(
-                        f"The supplied file is not currently supported: {filename}"
+                        f"The supplied file/url is not currently supported: {source}"
                     )
     # Return list of Documents
     return documents

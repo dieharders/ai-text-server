@@ -132,6 +132,7 @@ async def create_index_nodes(
     document_name: str = form["document_name"]
     description: str = form["description"]
     tags: str = form["tags"]
+    parsing_method: str = form["parsing_method"]
     is_file = os.path.isfile(source_file_path)
     file_size = 0
     if is_file:
@@ -152,6 +153,7 @@ async def create_index_nodes(
         sources=source_paths,
         source_id=document_id,
         source_metadata=source_metadata,
+        parsing_method=parsing_method,
     )
     # Optional step, Post-Process source text for optimal embedding/retrieval for LLM
     is_dirty = False  # @TODO Have `documents_from_sources` determine when docs are already processed

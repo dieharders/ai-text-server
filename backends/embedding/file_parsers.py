@@ -48,21 +48,14 @@ def create_parsed_id(collection_name: str):
     return id
 
 
-def get_file_type_from_path(path: str):
-    split_path = path.rsplit(".", 1)
-    end = len(split_path)
-    file_extension = split_path[end - 1]
-    return file_extension
-
-
 def create_file_name(id: str, input_file_name: str):
-    file_extension = get_file_type_from_path(input_file_name)
+    file_extension = common.get_file_extension_from_path(input_file_name)
     file_name = f"{id}.{file_extension}"
     return file_name
 
 
 def check_is_url_file(path_ext: str):
-    file_extension = get_file_type_from_path(path_ext)
+    file_extension = common.get_file_extension_from_path(path_ext)
     supported_ext = (
         "txt",
         "md",
@@ -139,7 +132,7 @@ async def copy_file_to_disk(
         tmp_folder = TMP_DOCUMENT_PATH
         # Save temp files to disk first
         if url_path:
-            ext = get_file_type_from_path(url_path)
+            ext = common.get_file_extension_from_path(url_path)
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             # Download asset from url or use external service for websites
@@ -171,7 +164,7 @@ async def copy_file_to_disk(
         elif file_path:
             # Read file from local path
             print(f"{common.PRNT_API} Reading local file from disk...{file_path}")
-            ext = get_file_type_from_path(file_path)
+            ext = common.get_file_extension_from_path(file_path)
             if not os.path.exists(file_path):
                 raise Exception("File does not exist.")
             if not check_file_support(ext):
@@ -184,7 +177,7 @@ async def copy_file_to_disk(
             shutil.copyfile(file_path, tmp_input_file_path)
         elif file:
             print(f"{common.PRNT_API} Saving uploaded file to disk...")
-            ext = get_file_type_from_path(file.filename)
+            ext = common.get_file_extension_from_path(file.filename)
             if not os.path.exists(tmp_folder):
                 os.makedirs(tmp_folder)
             if not check_file_support(ext):

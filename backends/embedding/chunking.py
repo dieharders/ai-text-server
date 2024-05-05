@@ -22,9 +22,9 @@ def chunks_from_documents(
             chunk_metadata = dict(
                 sourceId=source_id,
                 order=chunk_ind,
-                # description="", # Ai generate based on chunk's text content
-                # tags="", # Ai generate based on chunk's description
-                # name="", # Ai generate based on chunk's text description above
+                # description="", # @TODO Ai generate based on chunk's text content
+                # tags="", # @TODO Ai generate based on chunk's description
+                # name="", # @TODO Ai generate based on chunk's text description above
             )
             # Set metadatas
             excluded_llm_metadata_keys = doc.excluded_llm_metadata_keys

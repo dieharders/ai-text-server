@@ -167,12 +167,13 @@ async def modify_document(
     chunk_size = form.chunkSize
     chunk_overlap = form.chunkOverlap
     chunk_strategy = form.chunkStrategy
+    parsing_method = form.parsingMethod
     new_document_id = file_parsers.create_parsed_id(collection_name=collection_name)
     if is_update:
         source_id = prev_document_id
     else:
         source_id = new_document_id
-    source_metadata = {
+    form_data = {
         "collection_name": collection_name,
         "document_name": document_name,
         "document_id": source_id,
@@ -182,6 +183,7 @@ async def modify_document(
         "chunk_size": chunk_size,
         "chunk_overlap": chunk_overlap,
         "chunk_strategy": chunk_strategy,
+        "parsing_method": parsing_method,
     }
     # Verify input values
     if (
@@ -226,7 +228,7 @@ async def modify_document(
     nodes = await embedding.create_index_nodes(
         app=app,
         input_file=input_file,
-        form=source_metadata,
+        form=form_data,
     )
     # Create embeddings
     # @TODO Note that you must NOT perform CPU intensive computations in the background_tasks of the app,
@@ -235,7 +237,7 @@ async def modify_document(
     background_tasks.add_task(
         embedding.create_new_embedding,
         nodes=nodes,
-        form=source_metadata,
+        form=form_data,
         app=app,
     )
     return path_to_parsed_file

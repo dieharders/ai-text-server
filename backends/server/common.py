@@ -508,3 +508,10 @@ def read_constants(app):
     with open(path, "r") as json_file:
         data = json.load(json_file)
         app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]
+
+
+def get_file_extension_from_path(path: str):
+    split_path = path.rsplit(".", 1)
+    end = len(split_path)
+    file_extension = split_path[end - 1]
+    return file_extension
