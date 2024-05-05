@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, List
 from server import classes, common
 from fastapi import APIRouter, Request, Depends, File, BackgroundTasks, UploadFile
-from embeddings import storage, file_parsers, main
+from . import storage, file_parsers, main
 
 router = APIRouter()
 
@@ -136,7 +136,12 @@ async def modify_document(
     return path_to_parsed_file
 
 
-@router.get("/v1/memory/addCollection")
+##############
+### Routes ###
+##############
+
+
+@router.get("/addCollection")
 def create_memory_collection(
     request: Request,
     form: classes.AddCollectionRequest = Depends(),
@@ -180,11 +185,6 @@ def create_memory_collection(
             "success": False,
             "message": msg,
         }
-
-
-##############
-### Routes ###
-##############
 
 
 # Create a memory for Ai.
