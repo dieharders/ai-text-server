@@ -19,8 +19,8 @@ from sse_starlette.sse import EventSourceResponse
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
+from embeddings import main, storage, query
 from inference import text_llama_index
-from embedding import embedding, storage, query
 from server import common, classes
 from routes import router as endpoint_router
 from huggingface_hub import (
@@ -271,7 +271,7 @@ def load_text_inference(
         model_id = data.modelId
         mode = data.mode
         modelPath = data.modelPath
-        callback_manager = embedding.create_index_callback_manager()
+        callback_manager = main.create_index_callback_manager()
         # Record model's save path
         app.state.model_id = model_id
         app.state.path_to_model = modelPath
@@ -548,10 +548,10 @@ async def text_inference(payload: classes.InferenceRequest):
             # app.state.llm.generate_kwargs.update(options)
 
             # Load embedding model for context retrieval
-            embedding.define_embedding_model(app)
+            main.define_embedding_model(app)
 
             # Load the vector index. @TODO Load multiple collections
-            vector_index = embedding.load_embedding(app, collection_name)
+            vector_index = main.load_embedding(app, collection_name)
 
             # Call LLM query engine
             res = query.query_embedding(

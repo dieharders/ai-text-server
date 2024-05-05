@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, List
 from server import classes, common
 from fastapi import APIRouter, Request, Depends, File, BackgroundTasks, UploadFile
-from embedding import storage, file_parsers, embedding
+from embeddings import storage, file_parsers, main
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ def delete_sources(
 ):
     db = storage.get_vector_db_client(app)
     collection = db.get_collection(name=collection_name)
-    vector_index = embedding.load_embedding(app, collection_name)
+    vector_index = main.load_embedding(app, collection_name)
     # Delete each source chunk and parsed file
     for source in sources:
         chunk_ids = source.get("chunkIds")
@@ -118,7 +118,7 @@ async def modify_document(
     )
     path_to_parsed_file = input_file.get("path_to_file")
     # Read in files and create index nodes
-    nodes = await embedding.create_index_nodes(
+    nodes = await main.create_index_nodes(
         app=app,
         input_file=input_file,
         form=form_data,
@@ -128,7 +128,7 @@ async def modify_document(
     # because it runs in the same async event loop that serves the requests and it will stall your app.
     # Instead submit them to a thread pool or a process pool.
     background_tasks.add_task(
-        embedding.create_new_embedding,
+        main.create_new_embedding,
         nodes=nodes,
         form=form_data,
         app=app,
