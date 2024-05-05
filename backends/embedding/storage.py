@@ -97,17 +97,13 @@ def update_collection_sources(
             new_sources = prev_sources
         else:
             new_sources = sources
-        print(
-            f"{common.PRNT_API} Added new sources to collection:\nNew sources: {new_sources}"
-        )
+        print(f"{common.PRNT_API} Added {len(new_sources)} new sources to collection.")
     elif mode == "delete":
         for i in sources:
             if i in prev_sources:
                 prev_sources.remove(i)
         new_sources = prev_sources
-        print(
-            f"{common.PRNT_API} Removed sources from collection:\nNew sources: {new_sources}"
-        )
+        print(f"{common.PRNT_API} Removed {len(new_sources)} sources from collection.")
     # Update the collection's metadata
     collection.metadata["sources"] = json.dumps(new_sources)
     collection.modify(metadata=collection.metadata)

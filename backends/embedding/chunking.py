@@ -22,9 +22,9 @@ def chunks_from_documents(
             chunk_metadata = dict(
                 sourceId=source_id,
                 order=chunk_ind,
-                # description="", # Ai generate based on chunk's text content
-                # tags="", # Ai generate based on chunk's description
-                # name="", # Ai generate based on chunk's text description above
+                # description="", # @TODO Ai generate based on chunk's text content
+                # tags="", # @TODO Ai generate based on chunk's description
+                # name="", # @TODO Ai generate based on chunk's text description above
             )
             # Set metadatas
             excluded_llm_metadata_keys = doc.excluded_llm_metadata_keys
@@ -41,6 +41,14 @@ def chunks_from_documents(
             # Tell query engine to ignore these metadata keys
             chunk_node.excluded_llm_metadata_keys = excluded_llm_metadata_keys
             chunk_node.excluded_embed_metadata_keys = excluded_embed_metadata_keys
+            # Once your metadata is converted into a string using metadata_seperator
+            # and metadata_template, the metadata_templates controls what that metadata
+            # looks like when joined with the text content
+            chunk_node.metadata_seperator = "::"
+            chunk_node.metadata_template = "{key}=>{value}"
+            chunk_node.text_template = (
+                "Metadata: {metadata_str}\n-----\nContent: {content}"
+            )
             # Return chunk `IndexNode`
             chunk_nodes.append(chunk_node)
             chunks_ids.append(chunk_node.node_id)  # or id_
@@ -62,10 +70,13 @@ def create_source_record(document: Document) -> dict:
     tags = metadata.get("tags") or ""
     checksum = metadata.get("checksum") or ""
     file_path = metadata.get("filePath") or ""
-    file_size = metadata.get("file_size") or 0
+    file_size = metadata.get("fileSize") or 0
+    total_pages = metadata.get("total_pages")
     created_at = datetime.now(timezone.utc).strftime("%B %d %Y - %H:%M:%S") or ""
-    modified_last = metadata.get("last_modified_date") or ""
-    # Create a document object to store metadata
+    modified_last = (
+        metadata.get("last_modified_date") or metadata.get("modifiedLast") or ""
+    )
+    # Create an object to store metadata
     source_record = dict(
         id=document.id_,
         checksum=checksum,  # the hash of the parsed file
@@ -80,6 +91,8 @@ def create_source_record(document: Document) -> dict:
         modifiedLast=modified_last,
         chunkIds=[],  # filled in after chunks created
     )
+    if total_pages:
+        source_record.update(totalPages=total_pages)
     # Return result
     print(f"{common.PRNT_EMBED} Created document record:\n{source_record}", flush=True)
     return source_record

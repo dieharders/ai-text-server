@@ -24,6 +24,12 @@ class AppState(dict):
     loaded_text_model_data: dict
 
 
+class FILE_LOADER_SOLUTIONS(Enum):
+    LLAMA_PARSE = "llama_parse"
+    READER = "reader_api"
+    DEFAULT = "default"
+
+
 class CHAT_MODES(Enum):
     INSTRUCT = "instruct"
     CHAT = "chat"
@@ -343,19 +349,22 @@ class AddCollectionResponse(BaseModel):
 class EmbedDocumentRequest(BaseModel):
     collectionName: str
     documentName: str
-    # optional for add, required for update
-    documentId: Optional[str] = ""
     description: Optional[str] = ""
     tags: Optional[str] = ""
+    # optional for add, required for update
+    documentId: Optional[str] = ""
     # need oneof urlPath/fileName/textInput
     urlPath: Optional[str] = ""
     # need oneof urlPath/fileName/textInput
     filePath: Optional[str] = ""
     # need oneof urlPath/fileName/textInput
     textInput: Optional[str] = ""
+    # Chunking settings
     chunkSize: Optional[int] = None
     chunkOverlap: Optional[int] = None
     chunkStrategy: Optional[str] = None
+    # Parsing method
+    parsingMethod: Optional[str] = None
 
 
 class AddDocumentResponse(BaseModel):

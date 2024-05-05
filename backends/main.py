@@ -149,7 +149,7 @@ def delete_sources(collection_name: str, sources: List[classes.SourceMetadata]):
     )
 
 
-async def edit_document(
+async def modify_document(
     form: classes.EmbedDocumentRequest,
     file: UploadFile,
     background_tasks: BackgroundTasks,
@@ -167,9 +167,25 @@ async def edit_document(
     chunk_size = form.chunkSize
     chunk_overlap = form.chunkOverlap
     chunk_strategy = form.chunkStrategy
-    file_name = file_parsers.create_parsed_filename(collection_name, source_name)
-    tmp_input_file_path = os.path.join(file_parsers.TMP_DOCUMENT_PATH, file_name)
-    # Verify inputs
+    parsing_method = form.parsingMethod
+    new_document_id = file_parsers.create_parsed_id(collection_name=collection_name)
+    if is_update:
+        source_id = prev_document_id
+    else:
+        source_id = new_document_id
+    form_data = {
+        "collection_name": collection_name,
+        "document_name": document_name,
+        "document_id": source_id,
+        "description": description,
+        "tags": tags,
+        "embedder": app.state.embed_model,
+        "chunk_size": chunk_size,
+        "chunk_overlap": chunk_overlap,
+        "chunk_strategy": chunk_strategy,
+        "parsing_method": parsing_method,
+    }
+    # Verify input values
     if (
         file == None  # file from client
         and url_path == ""  # file on web
@@ -177,10 +193,14 @@ async def edit_document(
         and local_file_path == ""  # file on server disk
     ):
         raise Exception("Please supply a file upload, file path, url or text.")
-    if not collection_name or not source_name:
-        raise Exception("Please supply a collection name and memory name.")
+    if not collection_name or collection_name == "undefined" or not source_name:
+        raise Exception("Please supply a collection name and/or memory name.")
     if is_update and not prev_document_id:
         raise Exception("Please supply a document id.")
+    if not document_name:
+        raise Exception("Please supply a document name.")
+    if not source_id:
+        raise Exception("Server error, id misconfigured.")
     if not common.check_valid_id(source_name):
         raise Exception(
             "Invalid memory name. No '--', uppercase, spaces or special chars allowed."
@@ -194,50 +214,33 @@ async def edit_document(
             collection=collection, source_ids=[prev_document_id]
         )
         delete_sources(collection_name=collection_name, sources=sources_to_delete)
-    # Process and write file to disk
-    await file_parsers.process_file_to_disk(
+    # Write uploaded file to disk temporarily
+    input_file = await file_parsers.copy_file_to_disk(
         app=app,
         url_path=url_path,
         file_path=local_file_path,
         text_input=text_input,
         file=file,
-        file_name=file_name,
+        id=source_id,
     )
-    # Parse/Pre-Process/Structure source files for embedding/retrieval
-    # @TODO Define a dynamic file parser to convert any files contents to text as a .md file.
-    processed_file = file_parsers.pre_process_documents(
-        document_name=document_name,
-        collection_name=collection_name,
-        description=description,
-        tags=tags,
-        input_file_path=tmp_input_file_path,
+    path_to_parsed_file = input_file.get("path_to_file")
+    # Read in files and create index nodes
+    nodes = await embedding.create_index_nodes(
+        app=app,
+        input_file=input_file,
+        form=form_data,
     )
     # Create embeddings
-    print(f"{common.PRNT_API} Start embedding...")
-    if is_update:
-        document_id = prev_document_id
-    else:
-        document_id = processed_file["document_id"]
-    embed_form = {
-        "collection_name": collection_name,
-        "document_name": document_name,
-        "document_id": document_id,
-        "description": description,
-        "tags": tags,
-        "chunk_size": chunk_size,
-        "chunk_overlap": chunk_overlap,
-        "chunk_strategy": chunk_strategy,
-    }
     # @TODO Note that you must NOT perform CPU intensive computations in the background_tasks of the app,
     # because it runs in the same async event loop that serves the requests and it will stall your app.
     # Instead submit them to a thread pool or a process pool.
     background_tasks.add_task(
         embedding.create_new_embedding,
-        processed_file,
-        embed_form,
-        app,
+        nodes=nodes,
+        form=form_data,
+        app=app,
     )
-    return tmp_input_file_path
+    return path_to_parsed_file
 
 
 ##############
@@ -789,7 +792,7 @@ async def create_memory(
 ) -> classes.AddDocumentResponse:
     tmp_input_file_path = ""
     try:
-        tmp_input_file_path = await edit_document(
+        tmp_input_file_path = await modify_document(
             form=form,
             file=file,
             background_tasks=background_tasks,
@@ -826,7 +829,7 @@ async def update_memory(
 ) -> classes.AddDocumentResponse:
     tmp_input_file_path = ""
     try:
-        tmp_input_file_path = await edit_document(
+        tmp_input_file_path = await modify_document(
             form=form,
             file=file,
             background_tasks=background_tasks,

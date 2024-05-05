@@ -1,4 +1,4 @@
-# 🍺 Obrew Server - Ai Engine
+# 🍺 Obrew Ai Engine
 
 This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
 
@@ -19,7 +19,7 @@ This is a hybrid Node.js + Python app that uses Next.js as the frontend and Fast
 - ❌ Auto Agents (Assistants)
 - ❌ Agent Teams
 - ❌ Multi-Chat
-- ❌ Long-term memory across Agent conversations
+- ❌ Long-term memory across conversations
 - ❌ UI generation
 
 ## How It Works
