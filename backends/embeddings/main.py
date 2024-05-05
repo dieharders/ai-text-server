@@ -1,4 +1,3 @@
-# @TODO Rename this file to main.py
 import os
 from typing import List, Any
 from llama_index.core import (
