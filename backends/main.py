@@ -49,10 +49,11 @@ buildEnv = parse_runtime_args()
 isDebug = hasattr(sys, "gettrace") and sys.gettrace() is not None
 isDev = buildEnv == "dev" or isDebug
 isProd = buildEnv == "prod" or not isDev
-if isProd:
-    # Remove prints in prod when deploying in window mode
-    sys.stdout = open(os.devnull, "w")
-    sys.stderr = open(os.devnull, "w")
+# Comment out if you want to debug on prod build
+# if isProd:
+#     # Remove prints in prod when deploying in window mode
+#     sys.stdout = open(os.devnull, "w")
+#     sys.stderr = open(os.devnull, "w")
 
 # Path to the .env file in the parent directory
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -81,8 +82,6 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(title="Obrew🍺Server", version=api_version, lifespan=lifespan)
-templates_dir = os.path.join(os.path.dirname(__file__), "templates")
-templates = Jinja2Templates(directory=templates_dir)
 
 # Get paths for SSL certificate
 SSL_KEY: str = common.dep_path("public/key.pem")
@@ -197,6 +196,9 @@ app.include_router(endpoint_router)
 # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
 @app.get("/", response_class=HTMLResponse)
 async def connect_page(request: Request):
+    # Be sure to link `backends/templates` to the app's dependency dir (_deps) via PyInstaller
+    templates_dir = common.dep_path(os.path.join("backends", "templates"))
+    templates = Jinja2Templates(directory=templates_dir)
     remote_url = server_info["remote_ip"]
     local_url = server_info["local_ip"]
     # Generate QR code - direct to remote url

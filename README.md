@@ -164,9 +164,9 @@ Run the command below in powershell to set your env variables:
 
 ## Bundling
 
-<!-- ### Bundling Nvida CUDA toolkit deps:
+### Bundling Nvida CUDA toolkit deps:
 
-Instructions on how and what files to include in app bundle... -->
+If you already have the required toolkit files installed and have built for GPU then the necessary GPU drivers/dlls should be detected by PyInstaller and included in the `_deps` dir.
 
 ### Python server
 
@@ -188,9 +188,9 @@ pyinstaller -c -F your_program.py
 
 #### Packaging python server with auto-py-to-exe (recommended):
 
-This is a GUI tool that greatly simplifies the process. You can also save and load configs.
+This is a GUI tool that greatly simplifies the process. You can also save and load configs. It uses PyInstaller under the hood and requires it to be installed. Please note if using a conda or virtual environment, be sure to install both PyInstaller and auto-py-to-exe in your virtual environment and also run them from there, otherwise one or both will build from incorrect deps.
 
-To install:
+To run:
 
 ```bash
 auto-py-to-exe

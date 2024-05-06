@@ -15,7 +15,7 @@
     },
     {
       "optionDest": "console",
-      "value": false
+      "value": true
     },
     {
       "optionDest": "icon_file",
@@ -63,11 +63,15 @@
     },
     {
       "optionDest": "datas",
-      "value": "C:/Python311/Lib/site-packages/llama_index/VERSION;llama_index"
+      "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/"
     },
     {
       "optionDest": "datas",
-      "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/"
+      "value": "C:/ProgramData/anaconda3/envs/llama-index/Lib/site-packages/llama_cpp;llama_cpp/"
+    },
+    {
+      "optionDest": "datas",
+      "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/templates;backends/templates/"
     }
   ],
   "nonPyinstallerOptions": {
