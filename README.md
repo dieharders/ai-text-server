@@ -190,6 +190,12 @@ pyinstaller -c -F your_program.py
 
 This is a GUI tool that greatly simplifies the process. You can also save and load configs. It uses PyInstaller under the hood and requires it to be installed. Please note if using a conda or virtual environment, be sure to install both PyInstaller and auto-py-to-exe in your virtual environment and also run them from there, otherwise one or both will build from incorrect deps.
 
+**Note**, you will need to edit paths for the following in `auto-py-to-exe` to point to your base project directory:
+
+- Settings -> Output directory
+- Additional Files
+- Script Location
+
 To run:
 
 ```bash
