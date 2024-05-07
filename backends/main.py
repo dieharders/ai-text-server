@@ -1,4 +1,5 @@
 import os
+import signal
 import sys
 import threading
 import uvicorn
@@ -6,6 +7,7 @@ import webbrowser
 import httpx
 import socket
 import pyqrcode
+import tkinter as tk
 from dotenv import load_dotenv
 from fastapi import (
     FastAPI,
@@ -24,7 +26,6 @@ from inference.route import router as text_inference
 from settings.route import router as settings
 
 
-# server_thread = None
 server_info = None
 api_version = "0.4.3"
 SERVER_PORT = 8008
@@ -45,10 +46,12 @@ def parse_runtime_args():
     return mode
 
 
+# Check what env is running - prod/dev
 buildEnv = parse_runtime_args()
 isDebug = hasattr(sys, "gettrace") and sys.gettrace() is not None
 isDev = buildEnv == "dev" or isDebug
 isProd = buildEnv == "prod" or not isDev
+# Comment out if you want to debug on prod build
 if isProd:
     # Remove prints in prod when deploying in window mode
     sys.stdout = open(os.devnull, "w")
@@ -66,7 +69,7 @@ async def lifespan(application: FastAPI):
     print(f"{common.PRNT_API} Lifespan startup", flush=True)
     # https://www.python-httpx.org/quickstart/
     app.requests_client = httpx.Client()
-    # Store some state here if you want...
+    # Initialize global data here
     application.state.PORT_HOMEBREW_API = SERVER_PORT
     application.state.db_client = None
     application.state.llm = None  # Set each time user loads a model
@@ -81,8 +84,6 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(title="Obrew🍺Server", version=api_version, lifespan=lifespan)
-templates_dir = os.path.join(os.path.dirname(__file__), "templates")
-templates = Jinja2Templates(directory=templates_dir)
 
 # Get paths for SSL certificate
 SSL_KEY: str = common.dep_path("public/key.pem")
@@ -106,11 +107,9 @@ origins = [
 
 
 def shutdown_server(*args):
-    print(f"{common.PRNT_API} Shutting down server...", flush=True)
-    # os.kill(os.getpid(), signal.SIGINT)
-    # server_thread.join()
-    print(f"{common.PRNT_API} Server shutdown complete.", flush=True)
-    sys.exit(0)
+    print(f"{common.PRNT_API} Force shutting down server...", flush=True)
+    os.kill(os.getpid(), signal.SIGINT)
+    # sys.exit(0)
 
 
 def display_server_info():
@@ -152,12 +151,30 @@ def start_server():
         print(f"{common.PRNT_API} Failed to start API server")
 
 
-def run_server():
+def run_app_window():
     # Start the API server in a separate thread from main
-    fastapi_thread = threading.Thread(target=start_server)
-    fastapi_thread.daemon = True  # let the parent kill the child thread at exit
-    fastapi_thread.start()
-    return fastapi_thread
+    window_thread = threading.Thread(target=GUI)
+    window_thread.daemon = True  # let the parent kill the child thread at exit
+    window_thread.start()
+    return window_thread
+
+
+# Create and run the Tkinter window
+def GUI():
+    color_bg = "#333333"
+    root = tk.Tk()
+    root.title("Obrew Server")
+    root.geometry("500x500")
+    # Since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
+    root.iconbitmap(default=common.dep_path("public/favicon.ico"))
+    root.configure(bg=color_bg)
+    # Set font
+    Font_tuple = ("Verdana", 64, "bold")
+    root.bind("<Escape>", lambda e: e.widget.quit())
+    tk.Label(root, text="O🍺brew", font=Font_tuple).pack(fill=tk.BOTH, expand=True)
+    root.mainloop()
+    # Close server when user closes window
+    shutdown_server()
 
 
 ##############
@@ -197,6 +214,9 @@ app.include_router(endpoint_router)
 # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
 @app.get("/", response_class=HTMLResponse)
 async def connect_page(request: Request):
+    # Be sure to link `public/templates` to the app's dependency dir (_deps) via PyInstaller
+    templates_dir = common.dep_path(os.path.join("public", "templates"))
+    templates = Jinja2Templates(directory=templates_dir)
     remote_url = server_info["remote_ip"]
     local_url = server_info["local_ip"]
     # Generate QR code - direct to remote url
@@ -252,7 +272,9 @@ def connect() -> classes.ConnectResponse:
 ### Start ###
 #############
 
+
 if __name__ == "__main__":
+    App = None
     try:
         # Find IP info
         server_info = display_server_info()
@@ -262,8 +284,11 @@ if __name__ == "__main__":
         print(f"{common.PRNT_API} API server started. Opening WebUI at {local_url}")
         webbrowser.open(local_url, new=2)
         print(f"{common.PRNT_API} Close this window to shutdown server.")
+        # Show a window
+        if isProd:
+            run_app_window()
         # Start API server
         start_server()
-    except KeyboardInterrupt:
-        print(f"{common.PRNT_API} User pressed Ctrl+C exiting...")
+    except (KeyboardInterrupt, Exception):
+        print(f"{common.PRNT_API} Something bad happenned, exiting...")
         shutdown_server()

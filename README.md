@@ -73,7 +73,7 @@ Or
 python src/backends/main.py
 ```
 
-Or (recommended)
+Or, using yarn (recommended)
 
 ```bash
 yarn server:dev
@@ -164,9 +164,9 @@ Run the command below in powershell to set your env variables:
 
 ## Bundling
 
-<!-- ### Bundling Nvida CUDA toolkit deps:
+### Bundling Nvida CUDA toolkit deps:
 
-Instructions on how and what files to include in app bundle... -->
+If you already have the required toolkit files installed and have built for GPU then the necessary GPU drivers/dlls should be detected by PyInstaller and included in the `_deps` dir.
 
 ### Python server
 
@@ -188,9 +188,15 @@ pyinstaller -c -F your_program.py
 
 #### Packaging python server with auto-py-to-exe (recommended):
 
-This is a GUI tool that greatly simplifies the process. You can also save and load configs.
+This is a GUI tool that greatly simplifies the process. You can also save and load configs. It uses PyInstaller under the hood and requires it to be installed. Please note if using a conda or virtual environment, be sure to install both PyInstaller and auto-py-to-exe in your virtual environment and also run them from there, otherwise one or both will build from incorrect deps.
 
-To install:
+**Note**, you will need to edit paths for the following in `auto-py-to-exe` to point to your base project directory:
+
+- Settings -> Output directory
+- Additional Files
+- Script Location
+
+To run:
 
 ```bash
 auto-py-to-exe
@@ -282,6 +288,10 @@ This project deploys several backend servers exposed using the `/v1` endpoint. T
 
 A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after Obrew Server is started.
 
+## API Keys and .env variables
+
+Put your .env file in the base directory alongside the executable.
+
 ## Managing Python dependencies
 
 It is highly recommended to use an package/environment manager like Anaconda to manage Python installations and the versions of dependencies they require. This allows you to create virtual environments from which you can install different versions of software and build/deploy from within this sandboxed environment.
@@ -290,10 +300,10 @@ It is highly recommended to use an package/environment manager like Anaconda to 
 
 The following commands should be done in `Anaconda Prompt` terminal. If on Windows, `run as Admin`.
 
-1. Create a new environment:
+1. Create a new environment. This project uses v3.12:
 
 ```bash
-conda create --name env1 python=3.10
+conda create --name env1 python=3.12
 ```
 
 2. To work in this env, activate it:
