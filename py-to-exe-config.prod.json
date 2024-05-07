@@ -70,8 +70,36 @@
    "value": "C:/ProgramData/anaconda3/envs/llama-index/Lib/site-packages/llama_cpp;llama_cpp/"
   },
   {
+   "optionDest": "hiddenimports",
+   "value": "tiktoken_ext.openai_public"
+  },
+  {
+   "optionDest": "hiddenimports",
+   "value": "tiktoken_ext"
+  },
+  {
    "optionDest": "datas",
-   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/templates;backends/templates/"
+   "value": "C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/posthog;posthog/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/chromadb;chromadb/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/importlib_resources;importlib_resources/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/backoff;backoff/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/pypika;pypika/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/hnswlib.cp312-win_amd64.pyd;."
   }
  ],
  "nonPyinstallerOptions": {

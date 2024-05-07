@@ -214,8 +214,8 @@ app.include_router(endpoint_router)
 # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
 @app.get("/", response_class=HTMLResponse)
 async def connect_page(request: Request):
-    # Be sure to link `backends/templates` to the app's dependency dir (_deps) via PyInstaller
-    templates_dir = common.dep_path(os.path.join("backends", "templates"))
+    # Be sure to link `public/templates` to the app's dependency dir (_deps) via PyInstaller
+    templates_dir = common.dep_path(os.path.join("public", "templates"))
     templates = Jinja2Templates(directory=templates_dir)
     remote_url = server_info["remote_ip"]
     local_url = server_info["local_ip"]
