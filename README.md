@@ -73,7 +73,7 @@ Or
 python src/backends/main.py
 ```
 
-Or (recommended)
+Or, using yarn (recommended)
 
 ```bash
 yarn server:dev
@@ -288,6 +288,10 @@ This project deploys several backend servers exposed using the `/v1` endpoint. T
 
 A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after Obrew Server is started.
 
+## API Keys and .env variables
+
+Put your .env file in the base directory alongside the executable.
+
 ## Managing Python dependencies
 
 It is highly recommended to use an package/environment manager like Anaconda to manage Python installations and the versions of dependencies they require. This allows you to create virtual environments from which you can install different versions of software and build/deploy from within this sandboxed environment.
@@ -296,10 +300,10 @@ It is highly recommended to use an package/environment manager like Anaconda to 
 
 The following commands should be done in `Anaconda Prompt` terminal. If on Windows, `run as Admin`.
 
-1. Create a new environment:
+1. Create a new environment. This project uses v3.12:
 
 ```bash
-conda create --name env1 python=3.10
+conda create --name env1 python=3.12
 ```
 
 2. To work in this env, activate it:
