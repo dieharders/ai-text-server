@@ -170,8 +170,10 @@ def GUI():
     # Since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
     root.iconbitmap(default=common.dep_path("public/favicon.ico"))
     root.configure(bg=color_bg)
+    # Set font
+    Font_tuple = ("Verdana", 64, "bold")
     root.bind("<Escape>", lambda e: e.widget.quit())
-    tk.Label(root, text="🍺", font="-size 72").pack(fill=tk.BOTH, expand=True)
+    tk.Label(root, text="O🍺brew", font=Font_tuple).pack(fill=tk.BOTH, expand=True)
     root.mainloop()
     # Close server when user closes window
     shutdown_server()
