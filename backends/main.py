@@ -161,8 +161,6 @@ def run_app_window():
 
 # Create and run the Tkinter window
 def GUI():
-    if not isProd:
-        return
     color_bg = "#333333"
     root = tk.Tk()
     root.title("Obrew Server")
@@ -287,7 +285,8 @@ if __name__ == "__main__":
         webbrowser.open(local_url, new=2)
         print(f"{common.PRNT_API} Close this window to shutdown server.")
         # Show a window
-        run_app_window()
+        if isProd:
+            run_app_window()
         # Start API server
         start_server()
     except (KeyboardInterrupt, Exception):
