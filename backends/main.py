@@ -27,7 +27,7 @@ from settings.route import router as settings
 
 
 server_info = None
-api_version = "0.4.3"
+api_version = "0.5.0"
 SERVER_PORT = 8008
 # Display where the admin can use the web UI
 openbrew_studio_url = "https://studio.openbrewai.com"
