@@ -1,3 +1,4 @@
+nanoid==2.0.0
 # QR-code image gen
 PyQRCode==1.2.1
 pypng
