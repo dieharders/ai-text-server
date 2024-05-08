@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import List, Tuple
 from llama_index.core import Document
 from llama_index.core.schema import IndexNode, TextNode
-from server import common
+from core import common
 
 
 # Chunks are created from each document and will inherit their metadata

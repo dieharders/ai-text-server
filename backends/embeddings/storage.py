@@ -9,7 +9,7 @@ from llama_index.core.schema import IndexNode
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.core.callbacks import CallbackManager
-from server import common, classes
+from core import common, classes
 
 VECTOR_DB_FOLDER = "chromadb"
 VECTOR_STORAGE_PATH = common.app_path(VECTOR_DB_FOLDER)

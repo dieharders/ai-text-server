@@ -11,7 +11,7 @@ from llama_index.core import StorageContext
 from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from server import common
+from core import common
 from .storage import (
     get_vector_db_client,
     add_chunks_to_collection,

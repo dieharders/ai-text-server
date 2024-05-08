@@ -8,7 +8,7 @@ from typing import List, Optional, Sequence
 from llama_index.llms.llama_cpp import LlamaCPP
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.callbacks import CallbackManager
-from server import common, classes
+from core import common, classes
 
 # These generic helper funcs wont add End_of_seq tokens etc but construct the Prompt/Message
 # from llama_index.llms.generic_utils import messages_to_prompt

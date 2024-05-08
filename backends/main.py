@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from embeddings import storage
-from server import common, classes
+from core import common, classes
 from services.route import router as services
 from embeddings.route import router as embeddings
 from inference.route import router as text_inference
@@ -47,12 +47,12 @@ def parse_runtime_args():
 
 
 # Check what env is running - prod/dev
-buildEnv = parse_runtime_args()
-isDebug = hasattr(sys, "gettrace") and sys.gettrace() is not None
-isDev = buildEnv == "dev" or isDebug
-isProd = buildEnv == "prod" or not isDev
+build_env = parse_runtime_args()
+is_debug = hasattr(sys, "gettrace") and sys.gettrace() is not None
+is_dev = build_env == "dev" or is_debug
+is_prod = build_env == "prod" or not is_dev
 # Comment out if you want to debug on prod build
-if isProd:
+if is_prod:
     # Remove prints in prod when deploying in window mode
     sys.stdout = open(os.devnull, "w")
     sys.stderr = open(os.devnull, "w")
@@ -77,6 +77,9 @@ async def lifespan(application: FastAPI):
     application.state.model_id = ""
     application.state.embed_model = None
     app.state.loaded_text_model_data = {}
+    app.state.is_prod = is_prod
+    app.state.is_dev = is_dev
+    app.state.is_debug = is_debug
 
     yield
     # Do shutdown cleanup here...
@@ -274,7 +277,6 @@ def connect() -> classes.ConnectResponse:
 
 
 if __name__ == "__main__":
-    App = None
     try:
         # Find IP info
         server_info = display_server_info()
@@ -285,7 +287,7 @@ if __name__ == "__main__":
         webbrowser.open(local_url, new=2)
         print(f"{common.PRNT_API} Close this window to shutdown server.")
         # Show a window
-        if isProd:
+        if is_prod:
             run_app_window()
         # Start API server
         start_server()

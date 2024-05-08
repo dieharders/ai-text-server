@@ -1,5 +1,5 @@
 import subprocess
-from server import common
+from core import common
 
 
 async def start_text_inference_server(file_path: str, port: int, process: str):

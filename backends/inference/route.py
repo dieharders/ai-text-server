@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from sse_starlette.sse import EventSourceResponse
 from embeddings import main, query
 from inference import text_llama_index
-from server import classes, common
+from core import classes, common
 from huggingface_hub import (
     hf_hub_download,
     get_hf_file_metadata,

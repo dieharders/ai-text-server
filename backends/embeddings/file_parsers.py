@@ -4,7 +4,7 @@ import shutil
 import uuid
 from typing import Any, List, Optional
 import hashlib
-from server import common
+from core import common
 from fastapi import UploadFile
 from llama_index.core import Document
 

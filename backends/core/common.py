@@ -6,7 +6,7 @@ import glob
 import httpx
 import subprocess
 from typing import Any, List, Optional, Tuple
-from server.classes import (
+from classes import (
     CHAT_MODES,
     InstalledTextModelMetadata,
     InstalledTextModel,
