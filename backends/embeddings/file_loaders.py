@@ -16,7 +16,7 @@ from llama_index.readers.file import (
     VideoAudioReader,
 )
 from llama_parse import LlamaParse
-from server import classes, common
+from core import classes, common
 
 ###########
 # METHODS #

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from server import classes
+from core import classes
 from embeddings.main import CHUNKING_STRATEGIES
 from llama_index.core.response_synthesizers import ResponseMode
 

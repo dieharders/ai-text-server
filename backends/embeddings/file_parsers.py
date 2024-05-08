@@ -1,10 +1,10 @@
 import os
 import glob
 import shutil
-import uuid
+from nanoid import generate as generate_uuid
 from typing import Any, List, Optional
 import hashlib
-from server import common
+from core import common
 from fastapi import UploadFile
 from llama_index.core import Document
 
@@ -43,7 +43,7 @@ def create_checksum(file_path: str):
 
 # Create a filename for a parsed markdown document
 def create_parsed_id(collection_name: str):
-    id = str(uuid.uuid4()).replace("-", "")
+    id = generate_uuid()
     # return f"{collection_name}--{id}"
     return id
 

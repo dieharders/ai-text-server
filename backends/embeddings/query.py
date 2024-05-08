@@ -1,5 +1,5 @@
 from typing import Any
-from server import common, classes
+from core import common, classes
 from llama_index.core import VectorStoreIndex, PromptTemplate
 from llama_index.core.response_synthesizers import ResponseMode
 

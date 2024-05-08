@@ -2,14 +2,14 @@ import os
 import glob
 import json
 from typing import Any, List
-from chromadb import Collection, PersistentClient
+from chromadb import Collection, PersistentClient  # HttpClient
 from chromadb.api import ClientAPI
 from chromadb.config import Settings
 from llama_index.core.schema import IndexNode
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.core.callbacks import CallbackManager
-from server import common, classes
+from core import common, classes
 
 VECTOR_DB_FOLDER = "chromadb"
 VECTOR_STORAGE_PATH = common.app_path(VECTOR_DB_FOLDER)
@@ -38,23 +38,25 @@ def get_collection_sources(collection: Collection) -> List[classes.SourceMetadat
 
 
 # Create a ChromaDB client singleton
-# @TODO May need to create this at start of app first run to prevent race condition from using this when creating DB first time.
 def get_vector_db_client(app) -> ClientAPI:
     if app.state.db_client == None:
-        # "Not recommended for production use" - use HttpClient
+        # if app.state.is_prod:
+        #     # Recommended
+        #     db = HttpClient(
+        #         host="localhost",
+        #         port="8000",  # default port 8000
+        #         ssl=False,
+        #         # tenant="", # @TODO For multi-tenant db's
+        #         # headers = {},
+        #         settings=Settings(anonymized_telemetry=False, allow_reset=True),
+        #     )
+        # else:
+        # Not recommended for production use
         db = PersistentClient(
             # tenant="", # @TODO For multi-tenant db's
             path=VECTOR_STORAGE_PATH,
             settings=Settings(anonymized_telemetry=False, allow_reset=True),
         )
-        # Recommended
-        # db = HttpClient(
-        #     host: str = "localhost",
-        #     port: str = "8000", # default port
-        #     ssl: bool = False,
-        #     headers: Dict[str, str] = {},
-        #     settings=Settings(anonymized_telemetry=False, allow_reset=True),
-        # )
         app.state.db_client = db
         return db
     return app.state.db_client

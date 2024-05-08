@@ -1,10 +1,10 @@
 import os
-import uuid
+from nanoid import generate as generate_uuid
 from datetime import datetime, timezone
 from typing import List, Tuple
 from llama_index.core import Document
 from llama_index.core.schema import IndexNode, TextNode
-from server import common
+from core import common
 
 
 # Chunks are created from each document and will inherit their metadata
@@ -33,7 +33,7 @@ def chunks_from_documents(
             excluded_embed_metadata_keys.append("order")
             # Create chunk
             chunk_node = IndexNode(
-                id_=f"{source_id}--{uuid.uuid4()}",  # Optional, ID will be base + parent
+                id_=generate_uuid(),
                 text=parsed_node.text or "None",
                 index_id=str(source_id),
                 metadata=chunk_metadata,

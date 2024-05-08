@@ -1,7 +1,7 @@
 import os
 import json
 from fastapi import APIRouter
-from server import classes, common
+from core import classes, common
 
 router = APIRouter()
 
