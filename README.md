@@ -1,10 +1,14 @@
 # 🍺 Obrew Ai Engine
 
-This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
-
 ## Introduction
 
-This is a hybrid Node.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
+The goal of this project is to be an all-in-one solution for running Ai that is easy to install. It is a native app that runs a server which handles all basic building blocks of Ai: inference, memory, model file manager, agent builder, app installer, GUI.
+
+## How It Works
+
+This is a Python app using FastAPI for the server. We provide a Web UI called [Obrew Studio](https://studio.openbrewai.com/) to access the server. You can also access it programmatically via the API.
+
+Launch the desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
 ## Features Roadmap
 
@@ -15,24 +19,17 @@ This is a hybrid Node.js + Python app that uses Next.js as the frontend and Fast
 - ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
   <!-- - ❌ Cloud platform (subscription, host your infra with us) -->
   <!-- - ❌ Enterprise service (subscription & paid support, bring your own infra) -->
+  <!-- - ❌ UI generation -->
+- ❌ Production/Cloud ready: This project is currently under active development, there may be bugs
 - ❌ Chats: Save/Retrieve chat message history
 - ❌ Auto Agents (Assistants)
 - ❌ Agent Teams
 - ❌ Multi-Chat
 - ❌ Long-term memory across conversations
-- ❌ UI generation
-
-## How It Works
-
-- Startup and shutdown of the backend services is done via the front-end UI or REST api.
-
-- The Python/FastAPI server (Obrew api) operates under `localhost:8008`.
-
-- 3rd party client apps will call the Obrew api to perform all functions needed.
 
 ## Getting Started
 
-### Dependencies
+### Install Dependencies
 
 First, install the dependencies for javascript:
 
@@ -248,9 +245,9 @@ This should be enough for any webapp served over https to access the server. If 
 
 3. Follow the instructions and before it asks to compile the script, cancel and inspect the script where it points to your included files/folders
 
-4. Be sure to append `/[your_included_folder_name]` after the `DestDir: "{app}"`. So instead of `{app}` we have `{app}/assets`. This will ensure it point to the correct paths of the added files you told pyinstaller to include.
+4. Be sure to append `/[your_included_folder_name]` after the `DestDir: "{app}"`. So instead of `{app}` we have `{app}/assets`. This will ensure it points to the correct paths of the added files you told pyinstaller to include.
 
-5. After that compile the script and it should output your setup file where you specified.
+5. After that compile the script and it should output your setup file where you specified (or project root).
 
 ### Create a release on Github with link to installer
 
@@ -288,7 +285,11 @@ This project deploys several backend servers exposed using the `/v1` endpoint. T
 
 A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after Obrew Server is started.
 
-## API Keys and .env variables
+### Client api library
+
+There is currently a javascript library under development and being used by [Obrew Studio](https://github.com/dieharders/brain-dump). Once the project becomes stable, it will be broken out into its own module and repo. Stay tuned.
+
+### API Keys and .env variables
 
 Put your .env file in the base directory alongside the executable.
 
@@ -300,7 +301,7 @@ It is highly recommended to use an package/environment manager like Anaconda to 
 
 The following commands should be done in `Anaconda Prompt` terminal. If on Windows, `run as Admin`.
 
-1. Create a new environment. This project uses v3.12:
+1. Create a new environment. This project uses `3.12`:
 
 ```bash
 conda create --name env1 python=3.12
@@ -318,7 +319,7 @@ conda activate env1
 conda deactivate
 ```
 
-4. If using VSCode, you must apply your newly created virtual environment by selecting the `python interpreter` button at the bottom when inside your project directory.
+4. If using an IDE like VSCode, you must apply your newly created virtual environment by selecting the `python interpreter` button at the bottom when inside your project directory.
 
 To update PIP package installer:
 
@@ -328,5 +329,5 @@ conda update pip
 
 ## Learn More
 
-- Server uses [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
-- Engine uses [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for Ai inference.
+- Server: [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+- Engine: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for Ai inference.
