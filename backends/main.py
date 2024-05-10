@@ -265,8 +265,6 @@ def connect() -> classes.ConnectResponse:
         "data": {
             "docs": f"https://localhost:{SERVER_PORT}/docs",
             "version": api_version,
-            # @TODO Lets just return everything that /services/api does.
-            # "api": "/v1/services/api", # endpoint to tell front-end what all the endpoints are
         },
     }
 

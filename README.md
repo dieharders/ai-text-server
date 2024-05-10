@@ -1,10 +1,14 @@
 # 🍺 Obrew Ai Engine
 
-This project handles all requests from client chat apps using a single api. The goal is to provide a modular architecture that allows rapid development of chat-based front-end apps. Client apps need only make HTTP requests to perform any function related to ai workloads.
-
 ## Introduction
 
-This is a hybrid Node.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. It ships with a GUI to allow you to manually configure the backend ai services which use Python libraries. Configuration can also be done programmatically. Launch this desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
+The goal of this project is to be an all-in-one solution for running Ai that is easy to install. It is a native app that runs a server which handles all basic building blocks of Ai: inference, memory, model file manager, agent builder, app installer, GUI.
+
+## How It Works
+
+This is a Python app using FastAPI for the server. We provide a Web UI called [Obrew Studio](https://studio.openbrewai.com/) to access the server. You can also access it programmatically via the API.
+
+Launch the desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
 ## Features Roadmap
 
@@ -15,32 +19,19 @@ This is a hybrid Node.js + Python app that uses Next.js as the frontend and Fast
 - ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
   <!-- - ❌ Cloud platform (subscription, host your infra with us) -->
   <!-- - ❌ Enterprise service (subscription & paid support, bring your own infra) -->
+  <!-- - ❌ UI generation -->
+- ❌ Production/Cloud ready: This project is currently under active development, there may be bugs
 - ❌ Chats: Save/Retrieve chat message history
 - ❌ Auto Agents (Assistants)
 - ❌ Agent Teams
 - ❌ Multi-Chat
 - ❌ Long-term memory across conversations
-- ❌ UI generation
-
-## How It Works
-
-- Startup and shutdown of the backend services is done via the front-end UI or REST api.
-
-- The Python/FastAPI server (Obrew api) operates under `localhost:8008`.
-
-- 3rd party client apps will call the Obrew api to perform all functions needed.
 
 ## Getting Started
 
-### Dependencies
+### Install Dependencies
 
-First, install the dependencies for javascript:
-
-```bash
-yarn install
-```
-
-Install dependencies for python listed in your requirements.txt file:
+Install dependencies for python listed in requirements.txt file:
 
 Be sure to run this command with admin privileges. This command is optional and is also run on each `yarn build`.
 
@@ -50,21 +41,15 @@ pip install -r requirements.txt
 yarn python-deps
 ```
 
-## Testing locally
+## Run
 
-### Run Front-End
+### Running production executable
 
-Run development front-end webserver (unstable):
+If you get a "Permission Denied" error, try running the executable with Admin privileges.
 
-```bash
-yarn dev
-```
+### Testing
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-### Run Backend API
-
-If you wish to run the backend server seperately, right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
+Right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
 
 Or
 
@@ -85,17 +70,9 @@ The Obrew api server will be running on [https://localhost:8008](https://localho
 
 \*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https (these go into `/public` folder). If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
 
-### Run the Electron app (UI and Backend) in development
+## Build steps for GPU Support
 
-This is the preferred method of running the app:
-
-```bash
-yarn start
-```
-
-## Build steps
-
-This project is meant to be deployed locally on the client's machine. It is a next.js app using serverless runtimes all wrapped by Electron to create a native app. We do this to package up dependencies to make installation easier on the user and to provide the app access to the local OS disk space.
+These steps outline the process of supporting GPU's. If all you need is CPU, then you can skip this.
 
 ### Building llama.cpp
 
@@ -168,9 +145,7 @@ Run the command below in powershell to set your env variables:
 
 If you already have the required toolkit files installed and have built for GPU then the necessary GPU drivers/dlls should be detected by PyInstaller and included in the `_deps` dir.
 
-### Python server
-
-#### Packaging the Python exe with PyInstaller:
+### Packaging with PyInstaller:
 
 This is handled automatically by npm scripts so you do not need to execute these manually. The -F flag bundles everything into one .exe file.
 
@@ -186,7 +161,7 @@ Then use it to bundle a python script:
 pyinstaller -c -F your_program.py
 ```
 
-#### Packaging python server with auto-py-to-exe (recommended):
+### Packaging with auto-py-to-exe (recommended)
 
 This is a GUI tool that greatly simplifies the process. You can also save and load configs. It uses PyInstaller under the hood and requires it to be installed. Please note if using a conda or virtual environment, be sure to install both PyInstaller and auto-py-to-exe in your virtual environment and also run them from there, otherwise one or both will build from incorrect deps.
 
@@ -202,23 +177,19 @@ To run:
 auto-py-to-exe
 ```
 
-#### Packaging application with Electron for release (deprecated)
+### Inno Installer Setup Wizard
 
-This will build the production deps and then bundle them with pre-built Electron binaries into an installer/distributable.
-Please note, "yarn" should be used as the package manager as npm/pnpm will not work for packaging node_modules for some reason.
-Electron Builder commands: https://www.electron.build/cli.html
+This utility will take your exe and dependencies and compress the files, then wrap them in a user friendly executable that guides the user through installation.
 
-This will create an installer (preferred). Copy the file from `/release/[app-name][version].exe` and put into your Github releases.
+1. Download Inno Setup from (here)[https://jrsoftware.org/isinfo.php]
 
-```bash
-yarn release
-```
+2. Install and run the setup wizard for a new script
 
-This will create a folder with all the raw files in `/release/win-unpacked` (when built for windows). Useful for dev since you can inspect the loose files in folder.
+3. Follow the instructions and before it asks to compile the script, cancel and inspect the script where it points to your included files/folders
 
-```bash
-yarn unpacked
-```
+4. Be sure to append `/[your_included_folder_name]` after the `DestDir: "{app}"`. So instead of `{app}` we have `{app}/assets`. This will ensure it points to the correct paths of the added files you told pyinstaller to include.
+
+5. After that compile the script and it should output your setup file where you specified (or project root).
 
 ## Production
 
@@ -239,18 +210,6 @@ yarn makecert
 ```
 
 This should be enough for any webapp served over https to access the server. If you see "Warning: Potential Security Risk Ahead" in your browser when using the webapp, you can ignore it by clicking `advanced` then `Accept the Risk` button to continue.
-
-### Inno Installer Setup Wizard
-
-1. Download Inno Setup from (here)[https://jrsoftware.org/isinfo.php]
-
-2. Install and run the setup wizard for a new script
-
-3. Follow the instructions and before it asks to compile the script, cancel and inspect the script where it points to your included files/folders
-
-4. Be sure to append `/[your_included_folder_name]` after the `DestDir: "{app}"`. So instead of `{app}` we have `{app}/assets`. This will ensure it point to the correct paths of the added files you told pyinstaller to include.
-
-5. After that compile the script and it should output your setup file where you specified.
 
 ### Create a release on Github with link to installer
 
@@ -288,7 +247,11 @@ This project deploys several backend servers exposed using the `/v1` endpoint. T
 
 A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after Obrew Server is started.
 
-## API Keys and .env variables
+### Client api library
+
+There is currently a javascript library under development and being used by [Obrew Studio](https://github.com/dieharders/brain-dump). Once the project becomes stable, it will be broken out into its own module and repo. Stay tuned.
+
+### API Keys and .env variables
 
 Put your .env file in the base directory alongside the executable.
 
@@ -296,11 +259,17 @@ Put your .env file in the base directory alongside the executable.
 
 It is highly recommended to use an package/environment manager like Anaconda to manage Python installations and the versions of dependencies they require. This allows you to create virtual environments from which you can install different versions of software and build/deploy from within this sandboxed environment.
 
+To update PIP package installer:
+
+```bash
+conda update pip
+```
+
 ### Switching between virtual environments
 
 The following commands should be done in `Anaconda Prompt` terminal. If on Windows, `run as Admin`.
 
-1. Create a new environment. This project uses v3.12:
+1. Create a new environment. This project uses `3.12`:
 
 ```bash
 conda create --name env1 python=3.12
@@ -318,15 +287,11 @@ conda activate env1
 conda deactivate
 ```
 
-4. If using VSCode, you must apply your newly created virtual environment by selecting the `python interpreter` button at the bottom when inside your project directory.
-
-To update PIP package installer:
-
-```bash
-conda update pip
-```
+4. If using an IDE like VSCode, you must apply your newly created virtual environment by selecting the `python interpreter` button at the bottom when inside your project directory.
 
 ## Learn More
 
-- Server uses [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
-- Engine uses [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for Ai inference.
+- Server: [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+- Inference: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for Ai inference.
+- Memory: [Llama-Index](https://github.com/run-llama/llama_index) for data retrieval and [ChromaDB](https://github.com/chroma-core/chroma) for vector database.
+- Web UI: [Next.js](https://nextjs.org/) for front-end and [Vercel](https://vercel.com) for hosting.
