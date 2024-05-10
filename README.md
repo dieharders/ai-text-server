@@ -31,13 +31,7 @@ Launch the desktop app locally, then navigate your browser to any web app that s
 
 ### Install Dependencies
 
-First, install the dependencies for javascript:
-
-```bash
-yarn install
-```
-
-Install dependencies for python listed in your requirements.txt file:
+Install dependencies for python listed in requirements.txt file:
 
 Be sure to run this command with admin privileges. This command is optional and is also run on each `yarn build`.
 
@@ -47,21 +41,15 @@ pip install -r requirements.txt
 yarn python-deps
 ```
 
-## Testing locally
+## Run
 
-### Run Front-End
+### Running production executable
 
-Run development front-end webserver (unstable):
+If you get a "Permission Denied" error, try running the executable with Admin privileges.
 
-```bash
-yarn dev
-```
+### Testing
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-### Run Backend API
-
-If you wish to run the backend server seperately, right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
+Right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
 
 Or
 
@@ -82,17 +70,9 @@ The Obrew api server will be running on [https://localhost:8008](https://localho
 
 \*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https (these go into `/public` folder). If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
 
-### Run the Electron app (UI and Backend) in development
+## Build steps for GPU Support
 
-This is the preferred method of running the app:
-
-```bash
-yarn start
-```
-
-## Build steps
-
-This project is meant to be deployed locally on the client's machine. It is a next.js app using serverless runtimes all wrapped by Electron to create a native app. We do this to package up dependencies to make installation easier on the user and to provide the app access to the local OS disk space.
+These steps outline the process of supporting GPU's. If all you need is CPU, then you can skip this.
 
 ### Building llama.cpp
 
@@ -165,9 +145,7 @@ Run the command below in powershell to set your env variables:
 
 If you already have the required toolkit files installed and have built for GPU then the necessary GPU drivers/dlls should be detected by PyInstaller and included in the `_deps` dir.
 
-### Python server
-
-#### Packaging the Python exe with PyInstaller:
+### Packaging with PyInstaller:
 
 This is handled automatically by npm scripts so you do not need to execute these manually. The -F flag bundles everything into one .exe file.
 
@@ -183,7 +161,7 @@ Then use it to bundle a python script:
 pyinstaller -c -F your_program.py
 ```
 
-#### Packaging python server with auto-py-to-exe (recommended):
+### Packaging with auto-py-to-exe (recommended)
 
 This is a GUI tool that greatly simplifies the process. You can also save and load configs. It uses PyInstaller under the hood and requires it to be installed. Please note if using a conda or virtual environment, be sure to install both PyInstaller and auto-py-to-exe in your virtual environment and also run them from there, otherwise one or both will build from incorrect deps.
 
@@ -199,23 +177,19 @@ To run:
 auto-py-to-exe
 ```
 
-#### Packaging application with Electron for release (deprecated)
+### Inno Installer Setup Wizard
 
-This will build the production deps and then bundle them with pre-built Electron binaries into an installer/distributable.
-Please note, "yarn" should be used as the package manager as npm/pnpm will not work for packaging node_modules for some reason.
-Electron Builder commands: https://www.electron.build/cli.html
+This utility will take your exe and dependencies and compress the files, then wrap them in a user friendly executable that guides the user through installation.
 
-This will create an installer (preferred). Copy the file from `/release/[app-name][version].exe` and put into your Github releases.
+1. Download Inno Setup from (here)[https://jrsoftware.org/isinfo.php]
 
-```bash
-yarn release
-```
+2. Install and run the setup wizard for a new script
 
-This will create a folder with all the raw files in `/release/win-unpacked` (when built for windows). Useful for dev since you can inspect the loose files in folder.
+3. Follow the instructions and before it asks to compile the script, cancel and inspect the script where it points to your included files/folders
 
-```bash
-yarn unpacked
-```
+4. Be sure to append `/[your_included_folder_name]` after the `DestDir: "{app}"`. So instead of `{app}` we have `{app}/assets`. This will ensure it points to the correct paths of the added files you told pyinstaller to include.
+
+5. After that compile the script and it should output your setup file where you specified (or project root).
 
 ## Production
 
@@ -236,18 +210,6 @@ yarn makecert
 ```
 
 This should be enough for any webapp served over https to access the server. If you see "Warning: Potential Security Risk Ahead" in your browser when using the webapp, you can ignore it by clicking `advanced` then `Accept the Risk` button to continue.
-
-### Inno Installer Setup Wizard
-
-1. Download Inno Setup from (here)[https://jrsoftware.org/isinfo.php]
-
-2. Install and run the setup wizard for a new script
-
-3. Follow the instructions and before it asks to compile the script, cancel and inspect the script where it points to your included files/folders
-
-4. Be sure to append `/[your_included_folder_name]` after the `DestDir: "{app}"`. So instead of `{app}` we have `{app}/assets`. This will ensure it points to the correct paths of the added files you told pyinstaller to include.
-
-5. After that compile the script and it should output your setup file where you specified (or project root).
 
 ### Create a release on Github with link to installer
 
@@ -330,4 +292,6 @@ conda update pip
 ## Learn More
 
 - Server: [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
-- Engine: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for Ai inference.
+- Inference: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for Ai inference.
+- Memory: [Llama-Index](https://github.com/run-llama/llama_index) for data retrieval and [ChromaDB](https://github.com/chroma-core/chroma) for vector database.
+- Web UI: [Next.js](https://nextjs.org/) for front-end and [Vercel](https://vercel.com) for hosting.
