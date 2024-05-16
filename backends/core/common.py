@@ -290,7 +290,7 @@ def save_text_model(data: SaveTextModelRequestArgs):
         # Try to open the file (if it exists)
         with open(filepath, "r") as file:
             existing_data = json.load(file)
-    except FileNotFoundError:
+    except (Exception, FileNotFoundError):
         # If the file doesn't exist yet, create an empty dictionary
         existing_data = DEFAULT_SETTINGS_DICT
     except json.JSONDecodeError:

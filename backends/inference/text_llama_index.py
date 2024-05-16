@@ -244,7 +244,7 @@ def token_streamer(token_generator):
         raise Exception(msg)
 
 
-# Perform a normal text completion on a prompt (trained data only)
+# Perform a streamed (synchronous) text completion on a prompt with trained data only
 def text_stream_completion(
     prompt_str: str,
     prompt_template: str,
@@ -266,7 +266,7 @@ def text_stream_completion(
     # Format to model spec, construct a message with system message and prompt
     message = completion_to_prompt(prompt, sys_message, message_format)
 
-    print(f"{common.PRNT_API} Text-Completion: {message}", flush=True)
+    print(f"{common.PRNT_API} Text Stream Completion: {message}", flush=True)
 
     # Stream response
     token_generator = llm.stream_complete(message, formatted=True, kwargs=options)
@@ -274,6 +274,35 @@ def text_stream_completion(
         # print(token.delta, end="", flush=True)
         payload = {"event": "GENERATING_TOKENS", "data": f"{token.delta}"}
         yield json.dumps(payload)
+
+
+# Perform a non-streamed (synchronous) text completion on a prompt with trained data only
+def text_completion(
+    prompt_str: str,
+    prompt_template: str,
+    system_message: str,
+    message_format: str,
+    app,
+    options,
+):
+    sys_message = system_message or ""
+    llm: LlamaCPP = app.state.llm
+    if llm == None:
+        raise Exception("No Ai loaded.")
+
+    # Format prompt from template
+    prompt = prompt_str
+    if prompt_template:
+        prompt = prompt_template.replace(QUERY_INPUT, prompt_str)
+
+    # Format to model spec, construct a message with system message and prompt
+    message = completion_to_prompt(prompt, sys_message, message_format)
+
+    print(f"{common.PRNT_API} Text Non Stream Completion: {message}", flush=True)
+
+    # Get response
+    res = llm.complete(message, formatted=True, kwargs=options)
+    return res
 
 
 # Perform a normal text chat conversation
