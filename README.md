@@ -221,13 +221,13 @@ Increase the patch version by 1 (x.x.1 to x.x.2)
 yarn version --patch
 ```
 
-Will increase the minor version by 1 (x.1.x to x.2.x)
+Increase the minor version by 1 (x.1.x to x.2.x)
 
 ```bash
 yarn version --minor
 ```
 
-Will increase the major version by 1 (1.x.x to 2.x.x)
+Increase the major version by 1 (1.x.x to 2.x.x)
 
 ```bash
 yarn version --major

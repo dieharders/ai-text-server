@@ -423,10 +423,17 @@ async def text_inference(
                         options,
                     )
                 )
-            # @TODO Return non-stream response
+            # Return non-stream response
             else:
-                raise Exception("Non-streaming completion not supported.")
-        # Call LLM in raw chat mode
+                return text_llama_index.text_completion(
+                    prompt,
+                    prompt_template,
+                    system_message,
+                    message_format,
+                    app,
+                    options,
+                )
+        # Stream LLM in chat mode
         elif mode == classes.CHAT_MODES.CHAT.value:
             options["n_ctx"] = n_ctx
             return EventSourceResponse(
