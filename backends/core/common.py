@@ -111,7 +111,7 @@ def parse_mentions(input_string) -> Tuple[List[str], str]:
     if matches:
         # Remove the matched words from the original string
         base_query = re.sub(pattern, "", input_string)
-        print(f"Found mentions starting with @: {matches}")
+        print(f"{PRNT_API} Found mentions starting with @: {matches}", flush=True)
         return [matches, base_query]
     else:
         return [[], input_string]
@@ -162,16 +162,16 @@ def check_cached_file_exists(cache_dir: str, repo_id: str, filename: str):
     )
     if isinstance(filepath, str):
         # file exists and is cached
-        print(f"File exists: {filepath}", flush=True)
+        print(f"{PRNT_API} File exists: {filepath}", flush=True)
     elif filepath is _CACHED_NO_EXIST:
         # non-existence of file is cached
-        err = "File non-existence has been recorded"
-        print(err, flush=True)
+        err = "File non-existence has been recorded."
+        print(f"{PRNT_API} {err}", flush=True)
         raise Exception(err)
     else:
         # file is not cached
-        err = "File not cached"
-        print(err, flush=True)
+        err = "File not cached."
+        print(f"{PRNT_API} {err}", flush=True)
         raise Exception(err)
 
 
@@ -214,17 +214,17 @@ def check_valid_id(input: str):
         return False
     # No hyphens at start/end
     if input[0] == "-" or input[l - 1] == "-":
-        print(f"{PRNT_API} Found hyphens at start/end in [id]")
+        print(f"{PRNT_API} Found hyphens at start/end in 'id'")
         return False
     # No whitespace allowed
     matches_whitespace = re.findall("\\s", input)
     if matches_whitespace:
-        print(f"{PRNT_API} Found whitespace in [id]")
+        print(f"{PRNT_API} Found whitespace in 'id'")
         return False
     # Check special chars. All chars must be lowercase. Dashes acceptable.
     m = re.compile(r"[a-z0-9-]*$")
     if not m.match(input):
-        print(f"{PRNT_API} Found invalid special chars in [id]")
+        print(f"{PRNT_API} Found invalid special chars in 'id'")
         return False
     # Passes
     return True
@@ -347,9 +347,9 @@ def delete_text_model_revisions(repo_id: str):
         with open(filepath, "w") as file:
             json.dump(metadata, file, indent=2)
     except FileNotFoundError:
-        print("File not found", flush=True)
+        print(f"{PRNT_API} File not found.", flush=True)
     except json.JSONDecodeError:
-        print("JSON parsing error", flush=True)
+        print(f"{PRNT_API} JSON parsing error.", flush=True)
 
 
 # Delete a single (quant) file for the model
@@ -371,9 +371,9 @@ def delete_text_model(filename: str, repo_id: str):
         with open(filepath, "w") as file:
             json.dump(metadata, file, indent=2)
     except FileNotFoundError:
-        print("File not found", flush=True)
+        print(f"{PRNT_API} File not found.", flush=True)
     except json.JSONDecodeError:
-        print("JSON parsing error", flush=True)
+        print(f"{PRNT_API} JSON parsing error.", flush=True)
 
 
 def delete_vector_store(target_file_path: str, folder_path):
@@ -405,16 +405,16 @@ def get_settings_file(folderpath: str, filepath: str):
     try:
         # Check if folder exists
         if not os.path.exists(folderpath):
-            print(f"Folder does not exist: {folderpath}", flush=True)
+            print(f"{PRNT_API} Folder does not exist: {folderpath}", flush=True)
             os.makedirs(folderpath)
         # Try to open the file (if it exists)
         with open(filepath, "r") as file:
             loaded_data = json.load(file)
     except FileNotFoundError:
-        print("File does not exist.", flush=True)
+        print(f"{PRNT_API} File does not exist.", flush=True)
         loaded_data = None
     except json.JSONDecodeError:
-        print("Invalid JSON format or empty file.", flush=True)
+        print(f"{PRNT_API} Invalid JSON format or empty file.", flush=True)
         loaded_data = None
     return loaded_data
 
@@ -448,7 +448,7 @@ def save_settings_file(folderpath: str, filepath: str, data: dict):
     try:
         # Create folder/file
         if not os.path.exists(folderpath):
-            print(f"Folder does not exist: {folderpath}", flush=True)
+            print(f"{PRNT_API} Folder does not exist: {folderpath}", flush=True)
             os.makedirs(folderpath)
         # Try to open the file (if it exists)
         with open(filepath, "r") as file:
