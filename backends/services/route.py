@@ -120,6 +120,18 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
         "name": "storage",
         "port": app.state.PORT_HOMEBREW_API,
         "endpoints": [
+            # Load Chat thread
+            {
+                "name": "getChatThread",
+                "urlPath": "/v1/persist/chat-thread",
+                "method": "GET",
+            },
+            # Save Chat thread
+            {
+                "name": "saveChatThread",
+                "urlPath": "/v1/persist/chat-thread",
+                "method": "POST",
+            },
             # Load Playground settings
             {
                 "name": "getPlaygroundSettings",
