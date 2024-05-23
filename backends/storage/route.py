@@ -2,7 +2,7 @@ import os
 import json
 from fastapi import APIRouter
 from core import classes, common
-import classes as storage_classes
+from storage import classes as storage_classes
 
 router = APIRouter()
 
@@ -165,9 +165,11 @@ def get_bot_settings() -> classes.BotSettingsResponse:
 
 # Load chat thread
 @router.get("/chat-thread")
-def get_chat_thread(thread_id: str) -> storage_classes.GetChatThreadResponse:
+def get_chat_thread(
+    params: storage_classes.GetChatThreadRequest,
+) -> storage_classes.GetChatThreadResponse:
     folder_path = common.app_path("threads")
-    file_name = f"{thread_id}.json"
+    file_name = f"{params.threadId}.json"
     file_path = os.path.join(folder_path, file_name)
     try:
         # Create folder/file

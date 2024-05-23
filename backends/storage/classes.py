@@ -35,6 +35,10 @@ class GetChatThreadResponse(BaseModel):
     }
 
 
+class GetChatThreadRequest(BaseModel):
+    threadId: str
+
+
 class SaveChatThreadRequest(BaseModel):
     threadId: str
     thread: dict
