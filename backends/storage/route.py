@@ -1,6 +1,7 @@
 import os
+import glob
 import json
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from core import classes, common
 from storage import classes as storage_classes
 
@@ -163,46 +164,62 @@ def get_bot_settings() -> classes.BotSettingsResponse:
     }
 
 
-# Load chat thread
+# Load (one or all) chat thread(s)
 @router.get("/chat-thread")
-def get_chat_thread(
-    params: storage_classes.GetChatThreadRequest,
+async def get_chat_thread(
+    params: storage_classes.GetChatThreadRequest = Depends(),
 ) -> storage_classes.GetChatThreadResponse:
     folder_path = common.app_path("threads")
-    file_name = f"{params.threadId}.json"
+    threadId = params.threadId
+    file_name = f"{threadId}.json"
     file_path = os.path.join(folder_path, file_name)
+    data = []
     try:
         # Create folder/file
         if not os.path.exists(folder_path):
             print(f"{common.PRNT_API} Folder does not exist: {folder_path}", flush=True)
             os.makedirs(folder_path)
-        # Try to open the file (if it exists)
-        with open(file_path, "r") as file:
-            existing_data = json.load(file)
-    except FileNotFoundError:
-        # file doesn't exist
+        if threadId:
+            # Try to open thread file by id
+            with open(file_path, "r") as file:
+                thread_data = json.load(file)
+                data.append(thread_data)
+        else:
+            # Return each thread file and add contents
+            for name in os.listdir(folder_path):
+                path = os.path.join(folder_path, name)
+                with open(path, "r") as file:
+                    file_data = json.load(file)
+                    data.append(file_data)
+    except FileNotFoundError as err:
         return {
             "success": False,
-            "message": f"Failed to load chat thread from {file_path}, FileNotFoundError",
-            "data": None,
+            "message": f"Failed to load chat thread, FileNotFoundError.\n{err}",
+            "data": [],
         }
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as err:
         return {
             "success": False,
-            "message": f"Failed to load chat thread from {file_path}, JSONDecodeError",
-            "data": None,
+            "message": f"Failed to load chat thread, JSONDecodeError.\n{err}",
+            "data": [],
         }
-
+    except Exception as err:
+        return {
+            "success": False,
+            "message": f"Failed to load chat thread.\n{err}.",
+            "data": [],
+        }
+    # Results
     return {
         "success": True,
-        "message": f"Loaded chat thread from {file_path}",
-        "data": existing_data,
+        "message": f"Loaded chat thread(s).",
+        "data": data,
     }
 
 
 # Save chat thread
 @router.post("/chat-thread")
-def save_chat_thread(params: storage_classes.SaveChatThreadRequest):
+async def save_chat_thread(params: storage_classes.SaveChatThreadRequest):
     thread_id = params.threadId
     thread = params.thread
     # Path
@@ -226,5 +243,45 @@ def save_chat_thread(params: storage_classes.SaveChatThreadRequest):
     return {
         "success": True,
         "message": f"Saved chat thread to {file_path}",
+        "data": None,
+    }
+
+
+# Delete (one or all) chat thread(s)
+@router.delete("/chat-thread")
+async def delete_chat_thread(
+    params: storage_classes.DeleteChatThreadRequest = Depends(),
+):
+    thread_id = params.threadId
+    folder_path = common.app_path("threads")
+    if not os.path.exists(folder_path):
+        raise Exception("Folder does not exist")
+    try:
+        if thread_id:
+            # Path
+            file_name = f"{thread_id}.json"
+            file_path = os.path.join(folder_path, file_name)
+            # Delete thread file by id
+            os.remove(file_path)
+            print(f"{common.PRNT_API} Removed single file: {file_path}")
+        else:
+            # Pattern to match all files
+            pattern = os.path.join(folder_path, "*")
+            # Get all file paths in the directory
+            files = glob.glob(pattern)
+            # Remove all thread files in dir
+            for path in files:
+                if os.path.isfile(path):
+                    os.remove(path)
+                    print(f"{common.PRNT_API} Removed file from dir: {path}")
+    except Exception as err:
+        return {
+            "success": False,
+            "message": f"Failed to remove chat thread.\n{err}",
+            "data": None,
+        }
+    return {
+        "success": True,
+        "message": f"Removed chat thread(s)",
         "data": None,
     }

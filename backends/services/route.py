@@ -132,6 +132,12 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/persist/chat-thread",
                 "method": "POST",
             },
+            # Delete Chat thread
+            {
+                "name": "deleteChatThread",
+                "urlPath": "/v1/persist/chat-thread",
+                "method": "DELETE",
+            },
             # Load Playground settings
             {
                 "name": "getPlaygroundSettings",

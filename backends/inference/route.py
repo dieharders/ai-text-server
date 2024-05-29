@@ -139,7 +139,11 @@ def load_text_inference(
             "data": None,
         }
     except (Exception, KeyError) as error:
-        raise HTTPException(status_code=400, detail=f"Something went wrong: {error}")
+        return {
+            "message": f"Unable to load AI model [{model_id}]\nMake sure you have available system memory.\n{error}",
+            "success": False,
+            "data": None,
+        }
 
 
 # Open OS file explorer on host machine
