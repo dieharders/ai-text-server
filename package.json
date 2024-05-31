@@ -1,9 +1,9 @@
 {
   "name": "obrew-server",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "author": "Spread Shot Studios",
   "license": "MIT",
-  "productName": "OpenBrew Server",
+  "productName": "Obrew Server",
   "description": "A local & private Ai engine.",
   "main": "main/electron.js",
   "private": false,

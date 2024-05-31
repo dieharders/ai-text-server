@@ -18,16 +18,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
-from embeddings import storage
+from embeddings import storage as vector_storage
 from core import common, classes
 from services.route import router as services
 from embeddings.route import router as embeddings
 from inference.route import router as text_inference
-from settings.route import router as settings
+from storage.route import router as storage
 
 
 server_info = None
-api_version = "0.5.0"
+api_version = "0.5.2"
 SERVER_PORT = 8008
 # Display where the admin can use the web UI
 openbrew_studio_url = "https://studio.openbrewai.com"
@@ -201,14 +201,12 @@ app.add_middleware(
 
 # Import routes
 endpoint_router = APIRouter()
-
 endpoint_router.include_router(services, prefix="/v1/services", tags=["services"])
 endpoint_router.include_router(embeddings, prefix="/v1/memory", tags=["embeddings"])
+endpoint_router.include_router(storage, prefix="/v1/persist", tags=["storage"])
 endpoint_router.include_router(
     text_inference, prefix="/v1/text", tags=["text inference"]
 )
-endpoint_router.include_router(settings, prefix="/v1/persist", tags=["settings"])
-# add more `router.include_router()` as needed for other files
 app.include_router(endpoint_router)
 
 
@@ -248,7 +246,7 @@ async def connect_page(request: Request):
 @app.get("/v1/ping")
 def ping() -> classes.PingResponse:
     try:
-        db = storage.get_vector_db_client(app)
+        db = vector_storage.get_vector_db_client(app)
         db.heartbeat()
         return {"success": True, "message": "pong"}
     except Exception as e:
