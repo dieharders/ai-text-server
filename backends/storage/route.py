@@ -8,53 +8,7 @@ from storage import classes as storage_classes
 router = APIRouter()
 
 
-PLAYGROUND_SETTINGS_FILE_NAME = "playground.json"
 BOT_SETTINGS_FILE_NAME = "bots.json"
-
-
-# Load playground settings
-@router.get("/playground-settings")
-def get_playground_settings() -> classes.GetPlaygroundSettingsResponse:
-    # Paths
-    file_name = PLAYGROUND_SETTINGS_FILE_NAME
-    file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
-    loaded_data = {}
-
-    # Check if folder exists
-    if not os.path.exists(common.APP_SETTINGS_PATH):
-        print("Path does not exist.", flush=True)
-        os.makedirs(common.APP_SETTINGS_PATH)
-
-    try:
-        # Open the file
-        with open(file_path, "r") as file:
-            loaded_data = json.load(file)
-    except FileNotFoundError:
-        # If the file doesn't exist, fail
-        print("No file exists.", flush=True)
-
-    return {
-        "success": True,
-        "message": f"Returned app settings",
-        "data": loaded_data,
-    }
-
-
-# Save playground settings
-@router.post("/playground-settings")
-def save_playground_settings(data: dict) -> classes.GenericEmptyResponse:
-    # Paths
-    file_name = PLAYGROUND_SETTINGS_FILE_NAME
-    file_path = os.path.join(common.APP_SETTINGS_PATH, file_name)
-
-    # Save to disk
-    common.save_settings_file(common.APP_SETTINGS_PATH, file_path, data)
-
-    return {
-        "success": True,
-        "message": f"Saved settings to {file_path}",
-        "data": None,
-    }
 
 
 # Save bot settings
