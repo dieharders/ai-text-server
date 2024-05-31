@@ -17,15 +17,15 @@ Launch the desktop app locally, then navigate your browser to any web app that s
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
 - ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
+- ✅ Chats: Save/Retrieve chat message history
   <!-- - ❌ Cloud platform (subscription, host your infra with us) -->
   <!-- - ❌ Enterprise service (subscription & paid support, bring your own infra) -->
   <!-- - ❌ UI generation -->
-- ❌ Production/Cloud ready: This project is currently under active development, there may be bugs
-- ❌ Chats: Save/Retrieve chat message history
-- ❌ Auto Agents (Assistants)
-- ❌ Agent Teams
+- ❌ Auto Agents
+- ❌ Teams of Agents
 - ❌ Multi-Chat
 - ❌ Long-term memory across conversations
+- ❌ Production/Cloud ready: This project is currently under active development, there may be bugs
 
 ## Getting Started
 
