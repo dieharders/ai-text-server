@@ -27,7 +27,7 @@ from storage.route import router as storage
 
 
 server_info = None
-api_version = "0.5.2"
+api_version = "0.5.3"
 SERVER_PORT = 8008
 # Display where the admin can use the web UI
 openbrew_studio_url = "https://studio.openbrewai.com"
@@ -117,7 +117,7 @@ def shutdown_server(*args):
 
 def display_server_info():
     print(
-        f"{common.PRNT_API} Navigate your browser to Obrew Studio for the admin web UI:\n-> {openbrew_studio_url}",
+        f"{common.PRNT_API} Navigate your browser to:\n-> {openbrew_studio_url} for WebUI",
         flush=True,
     )
     # Display the local IP address of this server
@@ -127,7 +127,7 @@ def display_server_info():
     remote_ip = f"https://{IPAddr}"
     local_ip = f"https://localhost"
     print(
-        f"{common.PRNT_API} Refer to API docs for Obrew Server:\n-> {local_ip}:{SERVER_PORT}/docs \nOR\n-> {remote_ip}:{SERVER_PORT}/docs",
+        f"{common.PRNT_API} Refer to API docs:\n-> {local_ip}:{SERVER_PORT}/docs \nOR\n-> {remote_ip}:{SERVER_PORT}/docs",
         flush=True,
     )
     return {
@@ -150,8 +150,8 @@ def start_server():
             ssl_keyfile=SSL_KEY,
             ssl_certfile=SSL_CERT,
         )
-    except:
-        print(f"{common.PRNT_API} Failed to start API server")
+    except Exception as e:
+        print(f"{common.PRNT_API} API server shutdown. {e}")
 
 
 def run_app_window():
@@ -281,7 +281,6 @@ if __name__ == "__main__":
         # Open browser to WebUI
         print(f"{common.PRNT_API} API server started. Opening WebUI at {local_url}")
         webbrowser.open(local_url, new=2)
-        print(f"{common.PRNT_API} Close this window to shutdown server.")
         # Show a window
         if is_prod:
             run_app_window()

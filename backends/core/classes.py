@@ -1,6 +1,6 @@
 from types import NoneType
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Any, List, Optional
 from enum import Enum
 from chromadb import Collection
 from chromadb.api import ClientAPI
@@ -706,12 +706,6 @@ class BotSettingsResponse(BaseModel):
     data: List[BotSettings] = None
 
 
-class GetPlaygroundSettingsResponse(BaseModel):
-    success: bool
-    message: str
-    data: Optional[BotSettings] = None
-
-
 class SaveSettingsRequest(BaseModel):
     data: dict
 
@@ -719,7 +713,7 @@ class SaveSettingsRequest(BaseModel):
 class GenericEmptyResponse(BaseModel):
     success: bool
     message: str
-    data: None
+    data: Any
 
     model_config = {
         "json_schema_extra": {
