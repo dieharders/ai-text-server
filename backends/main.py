@@ -281,7 +281,6 @@ if __name__ == "__main__":
         # Open browser to WebUI
         print(f"{common.PRNT_API} API server started. Opening WebUI at {local_url}")
         webbrowser.open(local_url, new=2)
-        # print(f"{common.PRNT_API} Close this window to shutdown server.")
         # Show a window
         if is_prod:
             run_app_window()
