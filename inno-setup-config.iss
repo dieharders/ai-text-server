@@ -2,11 +2,11 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Obrew Server"
-#define MyAppVersion "0.5.0"
+#define MyAppVersion "0.6.0"
 #define MyAppPublisher "OpenBrew Ai"
 #define MyAppURL "https://www.openbrewai.com/"
 #define MyAppExeName "Obrew-Server.exe"
-#define MySetupExeName "ObrewServer.Setup.exe"
+#define MySetupExeName "ObrewServer.WIN.Setup.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -24,7 +24,7 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputDir=C:\Project Files\brain-dump-ai\backend-homebrew-ai\installer
-OutputBaseFilename=ObrewServer.Setup
+OutputBaseFilename=ObrewServer.WIN.Setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -41,8 +41,8 @@ Source: "C:\Project Files\brain-dump-ai\backend-homebrew-ai\output\Obrew-Server\
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MySetupExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MySetupExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
