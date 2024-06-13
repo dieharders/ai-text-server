@@ -1,6 +1,6 @@
 {
   "name": "obrew-server",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "author": "Spread Shot Studios",
   "license": "MIT",
   "productName": "Obrew Server",
@@ -10,8 +10,9 @@
   "scripts": {
     "clean": "rimraf includes renderer/.next renderer/out build release main.spec",
     "dev": "next dev",
-    "server:dev": "python ./backends/main.py --mode=dev",
-    "server:prod": "python ./backends/main.py --mode=prod",
+    "server:dev": "python ./backends/main.py --mode=dev --headless=False",
+    "server:local-prod": "python ./backends/main.py --mode=prod --headless=False",
+    "server:hosted-prod": "python ./backends/main.py --mode=prod --headless=True",
     "build": "yarn run build:api && next build renderer",
     "build:api:dev": "pyinstaller --noconfirm --onedir --console --icon C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico --name Obrew-Server --contents-directory _deps --clean --debug bootloader --add-data C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/ --add-data C:/ProgramData/anaconda3/envs/llama-index/Lib/site-packages/llama_cpp;llama_cpp/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/posthog;posthog/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/chromadb;chromadb/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/importlib_resources;importlib_resources/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/backoff;backoff/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/pypika;pypika/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/hnswlib.cp312-win_amd64.pyd;. --hidden-import tiktoken_ext.openai_public --hidden-import tiktoken_ext  C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py",
     "build:api:prod": "pyinstaller --noconfirm --onedir --windowed --icon C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico --name Obrew-Server --contents-directory _deps --clean --add-data C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/ --add-data C:/ProgramData/anaconda3/envs/llama-index/Lib/site-packages/llama_cpp;llama_cpp/ --hidden-import tiktoken_ext.openai_public --hidden-import tiktoken_ext --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/posthog;posthog/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/chromadb;chromadb/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/importlib_resources;importlib_resources/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/backoff;backoff/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/pypika;pypika/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/hnswlib.cp312-win_amd64.pyd;.  C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py",

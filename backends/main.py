@@ -28,7 +28,7 @@ from storage.route import router as storage
 
 
 server_info = None
-api_version = "0.6.1"
+api_version = "0.6.2"
 SERVER_PORT = 8008
 # Display where the admin can use the web UI
 openbrew_studio_url = "https://studio.openbrewai.com"
@@ -40,18 +40,25 @@ def parse_runtime_args():
     arguments = sys.argv[1:]
     # Initialize variables to store parsed arguments
     mode = None
+    headless = "False"
     # Iterate through arguments and parse them
     for arg in arguments:
         if arg.startswith("--mode="):
             mode = arg.split("=")[1]
-    return mode
+        if arg.startswith("--headless="):
+            headless = arg.split("=")[1]
+    return {
+        "mode": mode,
+        "headless": headless,
+    }
 
 
 # Check what env is running - prod/dev
 build_env = parse_runtime_args()
 is_debug = hasattr(sys, "gettrace") and sys.gettrace() is not None
-is_dev = build_env == "dev" or is_debug
-is_prod = build_env == "prod" or not is_dev
+is_dev = build_env["mode"] == "dev" or is_debug
+is_prod = build_env["mode"] == "prod" or not is_dev
+is_headless = build_env["headless"]  # headless == no UI window shown
 # Comment out if you want to debug on prod build
 if is_prod:
     # Remove prints in prod when deploying in window mode
@@ -309,7 +316,8 @@ def connect() -> classes.ConnectResponse:
 if __name__ == "__main__":
     try:
         # Show a window
-        run_app_window()
+        if is_headless == "False":
+            run_app_window()
         # Start API server
         print(
             f"{common.PRNT_API} Navigate your browser to:\n-> {openbrew_studio_url} for WebUI",
