@@ -8,6 +8,7 @@ import httpx
 import socket
 import pyqrcode
 import tkinter as tk
+from tkinter import ttk
 from dotenv import load_dotenv
 from fastapi import (
     FastAPI,
@@ -121,20 +122,12 @@ def shutdown_server(*args):
 
 
 def display_server_info():
-    print(
-        f"{common.PRNT_API} Navigate your browser to:\n-> {openbrew_studio_url} for WebUI",
-        flush=True,
-    )
     # Display the local IP address of this server
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
     # @TODO Can we infer the http protocol automatically somehow?
     remote_ip = f"{XHR_PROTOCOL}://{IPAddr}"
     local_ip = f"{XHR_PROTOCOL}://localhost"
-    print(
-        f"{common.PRNT_API} Refer to API docs:\n-> {local_ip}:{SERVER_PORT}/docs \nOR\n-> {remote_ip}:{SERVER_PORT}/docs",
-        flush=True,
-    )
     return {
         "local_ip": local_ip,
         "remote_ip": remote_ip,
@@ -175,6 +168,16 @@ def run_app_window():
     return window_thread
 
 
+def open_browser():
+    # Find IP info
+    server_info = display_server_info()
+    local_ip = server_info["local_ip"]
+    local_url = f"{local_ip}:{SERVER_PORT}"
+    # Open browser to WebUI
+    print(f"{common.PRNT_API} Opening WebUI at {local_url}")
+    webbrowser.open(local_url, new=2)
+
+
 # Create and run the Tkinter window
 def GUI():
     color_bg = "#333333"
@@ -184,10 +187,28 @@ def GUI():
     # Since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
     root.iconbitmap(default=common.dep_path("public/favicon.ico"))
     root.configure(bg=color_bg)
-    # Set font
+    # Render title
     Font_tuple = ("Verdana", 64, "bold")
     root.bind("<Escape>", lambda e: e.widget.quit())
     tk.Label(root, text="O🍺brew", font=Font_tuple).pack(fill=tk.BOTH, expand=True)
+    # Render button for connection page
+    style = ttk.Style()
+    style.configure(
+        "TButton",
+        font=("Verdana", 14),
+        borderwidth=0,
+        padding=10,
+        background="grey",
+        foreground="black",
+    )
+    style.map(
+        "TButton",
+        background=[("pressed", "black"), ("active", "grey")],
+        foreground=[("pressed", "grey"), ("active", "black")],
+    )
+    button = ttk.Button(root, text="Start Here", command=open_browser, style="TButton")
+    button.pack(pady=20)
+    # Run UI
     root.mainloop()
     # Close server when user closes window
     shutdown_server()
@@ -287,17 +308,20 @@ def connect() -> classes.ConnectResponse:
 
 if __name__ == "__main__":
     try:
-        # Find IP info
+        # Show a window
+        run_app_window()
+        # Start API server
+        print(
+            f"{common.PRNT_API} Navigate your browser to:\n-> {openbrew_studio_url} for WebUI",
+            flush=True,
+        )
         server_info = display_server_info()
         local_ip = server_info["local_ip"]
-        local_url = f"{local_ip}:{SERVER_PORT}"
-        # Open browser to WebUI
-        print(f"{common.PRNT_API} API server started. Opening WebUI at {local_url}")
-        webbrowser.open(local_url, new=2)
-        # Show a window
-        if is_prod:
-            run_app_window()
-        # Start API server
+        remote_ip = server_info["remote_ip"]
+        print(
+            f"{common.PRNT_API} Refer to API docs:\n-> {local_ip}:{SERVER_PORT}/docs \nOR\n-> {remote_ip}:{SERVER_PORT}/docs",
+            flush=True,
+        )
         start_server()
     except (KeyboardInterrupt, Exception):
         print(f"{common.PRNT_API} Something bad happenned, exiting...")
