@@ -58,7 +58,7 @@ build_env = parse_runtime_args()
 is_debug = hasattr(sys, "gettrace") and sys.gettrace() is not None
 is_dev = build_env["mode"] == "dev" or is_debug
 is_prod = build_env["mode"] == "prod" or not is_dev
-is_headless = build_env["headless"]  # headless == no UI window shown
+is_headless = build_env["headless"] == "True"  # headless == no UI window shown
 # Comment out if you want to debug on prod build
 if is_prod:
     # Remove prints in prod when deploying in window mode
@@ -316,7 +316,7 @@ def connect() -> classes.ConnectResponse:
 if __name__ == "__main__":
     try:
         # Show a window
-        if is_headless == "False":
+        if not is_headless:
             run_app_window()
         # Start API server
         print(
