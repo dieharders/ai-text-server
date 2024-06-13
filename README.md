@@ -63,7 +63,9 @@ Or, using yarn (recommended)
 ```bash
 yarn server:dev
 # or
-yarn server:prod
+yarn server:local-prod
+# or
+yarn server:hosted-prod
 ```
 
 The Obrew api server will be running on [https://localhost:8008](https://localhost:8008)
