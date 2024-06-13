@@ -199,13 +199,13 @@ For production deployments you will either want to run the server behind a rever
 
 ### Deploy to local network over https
 
-If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates.
+If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates. Be sure to set these .env vars `SSL_KEY_FILENAME` and `SSL_CERT_FILENAME`.
 
 This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `/public` folder.
 
 ```bash
-openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 36500
-# OR
+openssl req -x509 -newkey rsa:4096 -nodes -out public/cert.pem -keyout public/key.pem -days 36500
+# OR (an alias for same command as above)
 yarn makecert
 ```
 

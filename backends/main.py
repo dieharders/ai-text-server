@@ -27,7 +27,7 @@ from storage.route import router as storage
 
 
 server_info = None
-api_version = "0.6.0"
+api_version = "0.6.1"
 SERVER_PORT = 8008
 # Display where the admin can use the web UI
 openbrew_studio_url = "https://studio.openbrewai.com"
@@ -89,8 +89,13 @@ async def lifespan(application: FastAPI):
 app = FastAPI(title="Obrew🍺Server", version=api_version, lifespan=lifespan)
 
 # Get paths for SSL certificate
-SSL_KEY: str = common.dep_path("public/key.pem")
-SSL_CERT: str = common.dep_path("public/cert.pem")
+SSL_KEY_ENV: str = os.getenv("SSL_KEY_FILENAME")
+SSL_CERT_ENV: str = os.getenv("SSL_CERT_FILENAME")
+SSL_KEY: str = common.dep_path(f"public/{SSL_KEY_ENV}")
+SSL_CERT: str = common.dep_path(f"public/{SSL_CERT_ENV}")
+XHR_PROTOCOL: str = "http"
+if SSL_KEY_ENV and SSL_CERT_ENV:
+    XHR_PROTOCOL = "https"
 # Configure CORS settings
 CUSTOM_ORIGINS_ENV: str = os.getenv("CUSTOM_ORIGINS")
 CUSTOM_ORIGINS = CUSTOM_ORIGINS_ENV.split(",") if CUSTOM_ORIGINS_ENV else []
@@ -124,8 +129,8 @@ def display_server_info():
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
     # @TODO Can we infer the http protocol automatically somehow?
-    remote_ip = f"https://{IPAddr}"
-    local_ip = f"https://localhost"
+    remote_ip = f"{XHR_PROTOCOL}://{IPAddr}"
+    local_ip = f"{XHR_PROTOCOL}://localhost"
     print(
         f"{common.PRNT_API} Refer to API docs:\n-> {local_ip}:{SERVER_PORT}/docs \nOR\n-> {remote_ip}:{SERVER_PORT}/docs",
         flush=True,
@@ -139,17 +144,25 @@ def display_server_info():
 def start_server():
     try:
         print(f"{common.PRNT_API} Starting API server...")
-        # Start the ASGI server
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=SERVER_PORT,
-            log_level="info",
-            # Include these to host over https
-            # If server fails to start make sure the .pem files are generated in root dir
-            ssl_keyfile=SSL_KEY,
-            ssl_certfile=SSL_CERT,
-        )
+        # Start the ASGI server (https)
+        if XHR_PROTOCOL == "https":
+            uvicorn.run(
+                app,
+                host="0.0.0.0",
+                port=SERVER_PORT,
+                log_level="info",
+                # Include these to host over https. If server fails to start make sure the .pem files are generated in root dir
+                ssl_keyfile=SSL_KEY,
+                ssl_certfile=SSL_CERT,
+            )
+        # Start the ASGI server (http)
+        else:
+            uvicorn.run(
+                app,
+                host="0.0.0.0",
+                port=SERVER_PORT,
+                log_level="info",
+            )
     except Exception as e:
         print(f"{common.PRNT_API} API server shutdown. {e}")
 
@@ -259,9 +272,9 @@ def ping() -> classes.PingResponse:
 def connect() -> classes.ConnectResponse:
     return {
         "success": True,
-        "message": f"Connected to api server on port {SERVER_PORT}. Refer to 'https://localhost:{SERVER_PORT}/docs' for api docs.",
+        "message": f"Connected to api server on port {SERVER_PORT}. Refer to '{XHR_PROTOCOL}://localhost:{SERVER_PORT}/docs' for api docs.",
         "data": {
-            "docs": f"https://localhost:{SERVER_PORT}/docs",
+            "docs": f"{XHR_PROTOCOL}://localhost:{SERVER_PORT}/docs",
             "version": api_version,
         },
     }
