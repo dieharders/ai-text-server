@@ -690,6 +690,26 @@ class ResponseSettings(BaseModel):
     stream: bool = None
 
 
+class ToolSetting(BaseModel):
+    id: str
+    name: str
+    path: str
+    description: str
+    args: List[dict]
+
+
+class GetToolSettingsResponse(BaseModel):
+    success: bool
+    message: str
+    data: List[ToolSetting]
+
+
+class EmptyToolSettingsResponse(BaseModel):
+    success: bool
+    message: str
+    data: Any = None
+
+
 class BotSettings(BaseModel):
     attention: AttentionSettings = None
     performance: PerformanceSettings = None
