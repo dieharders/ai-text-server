@@ -123,8 +123,8 @@ origins = [
 
 
 def shutdown_server(*args):
-    print(f"{common.PRNT_API} Force shutting down server...", flush=True)
-    os.kill(os.getpid(), signal.SIGINT)
+    print(f"{common.PRNT_API} Server forced to shutdown.", flush=True)
+    os.kill(os.getpid(), signal.SIGTERM)  # or SIGINT
     # sys.exit(0)
 
 
@@ -332,5 +332,4 @@ if __name__ == "__main__":
         )
         start_server()
     except (KeyboardInterrupt, Exception):
-        print(f"{common.PRNT_API} Something bad happened, exiting...")
         shutdown_server()
