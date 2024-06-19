@@ -691,7 +691,7 @@ class ResponseSettings(BaseModel):
 
 
 class ToolSetting(BaseModel):
-    id: str
+    id: Optional[str] = None
     name: str
     path: str
     description: str
