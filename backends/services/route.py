@@ -138,6 +138,24 @@ def get_services_api(request: Request) -> classes.ServicesApiResponse:
                 "urlPath": "/v1/persist/chat-thread",
                 "method": "DELETE",
             },
+            # Save tool setting
+            {
+                "name": "saveToolSettings",
+                "urlPath": "/v1/persist/tool-settings",
+                "method": "POST",
+            },
+            # Load tool settings
+            {
+                "name": "getToolSettings",
+                "urlPath": "/v1/persist/tool-settings",
+                "method": "GET",
+            },
+            # Delete tool settings
+            {
+                "name": "deleteToolSettings",
+                "urlPath": "/v1/persist/tool-settings",
+                "method": "DELETE",
+            },
             # Load bot settings
             {
                 "name": "getBotSettings",

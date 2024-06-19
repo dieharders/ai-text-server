@@ -4,11 +4,75 @@ import json
 from fastapi import APIRouter, Depends
 from core import classes, common
 from storage import classes as storage_classes
+from nanoid import generate as uuid
 
 router = APIRouter()
 
 
 BOT_SETTINGS_FILE_NAME = "bots.json"
+TOOL_SETTINGS_BASE_PATH = os.path.join(common.APP_SETTINGS_PATH, "tools", "defs")
+
+
+# Save tool settings
+@router.post("/tool-settings")
+def save_tool_definition(
+    settings: classes.ToolSetting,
+) -> classes.EmptyToolSettingsResponse:
+    # Paths
+    if settings.id:
+        id = settings.id
+    else:
+        id = uuid()
+    file_name = f"{id}.json"
+    file_path = os.path.join(TOOL_SETTINGS_BASE_PATH, file_name)
+    # Save tool to file
+    settings_obj = settings.model_dump()
+    common.store_tool_definition(
+        operation="w",
+        folderpath=TOOL_SETTINGS_BASE_PATH,
+        filepath=file_path,
+        data={**settings_obj, "id": id},
+    )
+
+    return {
+        "success": True,
+        "message": f"Saved tool settings.",
+        "data": None,
+    }
+
+
+# Get all tool settings
+@router.get("/tool-settings")
+def get_all_tool_definitions() -> classes.GetToolSettingsResponse:
+    # Save tool to file
+    tools = common.store_tool_definition(
+        operation="r",
+        folderpath=TOOL_SETTINGS_BASE_PATH,
+    )
+    numTools = len(tools)
+
+    return {
+        "success": True,
+        "message": f"Returned {numTools} tool(s) definitions.",
+        "data": tools,
+    }
+
+
+# Delete tool setting
+@router.delete("/tool-settings")
+def delete_tool_definition_by_id(id: str) -> classes.EmptyToolSettingsResponse:
+    # Remove tool file
+    common.store_tool_definition(
+        operation="d",
+        folderpath=TOOL_SETTINGS_BASE_PATH,
+        id=id,
+    )
+
+    return {
+        "success": True,
+        "message": f"Removed tool definition.",
+        "data": None,
+    }
 
 
 # Save bot settings

@@ -419,6 +419,63 @@ def get_settings_file(folderpath: str, filepath: str):
     return loaded_data
 
 
+def store_tool_definition(
+    operation: str,
+    folderpath: str,
+    filepath: Optional[str] = None,
+    id: Optional[str] = None,
+    data: Optional[Any] = None,
+):
+    # Create folder/file
+    if not os.path.exists(folderpath):
+        if operation == "d":
+            # Dir does not exist to delete
+            return
+        os.makedirs(folderpath)
+
+    match operation:
+        # Write new tool
+        case "w":
+            # Try to open the file (if it exists)
+            try:
+                with open(filepath, "r") as file:
+                    existing_data = json.load(file)
+            except FileNotFoundError:
+                # If the file doesn't exist yet, create an empty
+                existing_data = {}
+            except json.JSONDecodeError:
+                existing_data = {}
+            # Update the existing data
+            existing_data = {**existing_data, **data}
+            # Save the updated data to the file, this will overwrite all values
+            with open(filepath, "w") as file:
+                json.dump(existing_data, file, indent=2)
+        # Read all tools
+        case "r":
+            try:
+                existing_data = []
+                files = os.listdir(folderpath)
+                for file_name in files:
+                    file_path = os.path.join(folderpath, file_name)
+                    if os.path.isfile(file_path) and file_path.endswith(".json"):
+                        with open(file_path, "r") as file:
+                            prev_data = json.load(file)
+                            existing_data.append(prev_data)
+            except:
+                existing_data = []
+            return existing_data
+        # Delete tool by id
+        case "d":
+            if not id:
+                return
+            files = os.listdir(folderpath)
+            for file_name in files:
+                file_path = os.path.join(folderpath, file_name)
+                file_id = file_name.split(".")[0]
+                if file_id == id:
+                    os.remove(file_path)
+
+
 def save_bot_settings_file(folderpath: str, filepath: str, data: Any):
     # Create folder/file
     if not os.path.exists(folderpath):
