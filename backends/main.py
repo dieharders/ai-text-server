@@ -28,7 +28,7 @@ from storage.route import router as storage
 
 
 server_info = None
-api_version = "0.6.2"
+api_version = "0.6.3"
 SERVER_PORT = 8008
 # Display where the admin can use the web UI
 openbrew_studio_url = "https://studio.openbrewai.com"
