@@ -15,17 +15,23 @@ TOOL_SETTINGS_BASE_PATH = os.path.join(common.APP_SETTINGS_PATH, "tools", "defs"
 
 # Save tool settings
 @router.post("/tool-settings")
-def save_tool_definition(settings: dict) -> classes.EmptyToolSettingsResponse:
+def save_tool_definition(
+    settings: classes.ToolSetting,
+) -> classes.EmptyToolSettingsResponse:
     # Paths
-    new_id = uuid()
-    file_name = f"{new_id}.json"
+    if settings.id:
+        id = settings.id
+    else:
+        id = uuid()
+    file_name = f"{id}.json"
     file_path = os.path.join(TOOL_SETTINGS_BASE_PATH, file_name)
     # Save tool to file
+    settings_obj = settings.model_dump()
     common.store_tool_definition(
         operation="w",
         folderpath=TOOL_SETTINGS_BASE_PATH,
         filepath=file_path,
-        data={**settings, "id": new_id},
+        data={**settings_obj, "id": id},
     )
 
     return {

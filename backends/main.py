@@ -332,5 +332,5 @@ if __name__ == "__main__":
         )
         start_server()
     except (KeyboardInterrupt, Exception):
-        print(f"{common.PRNT_API} Something bad happenned, exiting...")
+        print(f"{common.PRNT_API} Something bad happened, exiting...")
         shutdown_server()
