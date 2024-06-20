@@ -156,7 +156,7 @@ def start_server():
                 host="0.0.0.0",
                 port=SERVER_PORT,
                 log_level="info",
-                # Include these to host over https. If server fails to start make sure the .pem files are generated in root dir
+                # Include these to host over https. If server fails to start make sure the .pem files are generated in _deps/public dir
                 ssl_keyfile=SSL_KEY,
                 ssl_certfile=SSL_CERT,
             )

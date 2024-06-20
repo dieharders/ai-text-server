@@ -68,7 +68,7 @@ yarn server:hosted-prod
 
 The Obrew api server will be running on [https://localhost:8008](https://localhost:8008)
 
-\*_Note_ if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https (these go into `/public` folder). If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
+\*_Note_ if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https (these go into `_deps/public` folder).
 
 ## Build steps for GPU Support
 
@@ -194,7 +194,7 @@ If you wish to deploy this on your private network for local access from any dev
 
 Rename the included `.env.example` file to `.env` in the `/_deps` folder and modify the vars accordingly.
 
-This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `/public` folder. You should generate your own and overwrite the files in `/public`, do not use the provided certs in a production environment.
+This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `_deps/public` folder. You should generate your own and overwrite the files in `_deps/public`, do not use the provided certs in a production environment.
 
 ```bash
 openssl req -x509 -newkey rsa:4096 -nodes -out public/cert.pem -keyout public/key.pem -days 36500
