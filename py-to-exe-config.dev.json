@@ -104,6 +104,10 @@
   {
    "optionDest": "hiddenimports",
    "value": "tiktoken_ext"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/.env.example;."
   }
  ],
  "nonPyinstallerOptions": {

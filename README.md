@@ -6,7 +6,7 @@ The goal of this project is to be an all-in-one solution for running Ai that is 
 
 ## How It Works
 
-This is a Python app using FastAPI for the server. We provide a Web UI called [Obrew Studio](https://studio.openbrewai.com/) to access the server. You can also access it programmatically via the API.
+The Obrew Engine is a Python server built with FastAPI. We provide a Web UI called [Obrew Studio](https://studio.openbrewai.com/) to access this server. You can also access it programmatically via the [API](#api-overview).
 
 Launch the desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
@@ -17,15 +17,13 @@ Launch the desktop app locally, then navigate your browser to any web app that s
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
 - ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
-- ✅ Chats: Save/Retrieve chat message history
-- ❌ Auto Agents
-- ❌ Teams of Agents
-- ❌ Multi-Chat
-- ❌ Long-term memory across conversations
-- ❌ Production/Cloud ready: This project is currently under active development, there may be bugs
-  <!-- - ❌ Cloud platform (subscription, host your infra with us) -->
-  <!-- - ❌ Enterprise service (subscription & paid support, bring your own infra) -->
-  <!-- - ❌ UI generation -->
+- ✅ Chats: Saved message history
+- ❌ Agents (Bots w/ tools)
+- ❌ Workloads
+- ❌ Support Multi-Modal models
+- ❌ Diffusion image generation
+- ❌ Infinite context & Long-term memory across conversations (personal memory)
+- ❌ Production ready: This project is currently under active development, there may be bugs. Currently, pre-built installers only available for Windows.
 
 ## Getting Started
 
@@ -43,7 +41,7 @@ yarn python-deps
 
 ## Run
 
-### Running production executable
+### Run production executable
 
 If you get a "Permission Denied" error, try running the executable with Admin privileges.
 
@@ -70,7 +68,7 @@ yarn server:hosted-prod
 
 The Obrew api server will be running on [https://localhost:8008](https://localhost:8008)
 
-\*Note if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https (these go into `/public` folder). If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
+\*_Note_ if the server fails to start be sure to run `yarn makecert` command to create certificate files necessary for https (these go into `/public` folder). If you dont want https then simply comment out the 2 lines `ssl_keyfile` and `ssl_certfile` when initiating the server.
 
 ## Build steps for GPU Support
 
@@ -128,26 +126,15 @@ and here https://github.com/abetlen/llama-cpp-python/blob/main/README.md#install
 
 for steps to compile to other targets.
 
-- Zig is described as being capable of cross-compilation so it may be good option for release tooling.
-- You can install it via Chocolatey: `choco install zig`
+## Bundling - Take all deps, dlls, code and bundle with an executable
 
-Run the command below in powershell to set your env variables:
-
-```
-[Environment]::SetEnvironmentVariable(
-   "Path",
-   [Environment]::GetEnvironmentVariable("Path", "Machine") + ";C:\Zig\zig.exe",
-   "Machine"
-)
-```
-
-## Bundling
+Be sure to generate self-signed certs for easy SSL setup in local environment.
 
 ### Bundling Nvida CUDA toolkit deps:
 
 If you already have the required toolkit files installed and have built for GPU then the necessary GPU drivers/dlls should be detected by PyInstaller and included in the `_deps` dir.
 
-### Packaging with PyInstaller:
+### Bundling with PyInstaller:
 
 This is handled automatically by npm scripts so you do not need to execute these manually. The -F flag bundles everything into one .exe file.
 
@@ -163,11 +150,11 @@ Then use it to bundle a python script:
 pyinstaller -c -F your_program.py
 ```
 
-### Packaging with auto-py-to-exe (recommended)
+### Bundling with auto-py-to-exe (recommended)
 
 This is a GUI tool that greatly simplifies the process. You can also save and load configs. It uses PyInstaller under the hood and requires it to be installed. Please note if using a conda or virtual environment, be sure to install both PyInstaller and auto-py-to-exe in your virtual environment and also run them from there, otherwise one or both will build from incorrect deps.
 
-**Note**, you will need to edit paths for the following in `auto-py-to-exe` to point to your base project directory:
+\*_Note_, you will need to edit paths for the following in `auto-py-to-exe` to point to your base project directory:
 
 - Settings -> Output directory
 - Additional Files
@@ -178,6 +165,8 @@ To run:
 ```bash
 auto-py-to-exe
 ```
+
+## Packaging - compress & pack bundled code into install wizard
 
 ### Inno Installer Setup Wizard
 
@@ -193,17 +182,19 @@ This utility will take your exe and dependencies and compress the files, then wr
 
 5. After that compile the script and it should output your setup file where you specified (or project root).
 
-## Production
+## Deploy to Production
 
-### Deploy to public over internet
+### Deploy to public hosted internet
 
 For production deployments you will either want to run the server behind a reverse proxy using something like Traefic-Hub (free and opens your self hosted server to public internet using encrypted https protocol).
 
 ### Deploy to local network over https
 
-If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates. Be sure to set these .env vars `SSL_KEY_FILENAME` and `SSL_CERT_FILENAME`.
+If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates. Be sure to set the .env var `ENABLE_SSL`.
 
-This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `/public` folder.
+Rename the included `.env.example` file to `.env` in the `/_deps` folder and modify the vars accordingly.
+
+This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `/public` folder. You should generate your own and overwrite the files in `/public`, do not use the provided certs in a production environment.
 
 ```bash
 openssl req -x509 -newkey rsa:4096 -nodes -out public/cert.pem -keyout public/key.pem -days 36500
@@ -212,6 +203,8 @@ yarn makecert
 ```
 
 This should be enough for any webapp served over https to access the server. If you see "Warning: Potential Security Risk Ahead" in your browser when using the webapp, you can ignore it by clicking `advanced` then `Accept the Risk` button to continue.
+
+## Releasing
 
 ### Create a release on Github with link to installer
 
@@ -245,9 +238,9 @@ https://github.com/[github-user]/[project-name]/releases/latest/download/[instal
 
 ## API Overview
 
-This project deploys several backend servers exposed using the `/v1` endpoint. The goal is to separate all OS level logic and processing from the client apps. This can make deploying new apps and swapping out engine functionality easier.
+This project deploys several servers/processes (databases, inference, etc.) exposed using the `/v1` endpoint. The goal is to separate all OS level logic and processing from the client apps. This can make deploying new apps and swapping out functionality easier.
 
-A complete list of endpoint documentation can be found [here](https://localhost:8000/docs) after Obrew Server is started.
+A complete list of endpoint documentation can be found at [http://localhost:8000/docs](http://localhost:8000/docs) after Obrew Server is started.
 
 ### Client api library
 

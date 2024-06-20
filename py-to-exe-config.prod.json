@@ -100,6 +100,10 @@
   {
    "optionDest": "datas",
    "value": "C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/hnswlib.cp312-win_amd64.pyd;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/.env.example;."
   }
  ],
  "nonPyinstallerOptions": {
