@@ -248,7 +248,9 @@ There is currently a javascript library under development and being used by [Obr
 
 ### API Keys and .env variables
 
-Put your .env file in the base directory alongside the executable.
+Development: Put your .env file in the base directory of the project.
+
+Installed App: Put your .env file in `_deps` folder in the executable's root directory.
 
 ## Managing Python dependencies
 
