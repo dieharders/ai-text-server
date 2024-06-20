@@ -28,7 +28,7 @@ from storage.route import router as storage
 
 
 server_info = None
-api_version = "0.6.3"
+api_version = "0.6.4"
 SERVER_PORT = 8008
 # Display where the admin can use the web UI
 openbrew_studio_url = "https://studio.openbrewai.com"
@@ -65,10 +65,16 @@ if is_prod:
     sys.stdout = open(os.devnull, "w")
     sys.stderr = open(os.devnull, "w")
 
-# Path to the .env file in the parent directory
-current_directory = os.path.dirname(os.path.abspath(__file__))
-parent_directory = os.path.dirname(current_directory)
-env_path = os.path.join(parent_directory, ".env")
+# Path to the .env file in either the parent or /_deps directory
+try:
+    # Look in app's _deps dir
+    if sys._MEIPASS:
+        env_path = common.dep_path(".env")
+except Exception:
+    # Otherwise look in codebase root dir
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    parent_directory = os.path.dirname(current_directory)
+    env_path = os.path.join(parent_directory, ".env")
 load_dotenv(env_path)
 
 
@@ -97,12 +103,11 @@ async def lifespan(application: FastAPI):
 app = FastAPI(title="Obrew🍺Server", version=api_version, lifespan=lifespan)
 
 # Get paths for SSL certificate
-SSL_KEY_ENV: str = os.getenv("SSL_KEY_FILENAME")
-SSL_CERT_ENV: str = os.getenv("SSL_CERT_FILENAME")
-SSL_KEY: str = common.dep_path(f"public/{SSL_KEY_ENV}")
-SSL_CERT: str = common.dep_path(f"public/{SSL_CERT_ENV}")
+SSL_ENABLED: str = os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
+SSL_KEY: str = common.dep_path(os.path.join("public", "key.pem"))
+SSL_CERT: str = common.dep_path(os.path.join("public", "cert.pem"))
 XHR_PROTOCOL: str = "http"
-if SSL_KEY_ENV and SSL_CERT_ENV:
+if SSL_ENABLED is True:
     XHR_PROTOCOL = "https"
 # Configure CORS settings
 CUSTOM_ORIGINS_ENV: str = os.getenv("CUSTOM_ORIGINS")
@@ -151,7 +156,7 @@ def start_server():
                 host="0.0.0.0",
                 port=SERVER_PORT,
                 log_level="info",
-                # Include these to host over https. If server fails to start make sure the .pem files are generated in root dir
+                # Include these to host over https. If server fails to start make sure the .pem files are generated in _deps/public dir
                 ssl_keyfile=SSL_KEY,
                 ssl_certfile=SSL_CERT,
             )
@@ -192,7 +197,7 @@ def GUI():
     root.title("Obrew Server")
     root.geometry("500x500")
     # Since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
-    root.iconbitmap(default=common.dep_path("public/favicon.ico"))
+    root.iconbitmap(default=common.dep_path(os.path.join("public", "favicon.ico")))
     root.configure(bg=color_bg)
     # Render title
     Font_tuple = ("Verdana", 64, "bold")

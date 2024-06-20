@@ -2,8 +2,8 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Obrew Server"
-#define MyAppVersion "0.6.0"
-#define MyAppPublisher "OpenBrew Ai"
+#define MyAppVersion "0.6.4"
+#define MyAppPublisher "OpenBrewAi"
 #define MyAppURL "https://www.openbrewai.com/"
 #define MyAppExeName "Obrew-Server.exe"
 #define MySetupExeName "ObrewServer.WIN.Setup.exe"
@@ -14,6 +14,7 @@
 AppId={{3FFF4EFE-8FC9-4C78-A698-7A248A4BCADA}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+VersionInfoVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
