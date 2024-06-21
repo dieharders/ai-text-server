@@ -1,4 +1,4 @@
-# 🍺 Obrew Ai Engine
+# 🍺 Obrew Server - Ai Engine
 
 ## Introduction
 
@@ -12,18 +12,35 @@ Launch the desktop app locally, then navigate your browser to any web app that s
 
 ## Features Roadmap
 
+- ✅ Run locally
 - ✅ Inference: Run open-source AI models for free
 - ✅ Provide easy to use desktop installers
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
-- ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
-- ✅ Chats: Saved message history
+- ✅ Build custom bots
+- ✅ Save chat history
+- ✅ CPU & GPU support
+- ✅ Windows OS installer
+- ❌ MacOS/Linux installer
 - ❌ Agents (Bots w/ tools)
-- ❌ Workloads
+- ❌ Workloads (Agent jobs)
 - ❌ Support Multi-Modal models
 - ❌ Diffusion image generation
+- ❌ Source citations in RAG responses
 - ❌ Infinite context & Long-term memory across conversations (personal memory)
-- ❌ Production ready: This project is currently under active development, there may be bugs. Currently, pre-built installers only available for Windows.
+- ❌ Support deployment to hosted server (Admin login)
+- ❌ Production ready: This project is currently under active development, there may be bugs
+
+## Supported Model Providers
+
+This is a local first project. There are plans to support cloud inference providers in the future.
+
+- ✅ [Open-Source](https://huggingface.co)
+- ❌ [Google Gemini](https://gemini.google.com)
+- ❌ [OpenAI](https://openai.com/chatgpt)
+- ❌ [Anthropic](https://www.anthropic.com)
+- ❌ [Mistral AI](https://mistral.ai)
+- ❌ [Groq](https://groq.com)
 
 ## Getting Started
 

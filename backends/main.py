@@ -28,7 +28,7 @@ from storage.route import router as storage
 
 
 server_info = None
-api_version = "0.6.4"
+api_version = "0.7.1"
 SERVER_PORT = 8008
 # Display where the admin can use the web UI
 openbrew_studio_url = "https://studio.openbrewai.com"
@@ -103,10 +103,10 @@ async def lifespan(application: FastAPI):
 app = FastAPI(title="Obrew🍺Server", version=api_version, lifespan=lifespan)
 
 # Get paths for SSL certificate
-SSL_ENABLED: str = os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
+SSL_ENABLED = os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
 SSL_KEY: str = common.dep_path(os.path.join("public", "key.pem"))
 SSL_CERT: str = common.dep_path(os.path.join("public", "cert.pem"))
-XHR_PROTOCOL: str = "http"
+XHR_PROTOCOL = "http"
 if SSL_ENABLED is True:
     XHR_PROTOCOL = "https"
 # Configure CORS settings
@@ -137,7 +137,6 @@ def display_server_info():
     # Display the local IP address of this server
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
-    # @TODO Can we infer the http protocol automatically somehow?
     remote_ip = f"{XHR_PROTOCOL}://{IPAddr}"
     local_ip = f"{XHR_PROTOCOL}://localhost"
     return {
@@ -148,9 +147,9 @@ def display_server_info():
 
 def start_server():
     try:
-        print(f"{common.PRNT_API} Starting API server...")
         # Start the ASGI server (https)
         if XHR_PROTOCOL == "https":
+            print(f"{common.PRNT_API} Starting API server with SSL.")
             uvicorn.run(
                 app,
                 host="0.0.0.0",
@@ -162,6 +161,7 @@ def start_server():
             )
         # Start the ASGI server (http)
         else:
+            print(f"{common.PRNT_API} Starting API server.")
             uvicorn.run(
                 app,
                 host="0.0.0.0",
