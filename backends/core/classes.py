@@ -33,7 +33,6 @@ class FILE_LOADER_SOLUTIONS(Enum):
 class CHAT_MODES(Enum):
     INSTRUCT = "instruct"
     CHAT = "chat"
-    SLIDING = "sliding"
 
 
 class PingResponse(BaseModel):
@@ -190,6 +189,7 @@ class InferenceRequest(BaseModel):
     seed: Optional[int] = DEFAULT_SEED
     # homebrew server specific args
     collectionNames: Optional[List[str]] = []
+    tools: Optional[List[str]] = []
     mode: Optional[str] = DEFAULT_CHAT_MODE
     systemMessage: Optional[str] = None
     messageFormat: Optional[str] = None
@@ -235,6 +235,7 @@ class InferenceRequest(BaseModel):
                 {
                     "prompt": "Why does mass conservation break down?",
                     "collectionNames": ["science"],
+                    "tools": ["calculator"],
                     "mode": DEFAULT_CHAT_MODE,
                     "systemMessage": "You are a helpful Ai assistant.",
                     "messageFormat": "<system> {system_message}\n<user> {prompt}",
@@ -657,6 +658,10 @@ class PerformanceSettings(BaseModel):
     f16_kv: bool = None
 
 
+class ToolsSettings(BaseModel):
+    assigned: List[str | None] = None
+
+
 class SystemSettings(BaseModel):
     systemMessage: str = None
     systemMessageName: str = None
@@ -711,6 +716,7 @@ class EmptyToolSettingsResponse(BaseModel):
 
 
 class BotSettings(BaseModel):
+    tools: ToolsSettings = None
     attention: AttentionSettings = None
     performance: PerformanceSettings = None
     system: SystemSettings = None

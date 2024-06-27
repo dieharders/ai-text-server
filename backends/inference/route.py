@@ -1,6 +1,8 @@
 import os
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sse_starlette.sse import EventSourceResponse
+from inference import agent
+from storage import route as storage_route
 from embeddings import main, query
 from inference import text_llama_index
 from core import classes, common
@@ -337,6 +339,7 @@ async def text_inference(
     app = request.app
 
     try:
+        tools = payload.tools
         prompt = payload.prompt
         messages = payload.messages
         collection_names = payload.collectionNames
@@ -377,7 +380,18 @@ async def text_inference(
             print(f"Error: {msg}", flush=True)
             raise Exception(msg)
 
+        # Handle Agentic flow
+        finalPrompt = prompt
+        is_agent = tools and len(tools) > 0
+        agent_instance = None
+        if is_agent:
+            tool_defs = storage_route.get_all_tool_definitions().get("data")
+            agent_instance = agent.Agent(tools=tool_defs, prompt=prompt)
+            finalPrompt = agent_instance.get_tools_prompt()
+            print(f"finalPrompt::{finalPrompt}")
+
         # Call LLM with context loaded via llama-index/vector store
+        # @TODO Support chat mode
         if collection_names is not None and len(collection_names) > 0:
             # Only take the first collection for now
             collection_name = collection_names[0]
@@ -398,55 +412,62 @@ async def text_inference(
             # Call LLM query engine
             res = query.query_embedding(
                 llm=app.state.llm,
-                query=prompt,
+                query=finalPrompt,
                 prompt_template=rag_prompt_template,
                 index=vector_index,
                 options=retrieval_options,
                 streaming=streaming,
             )
             # Return streaming response
-            if streaming:
+            if streaming and not is_agent:
                 token_generator = res.response_gen
                 response = text_llama_index.token_streamer(token_generator)
                 return EventSourceResponse(response)
             # Return non-stream response
             else:
+                if is_agent:
+                    return agent_instance.eval(response_args=res)
                 return res
-        # Call LLM in raw completion mode
+        # Call LLM in raw completion mode (uses training data)
         elif mode == classes.CHAT_MODES.INSTRUCT.value:
             options["n_ctx"] = n_ctx
             # Return streaming response
-            if streaming:
+            if streaming and not is_agent:
                 return EventSourceResponse(
                     text_llama_index.text_stream_completion(
-                        prompt,
-                        prompt_template,
-                        system_message,
-                        message_format,
-                        app,
-                        options,
+                        prompt_str=finalPrompt,
+                        prompt_template=prompt_template,
+                        system_message=system_message,
+                        message_format=message_format,
+                        app=app,
+                        options=options,
                     )
                 )
             # Return non-stream response
             else:
-                return text_llama_index.text_completion(
-                    prompt,
-                    prompt_template,
-                    system_message,
-                    message_format,
-                    app,
-                    options,
+                response = text_llama_index.text_completion(
+                    prompt_str=finalPrompt,
+                    prompt_template=prompt_template,
+                    system_message=system_message,
+                    message_format=message_format,
+                    app=app,
+                    options=options,
                 )
+                if is_agent:
+                    print(f"agent resp::{response}")
+                    # @TODO Parse out the json result using either regex or another llm call
+                    return agent_instance.eval(response_args=response)
+                return response
         # Stream LLM in chat mode
+        # @TODO Support Agent flow here
         elif mode == classes.CHAT_MODES.CHAT.value:
             options["n_ctx"] = n_ctx
+            # Returns a streaming response
             return EventSourceResponse(
                 text_llama_index.text_chat(
                     messages, system_message, message_format, app, options
                 )
             )
-        # elif mode == classes.CHAT_MODES.SLIDING.value:
-        # do stuff here ...
         elif mode is None:
             raise Exception("Check 'mode' is provided.")
         else:

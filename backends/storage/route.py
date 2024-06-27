@@ -44,7 +44,7 @@ def save_tool_definition(
 # Get all tool settings
 @router.get("/tool-settings")
 def get_all_tool_definitions() -> classes.GetToolSettingsResponse:
-    # Save tool to file
+    # Load tools from file
     tools = common.store_tool_definition(
         operation="r",
         folderpath=TOOL_SETTINGS_BASE_PATH,
