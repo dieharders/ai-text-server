@@ -1,6 +1,6 @@
 from types import NoneType
 from pydantic import BaseModel
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from enum import Enum
 from chromadb import Collection
 from chromadb.api import ClientAPI
@@ -695,18 +695,19 @@ class ResponseSettings(BaseModel):
     stream: bool = None
 
 
-class ToolSetting(BaseModel):
+class ToolDefinition(BaseModel):
     id: Optional[str] = None
     name: str
     path: str
     description: str
-    args: List[dict]
+    arguments: Union[str, None]
+    example_arguments: Union[str, None]
 
 
 class GetToolSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: List[ToolSetting]
+    data: List[ToolDefinition]
 
 
 class EmptyToolSettingsResponse(BaseModel):

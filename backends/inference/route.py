@@ -1,4 +1,7 @@
 import os
+import re
+import json
+from typing import List
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sse_starlette.sse import EventSourceResponse
 from inference import agent
@@ -337,6 +340,9 @@ async def text_inference(
     payload: classes.InferenceRequest,
 ):
     app = request.app
+    QUERY_INPUT = "{query_str}"
+    TOOL_INPUT = "{tool_arguments_str}"
+    EXAMPLE_INPUT = "{tool_example_str}"
 
     try:
         tools = payload.tools
@@ -380,15 +386,29 @@ async def text_inference(
             print(f"Error: {msg}", flush=True)
             raise Exception(msg)
 
-        # Handle Agentic flow
+        # Handle Agent prompt (low temperature works best)
         finalPrompt = prompt
+        allowed_keys: List[str] = []
+        sys_msg = system_message
         is_agent = tools and len(tools) > 0
         agent_instance = None
         if is_agent:
             tool_defs = storage_route.get_all_tool_definitions().get("data")
+            tool = tool_defs[0]
+            # @TODO Add tool_choice setting
             agent_instance = agent.Agent(tools=tool_defs, prompt=prompt)
-            finalPrompt = agent_instance.get_tools_prompt()
-            print(f"finalPrompt::{finalPrompt}")
+            tools_prompt = agent_instance.build_tools_prompt(template=prompt_template)
+            finalPrompt = tools_prompt["query"]
+            print(f"Agent prompt::{finalPrompt}")
+            # Construct msg
+            args_str = f"```json\n{tool.get("arguments")}\n```"
+            example_str = f"```json\n{tool.get("example_arguments")}\n```"
+            tool_str = system_message.replace(TOOL_INPUT, args_str)
+            allowed_keys = tools_prompt["allowed_arguments"]
+            sys_msg = tool_str.replace(EXAMPLE_INPUT, example_str)
+        # Normal prompt
+        elif prompt_template:
+            finalPrompt = prompt_template.replace(QUERY_INPUT, prompt)
 
         # Call LLM with context loaded via llama-index/vector store
         # @TODO Support chat mode
@@ -426,7 +446,7 @@ async def text_inference(
             # Return non-stream response
             else:
                 if is_agent:
-                    return agent_instance.eval(response_args=res)
+                    return agent_instance.eval(args=res)
                 return res
         # Call LLM in raw completion mode (uses training data)
         elif mode == classes.CHAT_MODES.INSTRUCT.value:
@@ -435,9 +455,8 @@ async def text_inference(
             if streaming and not is_agent:
                 return EventSourceResponse(
                     text_llama_index.text_stream_completion(
-                        prompt_str=finalPrompt,
-                        prompt_template=prompt_template,
-                        system_message=system_message,
+                        prompt=finalPrompt,
+                        system_message=sys_msg,
                         message_format=message_format,
                         app=app,
                         options=options,
@@ -446,17 +465,52 @@ async def text_inference(
             # Return non-stream response
             else:
                 response = text_llama_index.text_completion(
-                    prompt_str=finalPrompt,
-                    prompt_template=prompt_template,
-                    system_message=system_message,
+                    prompt=finalPrompt,
+                    system_message=sys_msg,
                     message_format=message_format,
                     app=app,
                     options=options,
                 )
                 if is_agent:
-                    print(f"agent resp::{response}")
-                    # @TODO Parse out the json result using either regex or another llm call
-                    return agent_instance.eval(response_args=response)
+                    print(f"Agent response::\n{response}")
+                    # @TODO Move all this logic to Agent class
+                    # Parse out the json result using either regex or another llm call
+                    pattern = r"json\n({.*?})\n"
+                    match = re.search(pattern, response.text, re.DOTALL)
+                    if match:
+                        # Find first occurance
+                        json_block = match.group(1)
+                        # Remove single-line comments (//...)
+                        json_block = re.sub(r"//.*", "", json_block)
+                        # Remove multi-line comments (/*...*/)
+                        json_block = re.sub(
+                            r"/\*.*?\*/", "", json_block, flags=re.DOTALL
+                        )
+                        # Clean up any extra commas or trailing whitespace
+                        json_block = re.sub(r",\s*(\}|\])", r"\1", json_block)
+                        json_block = json_block.strip()
+                        # Convert JSON block back to a dictionary to ensure it's valid JSON
+                        try:
+                            # Remove any unrelated keys from json
+                            json_object: dict = json.loads(json_block)
+                            # Filter out keys not in the allowed_keys set
+                            filtered_json_object = {
+                                k: v
+                                for k, v in json_object.items()
+                                if k in allowed_keys
+                            }
+                            result = agent_instance.eval(args=filtered_json_object)
+                            # Preserves the correct type
+                            response.raw = {"result": result}
+                            response.text = f"{result}"
+                            print(f"Final agent response:: {response}")
+                            return response
+                        except json.JSONDecodeError as e:
+                            print("Invalid JSON:", e)
+                            raise Exception("Invalid JSON.")
+                    else:
+                        print("No JSON block found!")
+                        raise Exception("No JSON block found!")
                 return response
         # Stream LLM in chat mode
         # @TODO Support Agent flow here

@@ -3,6 +3,7 @@ import glob
 import json
 from fastapi import APIRouter, Depends
 from core import classes, common
+from inference import agent
 from storage import classes as storage_classes
 from nanoid import generate as uuid
 
@@ -16,22 +17,34 @@ TOOL_SETTINGS_BASE_PATH = os.path.join(common.APP_SETTINGS_PATH, "tools", "defs"
 # Save tool settings
 @router.post("/tool-settings")
 def save_tool_definition(
-    settings: classes.ToolSetting,
+    tool_def: classes.ToolDefinition,
 ) -> classes.EmptyToolSettingsResponse:
     # Paths
-    if settings.id:
-        id = settings.id
+    if tool_def.id:
+        id = tool_def.id
     else:
         id = uuid()
     file_name = f"{id}.json"
     file_path = os.path.join(TOOL_SETTINGS_BASE_PATH, file_name)
+
+    # Create arguments and example response for llm prompt from pydantic model
+    tool_code = agent.load_function_file(filename=tool_def.path)
+    tool_model = tool_code["model"]
+    tool_schema = agent.construct_arguments(tool_model)
+    tool_args = json.dumps(tool_schema["arguments"], indent=4)
+    tool_example_args = json.dumps(tool_schema["example_arguments"], indent=4)
+    if not tool_def.arguments:
+        tool_def.arguments = tool_args or "{}"
+    if not tool_def.example_arguments:
+        tool_def.example_arguments = tool_example_args or "{}"
+
     # Save tool to file
-    settings_obj = settings.model_dump()
+    tool_obj = tool_def.model_dump()
     common.store_tool_definition(
         operation="w",
         folderpath=TOOL_SETTINGS_BASE_PATH,
         filepath=file_path,
-        data={**settings_obj, "id": id},
+        data={**tool_obj, "id": id},
     )
 
     return {
