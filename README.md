@@ -10,30 +10,35 @@ The Obrew Engine is a Python server built with FastAPI. We provide a Web UI call
 
 Launch the desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
-## Features Roadmap
+## App Features Roadmap
 
 - ✅ Run locally
-- ✅ Inference: Run open-source AI models for free
 - ✅ Provide easy to use desktop installers
-- ✅ Embeddings: Create vector embeddings from a text or document files
-- ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
-- ✅ Build custom bots
 - ✅ Save chat history
 - ✅ CPU & GPU support
 - ✅ Windows OS installer
 - ❌ MacOS/Linux installer
-- ❌ Agents (Bots w/ tools)
-- ❌ Workloads (Agent jobs)
+- ❌ Docker config for easy server deployment
+- ❌ Support deployment to hosted server with Admin login support
+- ❌ Production ready: This project is currently under active development, there may be bugs
+
+## Ai Features Roadmap
+
+- ✅ Inference: Run open-source AI models for free
+- ✅ Embeddings: Create vector embeddings from a text or document files
+- ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
+- ✅ Build custom bots
+- ✅ Agents: Bots with tools
+- ❌ Workloads: Agent jobs
 - ❌ Support Multi-Modal models
 - ❌ Diffusion image generation
-- ❌ Source citations in RAG responses
 - ❌ Infinite context & Long-term memory across conversations (personal memory)
-- ❌ Support deployment to hosted server (Admin login)
-- ❌ Production ready: This project is currently under active development, there may be bugs
+- ❌ Source citations in RAG responses
+- ❌ Voice to text (User query) and text-to-speech (Ai responses)
 
 ## Supported Model Providers
 
-This is a local first project. There are plans to support cloud inference providers in the future.
+This is a local first project. The ultimate goal is to support all providers via one API.
 
 - ✅ [Open-Source](https://huggingface.co)
 - ❌ [Google Gemini](https://gemini.google.com)
