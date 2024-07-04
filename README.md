@@ -32,6 +32,7 @@ Launch the desktop app locally, then navigate your browser to any web app that s
 - ❌ Workloads: Agent jobs
 - ❌ Support Multi-Modal models
 - ❌ Diffusion image generation
+- ❌ Chat conversations
 - ❌ Infinite context & Long-term memory across conversations (personal memory)
 - ❌ Source citations in RAG responses
 - ❌ Voice to text (User query) and text-to-speech (Ai responses)

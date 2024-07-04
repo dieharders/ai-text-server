@@ -341,11 +341,14 @@ async def text_inference(
 ):
     app = request.app
     QUERY_INPUT = "{query_str}"
-    TOOL_INPUT = "{tool_arguments_str}"
-    EXAMPLE_INPUT = "{tool_example_str}"
+    TOOL_ARGUMENTS = "{tool_arguments_str}"
+    TOOL_EXAMPLE_ARGUMENTS = "{tool_example_str}"
+    TOOL_NAME = "{tool_name_str}"
+    TOOL_DESCRIPTION = "{tool_description_str}"
+    ASSIGNED_TOOLS = "{assigned_tools_str}"
 
     try:
-        tools = payload.tools
+        assigned_tool_names = payload.tools
         prompt = payload.prompt
         messages = payload.messages
         collection_names = payload.collectionNames
@@ -387,28 +390,49 @@ async def text_inference(
             raise Exception(msg)
 
         # Handle Agent prompt (low temperature works best)
-        finalPrompt = prompt
+        query_prompt = prompt
         allowed_keys: List[str] = []
         sys_msg = system_message
-        is_agent = tools and len(tools) > 0
+        is_agent = assigned_tool_names and len(assigned_tool_names) > 0
         agent_instance = None
         if is_agent:
-            tool_defs = storage_route.get_all_tool_definitions().get("data")
-            tool = tool_defs[0]
-            # @TODO Add tool_choice setting
-            agent_instance = agent.Agent(tools=tool_defs, prompt=prompt)
+            def dict_list_to_markdown(dict_list: List[dict]):
+                markdown_string = ""
+                for index, item in enumerate(dict_list):
+                    markdown_string += f"# Tool {index + 1}: {item.get("name")}\n\n"
+                    for key, value in item.items():
+                        # If code
+                        if key == "arguments" or key == "example_arguments":
+                            markdown_string += f"## {key}\n```json\n{value}\n```\n\n"
+                        else:
+                            markdown_string += f"## {key}\n{value}\n\n"
+                return markdown_string
+
+            all_installed_tool_defs = storage_route.get_all_tool_definitions().get("data")
+            # @TODO Add tool_choice setting ? Right now we are hard-coding to first one
+            chosen_tool_name = assigned_tool_names[0]
+            # @TODO look for definition via "id" instead of "name"
+            assigned_tool_defs = [item for item in all_installed_tool_defs if item['name'] in assigned_tool_names]
+            tool_def = next((item for item in assigned_tool_defs if item['name'] == chosen_tool_name), None)
+            agent_instance = agent.Agent(tools=[tool_def], prompt=prompt)
             tools_prompt = agent_instance.build_tools_prompt(template=prompt_template)
-            finalPrompt = tools_prompt["query"]
-            print(f"Agent prompt::{finalPrompt}")
-            # Construct msg
-            args_str = f"```json\n{tool.get("arguments")}\n```"
-            example_str = f"```json\n{tool.get("example_arguments")}\n```"
-            tool_str = system_message.replace(TOOL_INPUT, args_str)
+            # @TODO put replace funcs here to support query templates
+            query_prompt = tools_prompt["query"]
+            print(f"Agent prompt::{query_prompt}")
+            # Construct system msg
+            args_str = f"```json\n{tool_def.get("arguments")}\n```"
+            example_str = f"```json\n{tool_def.get("example_arguments")}\n```"
             allowed_keys = tools_prompt["allowed_arguments"]
-            sys_msg = tool_str.replace(EXAMPLE_INPUT, example_str)
+            assigned_tools_defs_str = dict_list_to_markdown(assigned_tool_defs)
+            sys_msg = system_message.replace(TOOL_ARGUMENTS, args_str)
+            sys_msg = sys_msg.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
+            sys_msg = sys_msg.replace(TOOL_NAME, tool_def.get("name"))
+            sys_msg = sys_msg.replace(TOOL_DESCRIPTION, tool_def.get("description"))
+            sys_msg = sys_msg.replace(ASSIGNED_TOOLS, assigned_tools_defs_str)
+
         # Normal prompt
         elif prompt_template:
-            finalPrompt = prompt_template.replace(QUERY_INPUT, prompt)
+            query_prompt = prompt_template.replace(QUERY_INPUT, prompt)
 
         # Call LLM with context loaded via llama-index/vector store
         # @TODO Support chat mode
@@ -432,7 +456,7 @@ async def text_inference(
             # Call LLM query engine
             res = query.query_embedding(
                 llm=app.state.llm,
-                query=finalPrompt,
+                query=query_prompt,
                 prompt_template=rag_prompt_template,
                 index=vector_index,
                 options=retrieval_options,
@@ -455,7 +479,7 @@ async def text_inference(
             if streaming and not is_agent:
                 return EventSourceResponse(
                     text_llama_index.text_stream_completion(
-                        prompt=finalPrompt,
+                        prompt=query_prompt,
                         system_message=sys_msg,
                         message_format=message_format,
                         app=app,
@@ -465,7 +489,7 @@ async def text_inference(
             # Return non-stream response
             else:
                 response = text_llama_index.text_completion(
-                    prompt=finalPrompt,
+                    prompt=query_prompt,
                     system_message=sys_msg,
                     message_format=message_format,
                     app=app,
