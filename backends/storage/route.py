@@ -19,6 +19,33 @@ TOOL_SETTINGS_BASE_PATH = os.path.join(common.APP_SETTINGS_PATH, "tools", "defs"
 def save_tool_definition(
     tool_def: classes.ToolDefinition,
 ) -> classes.EmptyToolSettingsResponse:
+    name = tool_def.name
+    path = tool_def.path
+    if not name:
+        return {
+            "success": False,
+            "message": f'Please add a "name" field.',
+            "data": None,
+        }
+    if not path:
+        return {
+            "success": False,
+            "message": f'Please add a "path" field.',
+            "data": None,
+        }
+    # Check dupes
+    res = get_all_tool_definitions()
+    tools = res.get("data")
+    is_dupe = next(
+        (item for item in tools if item["name"] == name),
+        None,
+    )
+    if is_dupe and not tool_def.id:
+        return {
+            "success": False,
+            "message": f'The tool name "{name}" already exists.',
+            "data": None,
+        }
     # Paths
     if tool_def.id:
         id = tool_def.id
@@ -28,15 +55,19 @@ def save_tool_definition(
     file_path = os.path.join(TOOL_SETTINGS_BASE_PATH, file_name)
 
     # Create arguments and example response for llm prompt from pydantic model
-    tool_code = agent.load_function_file(filename=tool_def.path)
+    # @TODO Put this logic in agent as its own func, return an object
+    tool_code = agent.load_function_file(filename=path)
     tool_model = tool_code["model"]
     tool_schema = agent.construct_arguments(tool_model)
-    tool_args = json.dumps(tool_schema["arguments"], indent=4)
-    tool_example_args = json.dumps(tool_schema["example_arguments"], indent=4)
+    tool_description = tool_model["description"]
+    tool_args = tool_schema["arguments"]
+    tool_example_args = tool_schema["example_arguments"]
     if not tool_def.arguments:
-        tool_def.arguments = tool_args or "{}"
+        tool_def.arguments = tool_args or {}
+    if not tool_def.description:
+        tool_def.description = tool_description or "This is a tool."
     if not tool_def.example_arguments:
-        tool_def.example_arguments = tool_example_args or "{}"
+        tool_def.example_arguments = tool_example_args or {}
 
     # Save tool to file
     tool_obj = tool_def.model_dump()
@@ -57,12 +88,19 @@ def save_tool_definition(
 # Get all tool settings
 @router.get("/tool-settings")
 def get_all_tool_definitions() -> classes.GetToolSettingsResponse:
-    # Load tools from file
-    tools = common.store_tool_definition(
-        operation="r",
-        folderpath=TOOL_SETTINGS_BASE_PATH,
-    )
-    numTools = len(tools)
+    try:
+        # Load tools from file
+        tools = common.store_tool_definition(
+            operation="r",
+            folderpath=TOOL_SETTINGS_BASE_PATH,
+        )
+        numTools = len(tools)
+    except Exception as err:
+        return {
+            "success": False,
+            "message": f"Failed to return any tools.\n{err}",
+            "data": None,
+        }
 
     return {
         "success": True,

@@ -394,41 +394,51 @@ async def text_inference(
         allowed_keys: List[str] = []
         sys_msg = system_message
         is_agent = assigned_tool_names and len(assigned_tool_names) > 0
-        agent_instance = None
+        assigned_tool: classes.ToolDefinition = None
         if is_agent:
-            def dict_list_to_markdown(dict_list: List[dict]):
-                markdown_string = ""
-                for index, item in enumerate(dict_list):
-                    markdown_string += f"# Tool {index + 1}: {item.get("name")}\n\n"
-                    for key, value in item.items():
-                        # If code
-                        if key == "arguments" or key == "example_arguments":
-                            markdown_string += f"## {key}\n```json\n{value}\n```\n\n"
-                        else:
-                            markdown_string += f"## {key}\n{value}\n\n"
-                return markdown_string
-
-            all_installed_tool_defs = storage_route.get_all_tool_definitions().get("data")
+            all_installed_tool_defs: List[classes.ToolDefinition] = (
+                storage_route.get_all_tool_definitions().get("data")
+            )
             # @TODO Add tool_choice setting ? Right now we are hard-coding to first one
             chosen_tool_name = assigned_tool_names[0]
-            # @TODO look for definition via "id" instead of "name"
-            assigned_tool_defs = [item for item in all_installed_tool_defs if item['name'] in assigned_tool_names]
-            tool_def = next((item for item in assigned_tool_defs if item['name'] == chosen_tool_name), None)
-            agent_instance = agent.Agent(tools=[tool_def], prompt=prompt)
-            tools_prompt = agent_instance.build_tools_prompt(template=prompt_template)
-            # @TODO put replace funcs here to support query templates
-            query_prompt = tools_prompt["query"]
-            print(f"Agent prompt::{query_prompt}")
+            assigned_tool_defs = [
+                item
+                for item in all_installed_tool_defs
+                if item["name"] in assigned_tool_names
+            ]
+            tool_def = next(
+                (
+                    item
+                    for item in assigned_tool_defs
+                    if item["name"] == chosen_tool_name
+                ),
+                None,
+            )
+            assigned_tool = tool_def
             # Construct system msg
-            args_str = f"```json\n{tool_def.get("arguments")}\n```"
-            example_str = f"```json\n{tool_def.get("example_arguments")}\n```"
-            allowed_keys = tools_prompt["allowed_arguments"]
-            assigned_tools_defs_str = dict_list_to_markdown(assigned_tool_defs)
-            sys_msg = system_message.replace(TOOL_ARGUMENTS, args_str)
-            sys_msg = sys_msg.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
-            sys_msg = sys_msg.replace(TOOL_NAME, tool_def.get("name"))
-            sys_msg = sys_msg.replace(TOOL_DESCRIPTION, tool_def.get("description"))
-            sys_msg = sys_msg.replace(ASSIGNED_TOOLS, assigned_tools_defs_str)
+            tool_attrs = agent.get_tool_props(tool_def=tool_def)
+            name_str = tool_attrs["name"]
+            description_str = tool_attrs["description"]
+            args_str = tool_attrs["arguments"]
+            example_str = tool_attrs["example_arguments"]
+            allowed_keys = tool_attrs["allowed_arguments"]
+            assigned_tools_defs_str = agent.dict_list_to_markdown(assigned_tool_defs)
+            # Inject data into prompt
+            query_prompt = prompt_template.replace(QUERY_INPUT, prompt)
+            query_prompt = query_prompt.replace(TOOL_ARGUMENTS, args_str)
+            query_prompt = query_prompt.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
+            query_prompt = query_prompt.replace(TOOL_NAME, name_str)
+            query_prompt = query_prompt.replace(TOOL_DESCRIPTION, description_str)
+            query_prompt = query_prompt.replace(ASSIGNED_TOOLS, assigned_tools_defs_str)
+            print(f"Agent prompt::\n\n{query_prompt}")
+            # Inject data into system msg
+            if system_message:
+                sys_msg = system_message.replace(TOOL_ARGUMENTS, args_str)
+                sys_msg = sys_msg.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
+                sys_msg = sys_msg.replace(TOOL_NAME, name_str)
+                sys_msg = sys_msg.replace(TOOL_DESCRIPTION, description_str)
+                sys_msg = sys_msg.replace(ASSIGNED_TOOLS, assigned_tools_defs_str)
+                print(f"Agent system message::\n\n{sys_msg}")
 
         # Normal prompt
         elif prompt_template:
@@ -470,7 +480,7 @@ async def text_inference(
             # Return non-stream response
             else:
                 if is_agent:
-                    return agent_instance.eval(args=res)
+                    return agent.eval(tool=assigned_tool, args=res)
                 return res
         # Call LLM in raw completion mode (uses training data)
         elif mode == classes.CHAT_MODES.INSTRUCT.value:
@@ -499,11 +509,20 @@ async def text_inference(
                     print(f"Agent response::\n{response}")
                     # @TODO Move all this logic to Agent class
                     # Parse out the json result using either regex or another llm call
-                    pattern = r"json\n({.*?})\n"
-                    match = re.search(pattern, response.text, re.DOTALL)
-                    if match:
+                    pattern_object = r"({.*?})"
+                    pattern_json_object = r"\`\`\`json\n({.*?})\n\`\`\`"
+                    # pattern_json = r"json\n({.*?})\n"
+                    match_json_object = re.search(
+                        pattern_json_object, response.text, re.DOTALL
+                    )
+                    match_object = re.search(pattern_object, response.text, re.DOTALL)
+
+                    if match_json_object or match_object:
                         # Find first occurance
-                        json_block = match.group(1)
+                        if match_json_object:
+                            json_block = match_json_object.group(1)
+                        elif match_object:
+                            json_block = match_object.group(1)
                         # Remove single-line comments (//...)
                         json_block = re.sub(r"//.*", "", json_block)
                         # Remove multi-line comments (/*...*/)
@@ -523,7 +542,10 @@ async def text_inference(
                                 for k, v in json_object.items()
                                 if k in allowed_keys
                             }
-                            result = agent_instance.eval(args=filtered_json_object)
+                            result = agent.eval(
+                                tool=assigned_tool,
+                                args=filtered_json_object,
+                            )
                             # Preserves the correct type
                             response.raw = {"result": result}
                             response.text = f"{result}"
@@ -533,7 +555,6 @@ async def text_inference(
                             print("Invalid JSON:", e)
                             raise Exception("Invalid JSON.")
                     else:
-                        print("No JSON block found!")
                         raise Exception("No JSON block found!")
                 return response
         # Stream LLM in chat mode

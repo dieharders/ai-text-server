@@ -4,6 +4,8 @@ from pydantic import BaseModel
 
 # Required - Always use "Params" as Pydantic model name
 class Params(BaseModel):
+    # Required - A description is needed for prompt injection
+    """Perform simple arithmetic on numbers (operands) according to the specified operation."""
     valueA: int
     valueB: int
     operation: Literal["multiply", "add", "subtract", "divide"]

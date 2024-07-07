@@ -26,11 +26,10 @@ def load_function_file(filename: str):
         # "model": pydantic_model.__annotations__,
     }
 
-
 # Return arguments in a (Pydantic) schema and example output
 def construct_arguments(schema: Any):
     args: dict[str, dict[str, str]] = schema["properties"]
-    example_args = schema["examples"][0]
+    example_args = schema["examples"][0]  # We only take 1st example
     required_args = schema["required"]
 
     # Function to extract the field types and names from the Pydantic model
@@ -51,78 +50,60 @@ def construct_arguments(schema: Any):
     fields = get_model_fields()
 
     # Return a json for example and args
-    return {"arguments": fields, "example_arguments": example_args}
+    return {"arguments": fields, "required_arguments": required_args,"example_arguments": example_args}
 
+def dict_list_to_markdown(dict_list: List[dict]):
+    markdown_string = ""
+    for index, item in enumerate(dict_list):
+        markdown_string += f"# Tool {index + 1}: {item.get("name")}\n\n"
+        for key, value in item.items():
+            # If code
+            if key == "arguments" or key == "example_arguments":
+                markdown_string += f"## {key}\n```json\n{value}\n```\n\n"
+            else:
+                markdown_string += f"## {key}\n{value}\n\n"
+    return markdown_string
 
-# Agent flow (always return non-streaming response)
-class Agent:
-    tool_choice = ""
-    tool = None
-    prompt = ""
+# Filter out all "required_arg" props
+def get_allowed_args(tool_args: dict):
+    result = []
+    for name, value in tool_args.items():
+        if value.get("required_arg") == True:
+            result.append(name)
+    return result
 
-    def __init__(
-        self, tools: List[classes.ToolDefinition], prompt: str, tool_choice: str = "any"
-    ):
-        # Force the model to call at least one tool
-        tool = None
-        # @TODO Support a llm call (semantic search) to determine which tool to use
-        # Or perhaps the user can create a "tool chooser" Ai that returns the tool to the
-        # answering agent, in which case we need only pass one tool.
-        if tool_choice == "any":
-            # For now we pick the first tool
-            tool = tools[0]
-        # Choose the specified tool
-        else:
-            # name of tool you want model to always call
-            tool_index = tools.index(tool_choice)
-            tool = tools[tool_index]
-        self.tool = tool
-        self.tool_choice = tool_choice
-        self.prompt = prompt
+def get_tool_props(tool_def: classes.ToolDefinition):
+    tool_descr_str = tool_def["description"]
+    tool_name_str = tool_def["name"]
+    # Build components of prompt
+    tool_args_json = json.dumps(tool_def["arguments"], indent=4)
+    tool_args_str = f"```json\n{tool_args_json}\n```"
+    tool_example_json = json.dumps(tool_def["example_arguments"], indent=4)
+    tool_example = f"```json\n{tool_example_json}\n```"
+    tool_allowed_keys = get_allowed_args(tool_def["arguments"])
+    return {
+        "name": tool_name_str,
+        "description": tool_descr_str,
+        "arguments": tool_args_str,
+        "example_arguments": tool_example,
+        "allowed_arguments": tool_allowed_keys,
+    }
 
-    # Get the actual function using the provided path
-    def get_tool_function(self, path: str):
-        is_url = path.startswith("https://")
-        tool_code = load_function_file(filename=self.tool["path"])
-        tool_func = tool_code["func"]
-        # @TODO Construct api call for endpoint
-        if is_url:
-            return tool_func
-        # Load local func
-        else:
-            return tool_func
+# Get the actual function using the provided path
+def get_tool_function(path: str, tool: classes.ToolDefinition):
+    is_url = path.startswith("https://")
+    tool_code = load_function_file(filename=tool["path"])
+    tool_func = tool_code["func"]
+    # @TODO Construct api call for endpoint
+    if is_url:
+        return tool_func
+    # Load local func
+    else:
+        return tool_func
 
-    # Pass the text response which includes the function params
-    def eval(self, args: dict):
-        # pass llm response to function
-        path = self.tool["path"]
-        tool_function = self.get_tool_function(path)
-        return tool_function(args)
-
-    # Return a prompt injected with all tool's descriptions
-    def build_tools_prompt(self, template: str):
-        QUERY_INPUT = "{query_str}"
-        # Get tool module
-        tool_code = load_function_file(filename=self.tool["path"])
-        # Get Pydantic model
-        tool_pydantic_model = tool_code["model"]
-        tool_schema = construct_arguments(tool_pydantic_model)
-        # Construct new query
-        tool_descr_str = self.tool["description"]
-        tool_name_str = self.tool["name"]
-        query = template.replace(QUERY_INPUT, self.prompt)
-        # Build components of prompt
-        tool_args_json = json.dumps(tool_schema["arguments"], indent=4)
-        tool_args_str = f"```json\n{tool_args_json}\n```"
-        tool_example_json = json.dumps(tool_schema["example_arguments"], indent=4)
-        tool_example = f"```json\n{tool_example_json}\n```"
-        tool_example_schema: dict = tool_schema["example_arguments"]
-        args_allowed_keys = list(tool_example_schema.keys())
-        return {
-            "query": query,
-            "arguments": tool_args_str,
-            "example_arguments": tool_example,
-            "allowed_arguments": args_allowed_keys,
-            "tool_name": tool_name_str,
-            "tool_description": tool_descr_str,
-        }
+# Pass the text response which includes the function params
+def eval(tool: classes.ToolDefinition, args: dict):
+    # pass llm response to function
+    path = tool["path"]
+    tool_function = get_tool_function(tool=tool, path=path)
+    return tool_function(args)

@@ -699,15 +699,15 @@ class ToolDefinition(BaseModel):
     id: Optional[str] = None
     name: str
     path: str
-    description: str
-    arguments: Union[str, None]
-    example_arguments: Union[str, None]
+    description: Optional[str] = ""
+    arguments: Union[dict, None]  # Optional (json object)
+    example_arguments: Union[dict, None]  # Optional (json object)
 
 
 class GetToolSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: List[ToolDefinition]
+    data: Union[List[ToolDefinition], None]
 
 
 class EmptyToolSettingsResponse(BaseModel):
