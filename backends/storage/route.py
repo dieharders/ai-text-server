@@ -53,22 +53,8 @@ def save_tool_definition(
         id = uuid()
     file_name = f"{id}.json"
     file_path = os.path.join(TOOL_SETTINGS_BASE_PATH, file_name)
-
     # Create arguments and example response for llm prompt from pydantic model
-    # @TODO Put this logic in agent as its own func, return an object
-    tool_code = agent.load_function_file(filename=path)
-    tool_model = tool_code["model"]
-    tool_schema = agent.construct_arguments(tool_model)
-    tool_description = tool_model["description"]
-    tool_args = tool_schema["arguments"]
-    tool_example_args = tool_schema["example_arguments"]
-    if not tool_def.arguments:
-        tool_def.arguments = tool_args or {}
-    if not tool_def.description:
-        tool_def.description = tool_description or "This is a tool."
-    if not tool_def.example_arguments:
-        tool_def.example_arguments = tool_example_args or {}
-
+    tool_def = agent.create_tool_args(tool_def=tool_def)
     # Save tool to file
     tool_obj = tool_def.model_dump()
     common.store_tool_definition(
@@ -77,7 +63,7 @@ def save_tool_definition(
         filepath=file_path,
         data={**tool_obj, "id": id},
     )
-
+    # Successful
     return {
         "success": True,
         "message": f"Saved tool settings.",

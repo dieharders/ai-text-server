@@ -1,6 +1,9 @@
 import json
 import os
 from typing import Any, List
+import re
+import json
+from pydantic import BaseModel
 from core import classes
 import importlib.util
 from core import common
@@ -107,3 +110,81 @@ def eval(tool: classes.ToolDefinition, args: dict):
     path = tool["path"]
     tool_function = get_tool_function(tool=tool, path=path)
     return tool_function(args)
+
+class ParsedOutput(BaseModel):
+    raw: str
+    text: str
+
+# Parse out the json result using either regex or another llm call
+def parse_output(output: str, tool_def: classes.ToolDefinition) -> ParsedOutput:
+    print(f"Agent output response::\n{output}")
+
+    tool_attrs = get_tool_props(tool_def=tool_def)
+    allowed_arguments: List[str] = tool_attrs.get("allowed_arguments", [])
+    parsed_output = {
+        "raw": "",
+        "text": "",
+    }
+    pattern_object = r"({.*?})"
+    pattern_json_object = r"\`\`\`json\n({.*?})\n\`\`\`"
+    # pattern_json = r"json\n({.*?})\n"
+    match_json_object = re.search(
+        pattern_json_object, output, re.DOTALL
+    )
+    match_object = re.search(pattern_object, output, re.DOTALL)
+
+    if match_json_object or match_object:
+        # Find first occurance
+        if match_json_object:
+            json_block = match_json_object.group(1)
+        elif match_object:
+            json_block = match_object.group(1)
+        # Remove single-line comments (//...)
+        json_block = re.sub(r"//.*", "", json_block)
+        # Remove multi-line comments (/*...*/)
+        json_block = re.sub(
+            r"/\*.*?\*/", "", json_block, flags=re.DOTALL
+        )
+        # Clean up any extra commas or trailing whitespace
+        json_block = re.sub(r",\s*(\}|\])", r"\1", json_block)
+        json_block = json_block.strip()
+        # Convert JSON block back to a dictionary to ensure it's valid JSON
+        try:
+            # Remove any unrelated keys from json
+            json_object: dict = json.loads(json_block)
+            # Filter out keys not in the allowed_keys set
+            filtered_json_object = {
+                k: v
+                for k, v in json_object.items()
+                if k in allowed_arguments
+            }
+            result = eval(
+                tool=tool_def,
+                args=filtered_json_object,
+            )
+            # Preserve the correct type
+            parsed_output["raw"] = {"result": result}
+            parsed_output["text"] = f"{result}"
+            print(f"Agent answer:: {parsed_output}")
+            return parsed_output
+        except json.JSONDecodeError as e:
+            print("Invalid JSON:", e)
+            raise Exception("Invalid JSON.")
+    else:
+        raise Exception("No JSON block found!")
+
+# Create arguments and example response for llm prompt from pydantic model
+def create_tool_args(tool_def: classes.ToolDefinition) -> classes.ToolDefinition:
+    tool_code = load_function_file(filename=tool_def.path)
+    tool_model = tool_code["model"]
+    tool_schema = construct_arguments(tool_model)
+    tool_description = tool_model["description"]
+    tool_args = tool_schema["arguments"]
+    tool_example_args = tool_schema["example_arguments"]
+    if not tool_def.arguments:
+        tool_def.arguments = tool_args or {}
+    if not tool_def.description:
+        tool_def.description = tool_description or "This is a tool."
+    if not tool_def.example_arguments:
+        tool_def.example_arguments = tool_example_args or {}
+    return tool_def

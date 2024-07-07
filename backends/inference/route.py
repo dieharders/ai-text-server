@@ -1,6 +1,4 @@
 import os
-import re
-import json
 from typing import List
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sse_starlette.sse import EventSourceResponse
@@ -171,7 +169,7 @@ def explore_text_model_dir() -> classes.FileExploreResponse:
     }
 
 
-# Search huggingface hub and return results
+# @TODO Search huggingface hub and return results
 # https://huggingface.co/docs/huggingface_hub/en/guides/search
 @router.get("/searchModels")
 def search_models(payload):
@@ -179,7 +177,7 @@ def search_models(payload):
     task = payload.task or "text-generation"
     limit = payload.limit or 10
     hf_api = HfApi()
-    # @TODO Example showing how to filter by task and return only top 10 most downloaded
+    # Example showing how to filter by task and return only top 10 most downloaded
     models = hf_api.list_models(
         sort=sort,  # or "downloads" or "trending"
         limit=limit,
@@ -391,7 +389,6 @@ async def text_inference(
 
         # Handle Agent prompt (low temperature works best)
         query_prompt = prompt
-        allowed_keys: List[str] = []
         sys_msg = system_message
         is_agent = assigned_tool_names and len(assigned_tool_names) > 0
         assigned_tool: classes.ToolDefinition = None
@@ -421,9 +418,8 @@ async def text_inference(
             description_str = tool_attrs["description"]
             args_str = tool_attrs["arguments"]
             example_str = tool_attrs["example_arguments"]
-            allowed_keys = tool_attrs["allowed_arguments"]
             assigned_tools_defs_str = agent.dict_list_to_markdown(assigned_tool_defs)
-            # Inject data into prompt
+            # Inject template args into prompt
             query_prompt = prompt_template.replace(QUERY_INPUT, prompt)
             query_prompt = query_prompt.replace(TOOL_ARGUMENTS, args_str)
             query_prompt = query_prompt.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
@@ -431,7 +427,7 @@ async def text_inference(
             query_prompt = query_prompt.replace(TOOL_DESCRIPTION, description_str)
             query_prompt = query_prompt.replace(ASSIGNED_TOOLS, assigned_tools_defs_str)
             print(f"Agent prompt::\n\n{query_prompt}")
-            # Inject data into system msg
+            # Inject template args into system msg
             if system_message:
                 sys_msg = system_message.replace(TOOL_ARGUMENTS, args_str)
                 sys_msg = sys_msg.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
@@ -445,7 +441,7 @@ async def text_inference(
             query_prompt = prompt_template.replace(QUERY_INPUT, prompt)
 
         # Call LLM with context loaded via llama-index/vector store
-        # @TODO Support chat mode
+        # @TODO RAG should also support chat mode
         if collection_names is not None and len(collection_names) > 0:
             # Only take the first collection for now
             collection_name = collection_names[0]
@@ -506,58 +502,15 @@ async def text_inference(
                     options=options,
                 )
                 if is_agent:
-                    print(f"Agent response::\n{response}")
-                    # @TODO Move all this logic to Agent class
                     # Parse out the json result using either regex or another llm call
-                    pattern_object = r"({.*?})"
-                    pattern_json_object = r"\`\`\`json\n({.*?})\n\`\`\`"
-                    # pattern_json = r"json\n({.*?})\n"
-                    match_json_object = re.search(
-                        pattern_json_object, response.text, re.DOTALL
+                    output_response = agent.parse_output(
+                        output=response.text,
+                        tool_def=assigned_tool,
                     )
-                    match_object = re.search(pattern_object, response.text, re.DOTALL)
-
-                    if match_json_object or match_object:
-                        # Find first occurance
-                        if match_json_object:
-                            json_block = match_json_object.group(1)
-                        elif match_object:
-                            json_block = match_object.group(1)
-                        # Remove single-line comments (//...)
-                        json_block = re.sub(r"//.*", "", json_block)
-                        # Remove multi-line comments (/*...*/)
-                        json_block = re.sub(
-                            r"/\*.*?\*/", "", json_block, flags=re.DOTALL
-                        )
-                        # Clean up any extra commas or trailing whitespace
-                        json_block = re.sub(r",\s*(\}|\])", r"\1", json_block)
-                        json_block = json_block.strip()
-                        # Convert JSON block back to a dictionary to ensure it's valid JSON
-                        try:
-                            # Remove any unrelated keys from json
-                            json_object: dict = json.loads(json_block)
-                            # Filter out keys not in the allowed_keys set
-                            filtered_json_object = {
-                                k: v
-                                for k, v in json_object.items()
-                                if k in allowed_keys
-                            }
-                            result = agent.eval(
-                                tool=assigned_tool,
-                                args=filtered_json_object,
-                            )
-                            # Preserves the correct type
-                            response.raw = {"result": result}
-                            response.text = f"{result}"
-                            print(f"Final agent response:: {response}")
-                            return response
-                        except json.JSONDecodeError as e:
-                            print("Invalid JSON:", e)
-                            raise Exception("Invalid JSON.")
-                    else:
-                        raise Exception("No JSON block found!")
+                    response.raw = output_response.get("raw")
+                    response.text = output_response.get("text")
                 return response
-        # Stream LLM in chat mode
+        # @TODO Stream LLM in chat mode
         # @TODO Support Agent flow here
         elif mode == classes.CHAT_MODES.CHAT.value:
             options["n_ctx"] = n_ctx
