@@ -30,11 +30,10 @@ Launch the desktop app locally, then navigate your browser to any web app that s
 - ✅ Build custom bots
 - ✅ Agents: Bots with tools
 - ❌ Workloads: Agent jobs
-- ❌ Support Multi-Modal models
-- ❌ Diffusion image generation
+- ❌ Support multi-modal & vision models
+- ❌ Source citations in retrieved responses
 - ❌ Chat conversations
 - ❌ Infinite context & Long-term memory across conversations (personal memory)
-- ❌ Source citations in RAG responses
 - ❌ Voice to text (User query) and text-to-speech (Ai responses)
 
 ## Supported Model Providers
