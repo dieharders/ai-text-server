@@ -698,8 +698,8 @@ class ResponseSettings(BaseModel):
 class ToolDefinition(BaseModel):
     name: str
     path: str
-    arguments: Union[dict, None] = None
-    example_arguments: Union[dict, None] = None
+    arguments: Optional[dict | None] = None
+    example_arguments: Optional[dict | None] = None
     id: Optional[str] = None
     description: Optional[str] = ""
 
