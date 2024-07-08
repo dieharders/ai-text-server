@@ -57,6 +57,7 @@ next-env.d.ts
 /chromadb
 /storage
 /settings
+/tools/defs
 /embed_models
 /text_models
 /output

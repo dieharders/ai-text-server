@@ -108,6 +108,10 @@
   {
    "optionDest": "datas",
    "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/.env.example;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/tools/functions;tools/functions/"
   }
  ],
  "nonPyinstallerOptions": {

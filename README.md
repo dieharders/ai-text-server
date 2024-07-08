@@ -1,4 +1,4 @@
-# 🍺 Obrew Ai Engine
+# 🍺 Obrew Server - Ai Engine
 
 ## Introduction
 
@@ -10,20 +10,42 @@ The Obrew Engine is a Python server built with FastAPI. We provide a Web UI call
 
 Launch the desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
-## Features Roadmap
+## App Features Roadmap
+
+- ✅ Run locally
+- ✅ Provide easy to use desktop installers
+- ✅ Save chat history
+- ✅ CPU & GPU support
+- ✅ Windows OS installer
+- ❌ MacOS/Linux installer
+- ❌ Docker config for easy server deployment
+- ❌ Support deployment to hosted server with Admin login support
+- ❌ Production ready: This project is currently under active development, there may be bugs
+
+## Ai Features Roadmap
 
 - ✅ Inference: Run open-source AI models for free
-- ✅ Provide easy to use desktop installers
 - ✅ Embeddings: Create vector embeddings from a text or document files
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
-- ✅ Build custom bots from a mix of LLM's, software configs and prompt configs
-- ✅ Chats: Saved message history
-- ❌ Agents (Bots w/ tools)
-- ❌ Workloads
-- ❌ Support Multi-Modal models
-- ❌ Diffusion image generation
+- ✅ Build custom bots
+- ✅ Agents: Bots with tools
+- ❌ Workloads: Agent jobs
+- ❌ Support multi-modal & vision models
+- ❌ Source citations in retrieved responses
+- ❌ Chat conversations
 - ❌ Infinite context & Long-term memory across conversations (personal memory)
-- ❌ Production ready: This project is currently under active development, there may be bugs. Currently, pre-built installers only available for Windows.
+- ❌ Voice to text (User query) and text-to-speech (Ai responses)
+
+## Supported Model Providers
+
+This is a local first project. The ultimate goal is to support all providers via one API.
+
+- ✅ [Open-Source](https://huggingface.co)
+- ❌ [Google Gemini](https://gemini.google.com)
+- ❌ [OpenAI](https://openai.com/chatgpt)
+- ❌ [Anthropic](https://www.anthropic.com)
+- ❌ [Mistral AI](https://mistral.ai)
+- ❌ [Groq](https://groq.com)
 
 ## Getting Started
 
@@ -285,6 +307,23 @@ conda deactivate
 ```
 
 4. If using an IDE like VSCode, you must apply your newly created virtual environment by selecting the `python interpreter` button at the bottom when inside your project directory.
+
+## Adding Custom Tools for Agents
+
+Some notes on how to create a new tool:
+
+1. File name and function name should be the same
+2. 1 function per file
+3. Functions must be written in Python: `function_name.py`
+4. Each function needs a description to help the llm
+5. Each function needs a Pydantic class (named "Params") assigned to input args
+
+Where to store the function code:
+From the project's root `tools\functions`
+OR
+From the installation directory, create a new folder `tools\functions`
+
+Take a look at the [calculator.py](\tools\functions\calculator.py) example for reference.
 
 ## Learn More
 

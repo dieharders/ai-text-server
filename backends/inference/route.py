@@ -1,6 +1,9 @@
 import os
+from typing import List
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sse_starlette.sse import EventSourceResponse
+from inference import agent
+from storage import route as storage_route
 from embeddings import main, query
 from inference import text_llama_index
 from core import classes, common
@@ -166,7 +169,7 @@ def explore_text_model_dir() -> classes.FileExploreResponse:
     }
 
 
-# Search huggingface hub and return results
+# @TODO Search huggingface hub and return results
 # https://huggingface.co/docs/huggingface_hub/en/guides/search
 @router.get("/searchModels")
 def search_models(payload):
@@ -174,7 +177,7 @@ def search_models(payload):
     task = payload.task or "text-generation"
     limit = payload.limit or 10
     hf_api = HfApi()
-    # @TODO Example showing how to filter by task and return only top 10 most downloaded
+    # Example showing how to filter by task and return only top 10 most downloaded
     models = hf_api.list_models(
         sort=sort,  # or "downloads" or "trending"
         limit=limit,
@@ -335,8 +338,15 @@ async def text_inference(
     payload: classes.InferenceRequest,
 ):
     app = request.app
+    QUERY_INPUT = "{query_str}"
+    TOOL_ARGUMENTS = "{tool_arguments_str}"
+    TOOL_EXAMPLE_ARGUMENTS = "{tool_example_str}"
+    TOOL_NAME = "{tool_name_str}"
+    TOOL_DESCRIPTION = "{tool_description_str}"
+    ASSIGNED_TOOLS = "{assigned_tools_str}"
 
     try:
+        assigned_tool_names = payload.tools
         prompt = payload.prompt
         messages = payload.messages
         collection_names = payload.collectionNames
@@ -377,7 +387,62 @@ async def text_inference(
             print(f"Error: {msg}", flush=True)
             raise Exception(msg)
 
-        # Call LLM with context loaded via llama-index/vector store
+        # Handle Agent prompt (low temperature works best)
+        query_prompt = prompt
+        sys_msg = system_message
+        is_agent = assigned_tool_names and len(assigned_tool_names) > 0
+        assigned_tool: classes.ToolDefinition = None
+        if is_agent:
+            all_installed_tool_defs: List[classes.ToolDefinition] = (
+                storage_route.get_all_tool_definitions().get("data")
+            )
+            # @TODO Add tool_choice setting ? Right now we are hard-coding to first one
+            chosen_tool_name = assigned_tool_names[0]
+            assigned_tool_defs = [
+                item
+                for item in all_installed_tool_defs
+                if item["name"] in assigned_tool_names
+            ]
+            tool_def = next(
+                (
+                    item
+                    for item in assigned_tool_defs
+                    if item["name"] == chosen_tool_name
+                ),
+                None,
+            )
+            assigned_tool = tool_def
+            # Construct system msg
+            tool_attrs = agent.get_tool_props(tool_def=tool_def)
+            name_str = tool_attrs["name"]
+            description_str = tool_attrs["description"]
+            args_str = tool_attrs["arguments"]
+            example_str = tool_attrs["example_arguments"]
+            assigned_tools_defs_str = agent.dict_list_to_markdown(assigned_tool_defs)
+            # Inject template args into prompt
+            query_prompt = prompt_template.replace(QUERY_INPUT, prompt)
+            query_prompt = query_prompt.replace(TOOL_ARGUMENTS, args_str)
+            query_prompt = query_prompt.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
+            query_prompt = query_prompt.replace(TOOL_NAME, name_str)
+            query_prompt = query_prompt.replace(TOOL_DESCRIPTION, description_str)
+            query_prompt = query_prompt.replace(ASSIGNED_TOOLS, assigned_tools_defs_str)
+            print(f"Agent prompt::\n\n{query_prompt}")
+            # Inject template args into system msg
+            if system_message:
+                sys_msg = system_message.replace(TOOL_ARGUMENTS, args_str)
+                sys_msg = sys_msg.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
+                sys_msg = sys_msg.replace(TOOL_NAME, name_str)
+                sys_msg = sys_msg.replace(TOOL_DESCRIPTION, description_str)
+                sys_msg = sys_msg.replace(ASSIGNED_TOOLS, assigned_tools_defs_str)
+                print(f"Agent system message::\n\n{sys_msg}")
+
+        # Normal prompt
+        elif prompt_template:
+            query_prompt = prompt_template.replace(QUERY_INPUT, prompt)
+
+        # RAG - Call LLM with context loaded via llama-index/vector store
+        # Agent flow explicitly not supported for RAG due to context complexities.
+        # @TODO RAG should also support chat mode
         if collection_names is not None and len(collection_names) > 0:
             # Only take the first collection for now
             collection_name = collection_names[0]
@@ -398,7 +463,7 @@ async def text_inference(
             # Call LLM query engine
             res = query.query_embedding(
                 llm=app.state.llm,
-                query=prompt,
+                query=query_prompt,
                 prompt_template=rag_prompt_template,
                 index=vector_index,
                 options=retrieval_options,
@@ -412,41 +477,48 @@ async def text_inference(
             # Return non-stream response
             else:
                 return res
-        # Call LLM in raw completion mode
+        # Raw model - Call LLM in raw completion mode (uses training data)
         elif mode == classes.CHAT_MODES.INSTRUCT.value:
             options["n_ctx"] = n_ctx
             # Return streaming response
-            if streaming:
+            if streaming and not is_agent:
                 return EventSourceResponse(
                     text_llama_index.text_stream_completion(
-                        prompt,
-                        prompt_template,
-                        system_message,
-                        message_format,
-                        app,
-                        options,
+                        prompt=query_prompt,
+                        system_message=sys_msg,
+                        message_format=message_format,
+                        app=app,
+                        options=options,
                     )
                 )
             # Return non-stream response
             else:
-                return text_llama_index.text_completion(
-                    prompt,
-                    prompt_template,
-                    system_message,
-                    message_format,
-                    app,
-                    options,
+                response = text_llama_index.text_completion(
+                    prompt=query_prompt,
+                    system_message=sys_msg,
+                    message_format=message_format,
+                    app=app,
+                    options=options,
                 )
-        # Stream LLM in chat mode
+                if is_agent:
+                    # Parse out the json result using either regex or another llm call
+                    output_response = agent.parse_output(
+                        output=response.text,
+                        tool_def=assigned_tool,
+                    )
+                    response.raw = output_response.get("raw")
+                    response.text = output_response.get("text")
+                return response
+        # @TODO Stream LLM in chat mode
+        # @TODO Agent flow here
         elif mode == classes.CHAT_MODES.CHAT.value:
             options["n_ctx"] = n_ctx
+            # Returns a streaming response
             return EventSourceResponse(
                 text_llama_index.text_chat(
                     messages, system_message, message_format, app, options
                 )
             )
-        # elif mode == classes.CHAT_MODES.SLIDING.value:
-        # do stuff here ...
         elif mode is None:
             raise Exception("Check 'mode' is provided.")
         else:

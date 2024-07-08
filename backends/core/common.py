@@ -44,6 +44,12 @@ def dep_path(relative_path):
 MODEL_METADATAS_FILENAME = "installed_models.json"
 APP_SETTINGS_FOLDER = "settings"
 APP_SETTINGS_PATH = app_path(APP_SETTINGS_FOLDER)
+TOOL_FOLDER = "tools"
+TOOL_FUNCS_FOLDER = "functions"
+TOOL_PATH = app_path(TOOL_FOLDER)
+TOOL_DEFS_PATH = os.path.join(TOOL_PATH, "defs")
+TOOL_PREBUILT_PATH = os.path.join(TOOL_FOLDER, TOOL_FUNCS_FOLDER)
+TOOL_FUNCS_PATH = os.path.join(TOOL_PATH, TOOL_FUNCS_FOLDER)
 MODEL_METADATAS_FILEPATH = os.path.join(APP_SETTINGS_PATH, MODEL_METADATAS_FILENAME)
 TEXT_MODELS_CACHE_DIR = "text_models"
 INSTALLED_TEXT_MODELS = "installed_text_models"  # key in json file
@@ -292,8 +298,6 @@ def save_text_model(data: SaveTextModelRequestArgs):
             existing_data = json.load(file)
     except (Exception, FileNotFoundError):
         # If the file doesn't exist yet, create an empty dictionary
-        existing_data = DEFAULT_SETTINGS_DICT
-    except json.JSONDecodeError:
         existing_data = DEFAULT_SETTINGS_DICT
 
     # Update the existing data with the new variables

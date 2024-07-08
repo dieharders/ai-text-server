@@ -1,6 +1,6 @@
 from types import NoneType
-from pydantic import BaseModel
-from typing import Any, List, Optional
+from pydantic import BaseModel, field_validator
+from typing import List, Optional, Union
 from enum import Enum
 from chromadb import Collection
 from chromadb.api import ClientAPI
@@ -33,7 +33,6 @@ class FILE_LOADER_SOLUTIONS(Enum):
 class CHAT_MODES(Enum):
     INSTRUCT = "instruct"
     CHAT = "chat"
-    SLIDING = "sliding"
 
 
 class PingResponse(BaseModel):
@@ -190,6 +189,7 @@ class InferenceRequest(BaseModel):
     seed: Optional[int] = DEFAULT_SEED
     # homebrew server specific args
     collectionNames: Optional[List[str]] = []
+    tools: Optional[List[str]] = []
     mode: Optional[str] = DEFAULT_CHAT_MODE
     systemMessage: Optional[str] = None
     messageFormat: Optional[str] = None
@@ -235,6 +235,7 @@ class InferenceRequest(BaseModel):
                 {
                     "prompt": "Why does mass conservation break down?",
                     "collectionNames": ["science"],
+                    "tools": ["calculator"],
                     "mode": DEFAULT_CHAT_MODE,
                     "systemMessage": "You are a helpful Ai assistant.",
                     "messageFormat": "<system> {system_message}\n<user> {prompt}",
@@ -657,6 +658,10 @@ class PerformanceSettings(BaseModel):
     f16_kv: bool = None
 
 
+class ToolsSettings(BaseModel):
+    assigned: List[str | None] = None
+
+
 class SystemSettings(BaseModel):
     systemMessage: str = None
     systemMessageName: str = None
@@ -690,27 +695,54 @@ class ResponseSettings(BaseModel):
     stream: bool = None
 
 
-class ToolSetting(BaseModel):
-    id: Optional[str] = None
+class ToolDefinition(BaseModel):
     name: str
     path: str
-    description: str
-    args: List[dict]
+    arguments: Optional[dict | None] = None
+    example_arguments: Optional[dict | None] = None
+    id: Optional[str] = None
+    description: Optional[str] = ""
+
+
+class ToolSaveRequest(BaseModel):
+    name: str
+    path: str
+    id: Optional[str] = None  # pass string to edit tool, leave blank to add new tool
+
+    @field_validator("id")
+    @classmethod
+    def prevent_none(cls, v):
+        assert v is not None, "id may not be None"
+        assert v is not "", "id may not be empty"
+        return v
 
 
 class GetToolSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: List[ToolSetting]
+    data: Union[List[ToolDefinition], None]
 
 
 class EmptyToolSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: Any = None
+    data: NoneType
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "message": "Returned 1 tool.",
+                    "data": None,
+                }
+            ]
+        }
+    }
 
 
 class BotSettings(BaseModel):
+    tools: ToolsSettings = None
     attention: AttentionSettings = None
     performance: PerformanceSettings = None
     system: SystemSettings = None
@@ -733,7 +765,7 @@ class SaveSettingsRequest(BaseModel):
 class GenericEmptyResponse(BaseModel):
     success: bool
     message: str
-    data: Any
+    data: NoneType
 
     model_config = {
         "json_schema_extra": {

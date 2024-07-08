@@ -13,7 +13,8 @@ from core import common, classes
 # These generic helper funcs wont add End_of_seq tokens etc but construct the Prompt/Message
 # from llama_index.llms.generic_utils import messages_to_prompt
 
-QUERY_INPUT = "{query_str}"
+CONTEXT_INPUT = "{context_str}"  # used by tools and RAG
+QUERY_INPUT = "{query_str}"  # the user's prompt
 # More templates found here: https://github.com/run-llama/llama_index/blob/main/llama_index/prompts/default_prompts.py
 DEFAULT_SYSTEM_MESSAGE = """You are an AI assistant that answers questions in a friendly manner. Here are some rules you always follow:
 - Generate human readable output, avoid creating output with gibberish text.
@@ -246,8 +247,7 @@ def token_streamer(token_generator):
 
 # Perform a streamed (synchronous) text completion on a prompt with trained data only
 def text_stream_completion(
-    prompt_str: str,
-    prompt_template: str,
+    prompt: str,
     system_message: str,
     message_format: str,
     app,
@@ -257,11 +257,6 @@ def text_stream_completion(
     llm: LlamaCPP = app.state.llm
     if llm == None:
         raise Exception("No Ai loaded.")
-
-    # Format prompt from template
-    prompt = prompt_str
-    if prompt_template:
-        prompt = prompt_template.replace(QUERY_INPUT, prompt_str)
 
     # Format to model spec, construct a message with system message and prompt
     message = completion_to_prompt(prompt, sys_message, message_format)
@@ -278,8 +273,7 @@ def text_stream_completion(
 
 # Perform a non-streamed (synchronous) text completion on a prompt with trained data only
 def text_completion(
-    prompt_str: str,
-    prompt_template: str,
+    prompt: str,
     system_message: str,
     message_format: str,
     app,
@@ -289,11 +283,6 @@ def text_completion(
     llm: LlamaCPP = app.state.llm
     if llm == None:
         raise Exception("No Ai loaded.")
-
-    # Format prompt from template
-    prompt = prompt_str
-    if prompt_template:
-        prompt = prompt_template.replace(QUERY_INPUT, prompt_str)
 
     # Format to model spec, construct a message with system message and prompt
     message = completion_to_prompt(prompt, sys_message, message_format)

@@ -3,6 +3,7 @@ import glob
 import json
 from fastapi import APIRouter, Depends
 from core import classes, common
+from inference import agent
 from storage import classes as storage_classes
 from nanoid import generate as uuid
 
@@ -10,30 +11,66 @@ router = APIRouter()
 
 
 BOT_SETTINGS_FILE_NAME = "bots.json"
-TOOL_SETTINGS_BASE_PATH = os.path.join(common.APP_SETTINGS_PATH, "tools", "defs")
 
 
 # Save tool settings
 @router.post("/tool-settings")
 def save_tool_definition(
-    settings: classes.ToolSetting,
+    tool_def: classes.ToolSaveRequest,
 ) -> classes.EmptyToolSettingsResponse:
-    # Paths
-    if settings.id:
-        id = settings.id
-    else:
-        id = uuid()
-    file_name = f"{id}.json"
-    file_path = os.path.join(TOOL_SETTINGS_BASE_PATH, file_name)
-    # Save tool to file
-    settings_obj = settings.model_dump()
-    common.store_tool_definition(
-        operation="w",
-        folderpath=TOOL_SETTINGS_BASE_PATH,
-        filepath=file_path,
-        data={**settings_obj, "id": id},
-    )
-
+    name = tool_def.name
+    path = tool_def.path
+    if not name:
+        return {
+            "success": False,
+            "message": f'Please add a "name" value.',
+            "data": None,
+        }
+    if not path:
+        return {
+            "success": False,
+            "message": f'Please add a "path" value.',
+            "data": None,
+        }
+    try:
+        # Check dupes
+        res = get_all_tool_definitions()
+        tools = res.get("data")
+        is_dupe = next(
+            (item for item in tools if item["name"] == name),
+            None,
+        )
+        if is_dupe and not tool_def.id:
+            return {
+                "success": False,
+                "message": f'The tool name "{name}" already exists.',
+                "data": None,
+            }
+        # Assign id
+        if tool_def.id:
+            id = tool_def.id
+        else:
+            id = uuid()
+        # Paths - @TODO Check for url or filename and handle accordingly
+        # For urls, make call to endpoint.json to fetch descr, args, example
+        file_name = f"{id}.json"
+        file_path = os.path.join(common.TOOL_DEFS_PATH, file_name)
+        # Create arguments and example response for llm prompt from pydantic model
+        tool_def = agent.create_tool_args(tool_def=tool_def)
+        # Save tool to file
+        common.store_tool_definition(
+            operation="w",
+            folderpath=common.TOOL_DEFS_PATH,
+            filepath=file_path,
+            data={**tool_def, "id": id},
+        )
+    except Exception as err:
+        return {
+            "success": False,
+            "message": f"Failed to add tool. Reason: {err}",
+            "data": None,
+        }
+    # Successful
     return {
         "success": True,
         "message": f"Saved tool settings.",
@@ -44,12 +81,19 @@ def save_tool_definition(
 # Get all tool settings
 @router.get("/tool-settings")
 def get_all_tool_definitions() -> classes.GetToolSettingsResponse:
-    # Save tool to file
-    tools = common.store_tool_definition(
-        operation="r",
-        folderpath=TOOL_SETTINGS_BASE_PATH,
-    )
-    numTools = len(tools)
+    try:
+        # Load tools from file
+        tools = common.store_tool_definition(
+            operation="r",
+            folderpath=common.TOOL_DEFS_PATH,
+        )
+        numTools = len(tools)
+    except Exception as err:
+        return {
+            "success": False,
+            "message": f"Failed to return any tools.\n{err}",
+            "data": None,
+        }
 
     return {
         "success": True,
@@ -64,7 +108,7 @@ def delete_tool_definition_by_id(id: str) -> classes.EmptyToolSettingsResponse:
     # Remove tool file
     common.store_tool_definition(
         operation="d",
-        folderpath=TOOL_SETTINGS_BASE_PATH,
+        folderpath=common.TOOL_DEFS_PATH,
         id=id,
     )
 
