@@ -9,15 +9,30 @@ import importlib.util
 from core import common
 
 
-# Load the code module and pydantic model for the tool (from `/public/tools/functions`)
+# Load the code module and pydantic model for the tool
+# file name and function name must be the same!
 def load_function_file(filename: str):
     func_name = os.path.splitext(filename)[0]
-    path = common.dep_path(os.path.join("public", "tools", "functions", filename))
-    # file name and function name must be the same!
-    spec = importlib.util.spec_from_file_location(
-        name=filename,
-        location=path,
-    )
+    prebuilt_funcs_path = common.dep_path(os.path.join(common.TOOL_PREBUILT_PATH, filename))
+    custom_funcs_path = os.path.join(common.TOOL_FUNCS_PATH, filename)
+    try:
+        # Check pre-made funcs first
+        spec = importlib.util.spec_from_file_location(
+            name=filename,
+            location=prebuilt_funcs_path,
+        )
+    except:
+        pass
+    try:
+        # Check custom user funcs
+        spec = importlib.util.spec_from_file_location(
+            name=filename,
+            location=custom_funcs_path,
+        )
+    except:
+        raise Exception("No path/function found.")
+    if not spec:
+        raise Exception("No tool found.")
     tool_code = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(tool_code)
     tool_func = getattr(tool_code, func_name)

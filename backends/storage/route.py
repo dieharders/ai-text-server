@@ -11,7 +11,6 @@ router = APIRouter()
 
 
 BOT_SETTINGS_FILE_NAME = "bots.json"
-TOOL_SETTINGS_BASE_PATH = os.path.join(common.APP_SETTINGS_PATH, "tools", "defs")
 
 
 # Save tool settings
@@ -33,36 +32,43 @@ def save_tool_definition(
             "message": f'Please add a "path" field.',
             "data": None,
         }
-    # Check dupes
-    res = get_all_tool_definitions()
-    tools = res.get("data")
-    is_dupe = next(
-        (item for item in tools if item["name"] == name),
-        None,
-    )
-    if is_dupe and not tool_def.id:
+    try:
+        # Check dupes
+        res = get_all_tool_definitions()
+        tools = res.get("data")
+        is_dupe = next(
+            (item for item in tools if item["name"] == name),
+            None,
+        )
+        if is_dupe and not tool_def.id:
+            return {
+                "success": False,
+                "message": f'The tool name "{name}" already exists.',
+                "data": None,
+            }
+        # Paths
+        if tool_def.id:
+            id = tool_def.id
+        else:
+            id = uuid()
+        file_name = f"{id}.json"
+        file_path = os.path.join(common.TOOL_DEFS_PATH, file_name)
+        # Create arguments and example response for llm prompt from pydantic model
+        tool_def = agent.create_tool_args(tool_def=tool_def)
+        # Save tool to file
+        tool_obj = tool_def.model_dump()
+        common.store_tool_definition(
+            operation="w",
+            folderpath=common.TOOL_DEFS_PATH,
+            filepath=file_path,
+            data={**tool_obj, "id": id},
+        )
+    except Exception as err:
         return {
             "success": False,
-            "message": f'The tool name "{name}" already exists.',
+            "message": f"Failed to add tool. Reason: {err}",
             "data": None,
         }
-    # Paths
-    if tool_def.id:
-        id = tool_def.id
-    else:
-        id = uuid()
-    file_name = f"{id}.json"
-    file_path = os.path.join(TOOL_SETTINGS_BASE_PATH, file_name)
-    # Create arguments and example response for llm prompt from pydantic model
-    tool_def = agent.create_tool_args(tool_def=tool_def)
-    # Save tool to file
-    tool_obj = tool_def.model_dump()
-    common.store_tool_definition(
-        operation="w",
-        folderpath=TOOL_SETTINGS_BASE_PATH,
-        filepath=file_path,
-        data={**tool_obj, "id": id},
-    )
     # Successful
     return {
         "success": True,
@@ -78,7 +84,7 @@ def get_all_tool_definitions() -> classes.GetToolSettingsResponse:
         # Load tools from file
         tools = common.store_tool_definition(
             operation="r",
-            folderpath=TOOL_SETTINGS_BASE_PATH,
+            folderpath=common.TOOL_DEFS_PATH,
         )
         numTools = len(tools)
     except Exception as err:
@@ -101,7 +107,7 @@ def delete_tool_definition_by_id(id: str) -> classes.EmptyToolSettingsResponse:
     # Remove tool file
     common.store_tool_definition(
         operation="d",
-        folderpath=TOOL_SETTINGS_BASE_PATH,
+        folderpath=common.TOOL_DEFS_PATH,
         id=id,
     )
 

@@ -23,7 +23,8 @@ class Params(BaseModel):
     }
 
 
-# Required - One function per file, Always put code in folder [app_directory]/public/tools/functions/[func_name].py
+# Required - One function per file
+# Required - Put code in folder [root]/tools/functions/
 def calculator(args: Params) -> Union[int, float]:
     valueA = args["valueA"]
     valueB = args["valueB"]
