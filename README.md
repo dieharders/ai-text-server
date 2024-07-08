@@ -323,7 +323,7 @@ From the project's root `tools\functions`
 OR
 From the installation directory, create a new folder `tools\functions`
 
-Take a look at the `calculator.py` example for reference.
+Take a look at the [calculator.py](\tools\functions\calculator.py) example for reference.
 
 ## Learn More
 

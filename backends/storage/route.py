@@ -23,13 +23,13 @@ def save_tool_definition(
     if not name:
         return {
             "success": False,
-            "message": f'Please add a "name" field.',
+            "message": f'Please add a "name" value.',
             "data": None,
         }
     if not path:
         return {
             "success": False,
-            "message": f'Please add a "path" field.',
+            "message": f'Please add a "path" value.',
             "data": None,
         }
     try:

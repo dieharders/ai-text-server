@@ -1,6 +1,6 @@
 from types import NoneType
-from pydantic import BaseModel
-from typing import Any, List, Optional, Union
+from pydantic import BaseModel, field_validator
+from typing import List, Optional, Union
 from enum import Enum
 from chromadb import Collection
 from chromadb.api import ClientAPI
@@ -707,7 +707,14 @@ class ToolDefinition(BaseModel):
 class ToolSaveRequest(BaseModel):
     name: str
     path: str
-    id: Optional[str] = None
+    id: Optional[str] = None  # pass string to edit tool, leave blank to add new tool
+
+    @field_validator("id")
+    @classmethod
+    def prevent_none(cls, v):
+        assert v is not None, "id may not be None"
+        assert v is not "", "id may not be empty"
+        return v
 
 
 class GetToolSettingsResponse(BaseModel):
@@ -719,7 +726,19 @@ class GetToolSettingsResponse(BaseModel):
 class EmptyToolSettingsResponse(BaseModel):
     success: bool
     message: str
-    data: Any = None
+    data: NoneType
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "success": True,
+                    "message": "Returned 1 tool.",
+                    "data": None,
+                }
+            ]
+        }
+    }
 
 
 class BotSettings(BaseModel):
@@ -746,7 +765,7 @@ class SaveSettingsRequest(BaseModel):
 class GenericEmptyResponse(BaseModel):
     success: bool
     message: str
-    data: Any
+    data: NoneType
 
     model_config = {
         "json_schema_extra": {
