@@ -51,7 +51,8 @@ def save_tool_definition(
             id = tool_def.id
         else:
             id = uuid()
-        # Paths
+        # Paths - @TODO Check for url or filename and handle accordingly
+        # For urls, make call to endpoint.json to fetch descr, args, example
         file_name = f"{id}.json"
         file_path = os.path.join(common.TOOL_DEFS_PATH, file_name)
         # Create arguments and example response for llm prompt from pydantic model

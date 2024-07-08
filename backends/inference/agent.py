@@ -142,7 +142,6 @@ def parse_output(output: str, tool_def: classes.ToolDefinition) -> ParsedOutput:
     }
     pattern_object = r"({.*?})"
     pattern_json_object = r"\`\`\`json\n({.*?})\n\`\`\`"
-    # pattern_json = r"json\n({.*?})\n"
     match_json_object = re.search(
         pattern_json_object, output, re.DOTALL
     )
