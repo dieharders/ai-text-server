@@ -16,7 +16,7 @@ BOT_SETTINGS_FILE_NAME = "bots.json"
 # Save tool settings
 @router.post("/tool-settings")
 def save_tool_definition(
-    tool_def: classes.ToolDefinition,
+    tool_def: classes.ToolSaveRequest,
 ) -> classes.EmptyToolSettingsResponse:
     name = tool_def.name
     path = tool_def.path
@@ -46,22 +46,22 @@ def save_tool_definition(
                 "message": f'The tool name "{name}" already exists.',
                 "data": None,
             }
-        # Paths
+        # Assign id
         if tool_def.id:
             id = tool_def.id
         else:
             id = uuid()
+        # Paths
         file_name = f"{id}.json"
         file_path = os.path.join(common.TOOL_DEFS_PATH, file_name)
         # Create arguments and example response for llm prompt from pydantic model
         tool_def = agent.create_tool_args(tool_def=tool_def)
         # Save tool to file
-        tool_obj = tool_def.model_dump()
         common.store_tool_definition(
             operation="w",
             folderpath=common.TOOL_DEFS_PATH,
             filepath=file_path,
-            data={**tool_obj, "id": id},
+            data={**tool_def, "id": id},
         )
     except Exception as err:
         return {

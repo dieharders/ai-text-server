@@ -189,17 +189,18 @@ def parse_output(output: str, tool_def: classes.ToolDefinition) -> ParsedOutput:
         raise Exception("No JSON block found!")
 
 # Create arguments and example response for llm prompt from pydantic model
-def create_tool_args(tool_def: classes.ToolDefinition) -> classes.ToolDefinition:
+def create_tool_args(tool_def: classes.ToolSaveRequest) -> classes.ToolDefinition:
+    new_dict = dict(arguments={}, example_arguments={}, description="")
+    # Get values
+    new_def = {**new_dict, **tool_def.model_dump()}
     tool_code = load_function_file(filename=tool_def.path)
     tool_model = tool_code["model"]
     tool_schema = construct_arguments(tool_model)
     tool_description = tool_model["description"]
-    tool_args = tool_schema["arguments"]
-    tool_example_args = tool_schema["example_arguments"]
-    if not tool_def.arguments:
-        tool_def.arguments = tool_args or {}
-    if not tool_def.description:
-        tool_def.description = tool_description or "This is a tool."
-    if not tool_def.example_arguments:
-        tool_def.example_arguments = tool_example_args or {}
-    return tool_def
+    tool_args = tool_schema.get("arguments", {})
+    tool_example_args = tool_schema.get("example_arguments", {})
+    # Set empty attrs
+    new_def["arguments"] = tool_args
+    new_def["example_arguments"] = tool_example_args
+    new_def["description"] = tool_description or "This is a tool."
+    return new_def

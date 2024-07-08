@@ -696,12 +696,18 @@ class ResponseSettings(BaseModel):
 
 
 class ToolDefinition(BaseModel):
-    id: Optional[str] = None
     name: str
     path: str
+    arguments: Union[dict, None] = None
+    example_arguments: Union[dict, None] = None
+    id: Optional[str] = None
     description: Optional[str] = ""
-    arguments: Union[dict, None]  # Optional (json object)
-    example_arguments: Union[dict, None]  # Optional (json object)
+
+
+class ToolSaveRequest(BaseModel):
+    name: str
+    path: str
+    id: Optional[str] = None
 
 
 class GetToolSettingsResponse(BaseModel):
