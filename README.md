@@ -308,6 +308,21 @@ conda deactivate
 
 4. If using an IDE like VSCode, you must apply your newly created virtual environment by selecting the `python interpreter` button at the bottom when inside your project directory.
 
+## Adding Custom Tools for Agents
+
+Some notes on how to create a new function for tool use:
+
+1. Its filename and function name should be the same
+2. 1 function per tool file
+3. Functions must be written in Python: `tool_name.py`
+4. Each function needs a description to help the llm
+5. Each function needs a Pydantic class assigned to input args
+
+Where to store the function code:
+From the project's root `public\tools\functions`
+OR
+In the installed app's root directory `_deps\public\tools\functions`
+
 ## Learn More
 
 - Server: [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.

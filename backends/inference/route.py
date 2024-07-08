@@ -440,7 +440,8 @@ async def text_inference(
         elif prompt_template:
             query_prompt = prompt_template.replace(QUERY_INPUT, prompt)
 
-        # Call LLM with context loaded via llama-index/vector store
+        # RAG - Call LLM with context loaded via llama-index/vector store
+        # Agent flow explicitly not supported for RAG due to context complexities.
         # @TODO RAG should also support chat mode
         if collection_names is not None and len(collection_names) > 0:
             # Only take the first collection for now
@@ -469,16 +470,14 @@ async def text_inference(
                 streaming=streaming,
             )
             # Return streaming response
-            if streaming and not is_agent:
+            if streaming:
                 token_generator = res.response_gen
                 response = text_llama_index.token_streamer(token_generator)
                 return EventSourceResponse(response)
             # Return non-stream response
             else:
-                if is_agent:
-                    return agent.eval(tool=assigned_tool, args=res)
                 return res
-        # Call LLM in raw completion mode (uses training data)
+        # Raw model - Call LLM in raw completion mode (uses training data)
         elif mode == classes.CHAT_MODES.INSTRUCT.value:
             options["n_ctx"] = n_ctx
             # Return streaming response
@@ -511,7 +510,7 @@ async def text_inference(
                     response.text = output_response.get("text")
                 return response
         # @TODO Stream LLM in chat mode
-        # @TODO Support Agent flow here
+        # @TODO Agent flow here
         elif mode == classes.CHAT_MODES.CHAT.value:
             options["n_ctx"] = n_ctx
             # Returns a streaming response

@@ -293,8 +293,6 @@ def save_text_model(data: SaveTextModelRequestArgs):
     except (Exception, FileNotFoundError):
         # If the file doesn't exist yet, create an empty dictionary
         existing_data = DEFAULT_SETTINGS_DICT
-    except json.JSONDecodeError:
-        existing_data = DEFAULT_SETTINGS_DICT
 
     # Update the existing data with the new variables
     models_list: List = existing_data[INSTALLED_TEXT_MODELS]

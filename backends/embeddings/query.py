@@ -46,7 +46,7 @@ def query_embedding(
     streaming: bool,
 ):
     print(
-        f"{common.PRNT_EMBED} Query Data: {prompt_template.text}\n{prompt_template.type}",
+        f"{common.PRNT_EMBED} Query Data:\n{prompt_template.text}\n{prompt_template.type}",
         flush=True,
     )
 
@@ -56,22 +56,25 @@ def query_embedding(
     )
 
     # Call query() in query mode
-    print(f"{common.PRNT_EMBED} custom_qa_prompt:{custom_qa_prompt}", flush=True)
-    print(f"what is {llm}")
-    query_engine = index.as_query_engine(
-        llm=llm,
-        streaming=streaming,
-        # summary_template=summary_template,
-        # simple_template=simple_template,
-        text_qa_template=custom_qa_prompt,
-        refine_template=build_refine_prompt(),
-        similarity_top_k=options["similarity_top_k"] or 1,
-        response_mode=options["response_mode"] or ResponseMode.COMPACT,
-    )
-    # OR in chat mode
-    # chat_engine = index.as_chat_engine(...)
+    print(f"{common.PRNT_EMBED} Query prompt:\n{custom_qa_prompt}", flush=True)
+    try:
+        query_engine = index.as_query_engine(
+            llm=llm,
+            streaming=streaming,
+            # summary_template=summary_template,
+            # simple_template=simple_template,
+            text_qa_template=custom_qa_prompt,
+            refine_template=build_refine_prompt(),
+            similarity_top_k=options["similarity_top_k"] or 1,
+            response_mode=options["response_mode"] or ResponseMode.COMPACT,
+        )
+        # @TODO in chat mode
+        # chat_engine = index.as_chat_engine(...)
 
-    streaming_response = query_engine.query(query)
+        streaming_response = query_engine.query(query)
+    except Exception as err:
+        raise Exception(f"Query engine failed to return result. {err}")
+    # Log probability scores (logits) for each chunk
     for node in streaming_response.source_nodes:
         print(
             f"{common.PRNT_EMBED} chunk id::{node.id_} | score={node.score}\ntext=\n{node.text}",
