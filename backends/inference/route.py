@@ -2,6 +2,7 @@ import os
 from typing import List
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sse_starlette.sse import EventSourceResponse
+from inference.classes import RetrievalTypes
 from inference import agent
 from storage import route as storage_route
 from embeddings import main, query
@@ -348,9 +349,11 @@ async def text_inference(
     try:
         assigned_tool_names = payload.tools
         prompt = payload.prompt
+        query_prompt = prompt
         messages = payload.messages
         collection_names = payload.collectionNames
-        mode = payload.mode
+        mode = payload.mode  # conversation type
+        retrieval_type = payload.retrievalType or RetrievalTypes.BASE
         prompt_template = payload.promptTemplate
         rag_prompt_template = payload.ragPromptTemplate
         system_message = payload.systemMessage
@@ -388,9 +391,11 @@ async def text_inference(
             raise Exception(msg)
 
         # Handle Agent prompt (low temperature works best)
-        query_prompt = prompt
-        sys_msg = system_message
-        is_agent = assigned_tool_names and len(assigned_tool_names) > 0
+        is_agent = (
+            retrieval_type == RetrievalTypes.AGENT
+            and assigned_tool_names
+            and len(assigned_tool_names) > 0
+        )
         assigned_tool: classes.ToolDefinition = None
         if is_agent:
             all_installed_tool_defs: List[classes.ToolDefinition] = (
@@ -429,12 +434,18 @@ async def text_inference(
             print(f"Agent prompt::\n\n{query_prompt}")
             # Inject template args into system msg
             if system_message:
-                sys_msg = system_message.replace(TOOL_ARGUMENTS, args_str)
-                sys_msg = sys_msg.replace(TOOL_EXAMPLE_ARGUMENTS, example_str)
-                sys_msg = sys_msg.replace(TOOL_NAME, name_str)
-                sys_msg = sys_msg.replace(TOOL_DESCRIPTION, description_str)
-                sys_msg = sys_msg.replace(ASSIGNED_TOOLS, assigned_tools_defs_str)
-                print(f"Agent system message::\n\n{sys_msg}")
+                system_message = system_message.replace(TOOL_ARGUMENTS, args_str)
+                system_message = system_message.replace(
+                    TOOL_EXAMPLE_ARGUMENTS, example_str
+                )
+                system_message = system_message.replace(TOOL_NAME, name_str)
+                system_message = system_message.replace(
+                    TOOL_DESCRIPTION, description_str
+                )
+                system_message = system_message.replace(
+                    ASSIGNED_TOOLS, assigned_tools_defs_str
+                )
+                print(f"Agent system message::\n\n{system_message}")
 
         # Normal prompt
         elif prompt_template:
@@ -443,7 +454,12 @@ async def text_inference(
         # RAG - Call LLM with context loaded via llama-index/vector store
         # Agent flow explicitly not supported for RAG due to context complexities.
         # @TODO RAG should also support chat mode
-        if collection_names is not None and len(collection_names) > 0:
+        is_RAG = (
+            retrieval_type == RetrievalTypes.AUGMENTED
+            and collection_names is not None
+            and len(collection_names) > 0
+        )
+        if is_RAG:
             # Only take the first collection for now
             collection_name = collection_names[0]
             # Set LLM settings
@@ -485,7 +501,7 @@ async def text_inference(
                 return EventSourceResponse(
                     text_llama_index.text_stream_completion(
                         prompt=query_prompt,
-                        system_message=sys_msg,
+                        system_message=system_message,
                         message_format=message_format,
                         app=app,
                         options=options,
@@ -495,7 +511,7 @@ async def text_inference(
             else:
                 response = text_llama_index.text_completion(
                     prompt=query_prompt,
-                    system_message=sys_msg,
+                    system_message=system_message,
                     message_format=message_format,
                     app=app,
                     options=options,

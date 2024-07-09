@@ -6,6 +6,7 @@ from chromadb import Collection
 from chromadb.api import ClientAPI
 from llama_index.llms.llama_cpp import LlamaCPP
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from inference.classes import RetrievalTypes
 
 DEFAULT_TEMPERATURE = 0.2
 DEFAULT_CONTEXT_WINDOW = 2000
@@ -190,6 +191,7 @@ class InferenceRequest(BaseModel):
     # homebrew server specific args
     collectionNames: Optional[List[str]] = []
     tools: Optional[List[str]] = []
+    retrievalType: Optional[RetrievalTypes | None] = None
     mode: Optional[str] = DEFAULT_CHAT_MODE
     systemMessage: Optional[str] = None
     messageFormat: Optional[str] = None
