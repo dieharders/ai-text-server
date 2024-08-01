@@ -1,5 +1,7 @@
 # 🍺 Obrew Server - Ai Engine
 
+<img src="assets/images/doc-poster.png" height="250" />
+
 ## Introduction
 
 The goal of this project is to be an all-in-one solution for running Ai that is easy to install. It is a native app that runs a server which handles all basic building blocks of Ai: inference, memory, model file manager, agent builder, app installer, GUI.
