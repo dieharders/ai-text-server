@@ -12,7 +12,6 @@ from huggingface_hub import (
     hf_hub_download,
     get_hf_file_metadata,
     hf_hub_url,
-    ModelFilter,
     HfApi,
 )
 
@@ -182,9 +181,7 @@ def search_models(payload):
     models = hf_api.list_models(
         sort=sort,  # or "downloads" or "trending"
         limit=limit,
-        filter=ModelFilter(
-            task=task,
-        ),
+        task=task,
     )
     return {
         "success": True,
