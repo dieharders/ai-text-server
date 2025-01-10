@@ -1,45 +1,44 @@
-# 🍺 Obrew Server - Ai Engine
+# 🍺 Obrew Studio Server - Your Ai Engine
 
 <img src="assets/images/doc-poster.png" height="250" />
 
 ## Introduction
 
-The goal of this project is to be an all-in-one solution for running Ai that is easy to install. It is a native app that runs a server which handles all basic building blocks of Ai: inference, memory, model file manager, agent builder, app installer, GUI.
+The goal of this project is to be an all-in-one solution for running local Ai that is easy to install, setup and use. It is a native app that runs a server which handles all basic building blocks of building with Ai: inference, vector memory, model file manager, agent builder, GUI.
 
 ## How It Works
 
-The Obrew Engine is a Python server built with FastAPI. We provide a Web UI called [Obrew Studio](https://studio.openbrewai.com/) to access this server. You can also access it programmatically via the [API](#api-overview).
+This backend is a Python server built with FastAPI. We provide a Web UI called [Obrew Studio WebUI](https://studio.openbrewai.com/) to access this server. You can also access it programmatically via the [API](#api-overview).
 
 Launch the desktop app locally, then navigate your browser to any web app that supports this project's api and start using ai locally with your own private data for free:
 
 ## App Features Roadmap
 
 - ✅ Run locally
-- ✅ Easy to use desktop installers
+- ✅ Desktop installers
 - ✅ Save chat history
 - ✅ CPU & GPU support
 - ✅ Windows OS installer
 - ❌ MacOS/Linux installer
-- ❌ Docker config for easy server deployment
+- ❌ Docker config for cloud/server deployment
 - ❌ Production ready: This project is currently under active development, there may be bugs
 
 ## Ai Features Roadmap
 
-- ✅ Inference: Run open-source AI models for free
-- ✅ Embeddings: Create vector embeddings from a text or document files
-- ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
-- ✅ Build custom bots
-- ✅ Agents: Bots with tools
-- ❌ Workflows: Agent jobs
-- ❌ Support multi-modal & vision models
-- ❌ Source citations in retrieved responses
-- ❌ Chat conversations
-- ❌ Infinite context & Long-term memory across conversations (personal memory)
-- ❌ Voice to text (User query) and text-to-speech (Ai responses)
+- ✅ Inference: Run open-source LLM models locally
+- ✅ Embeddings: Create vector embeddings from a file/website/media to augment memory
+- ✅ Knowledge Base: Search a vector database with Llama Index to retrieve information
+- ✅ Agents: Customized LLM, can choose or specify tool use
+- ❌ Workflows: Composable automation of tasks, teams of agents, parallel processing, conditional routing
+- ❌ Monitors: Source citations, observability, logging, time-travel, transparency
+- ❌ Support multi-modal, vision models, and beyond
+- ❌ Support multi-device memory sharing (i.e. cluster of macs running single large model)
+- ❌ Support voice-to-text and text-to-speech
+- ❌ Auto Agents: Completely autonomous agent given tools and access to sandboxed OS env
 
 ## Supported Model Providers
 
-This is a local first project. The ultimate goal is to support all providers via one API.
+This is a local first project. The ultimate goal is to support any provider via one API.
 
 - ✅ [Open-Source](https://huggingface.co)
 - ❌ [Google Gemini](https://gemini.google.com)
