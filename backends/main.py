@@ -3,9 +3,17 @@ import sys
 import time
 import threading
 import webbrowser
+import socket
 import tkinter as tk
 from tkinter import ttk
+from dotenv import load_dotenv
+import asyncio
+import signal
+from multiprocessing import Process
+
+# Custom
 from core import common
+from api_server import ApiServer
 
 
 class AppState:
@@ -36,49 +44,92 @@ def parse_runtime_args():
     }
 
 
+# Path to the .env file in either the parent or /_deps directory
+try:
+    # Look in app's _deps dir
+    if sys._MEIPASS:
+        env_path = common.dep_path(".env")
+except Exception:
+    # Otherwise look in codebase root dir
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    parent_directory = os.path.dirname(current_directory)
+    env_path = os.path.join(parent_directory, ".env")
+load_dotenv(env_path)
+
 # Check what env is running - prod/dev
 build_env = parse_runtime_args()
-is_debug = hasattr(sys, "gettrace") and sys.gettrace() is not None
-is_dev = build_env["mode"] == "dev" or is_debug
-is_prod = build_env["mode"] == "prod" or not is_dev
-is_headless = build_env["headless"] == "True"  # headless == no UI window shown
-
-# Comment out if you want to debug on prod build
-if is_prod:
-    # Remove prints in prod when deploying in window mode
-    sys.stdout = open(os.devnull, "w")
-    sys.stderr = open(os.devnull, "w")
 
 # Initialize global data here
 server_info = None
-SERVER_PORT = 8008
+SSL_ENABLED = os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
+XHR_PROTOCOL = "http"
+if SSL_ENABLED is True:
+    XHR_PROTOCOL = "https"
 application = AppState()
-application.state.PORT_HOMEBREW_API = SERVER_PORT
-application.state.is_prod = is_prod
-application.state.is_dev = is_dev
-application.state.is_debug = is_debug
-application.keep_open = True
-openbrew_studio_url = "https://studio.openbrewai.com"  # the web UI
+application.state.API_SERVER_PORT = 8008
+application.state.is_headless = (
+    build_env["headless"] == "True"
+)  # headless == no UI window shown
+application.state.is_debug = hasattr(sys, "gettrace") and sys.gettrace() is not None
+application.state.is_dev = build_env["mode"] == "dev" or application.state.is_debug
+application.state.is_prod = build_env["mode"] == "prod" or not application.state.is_dev
+application.state.keep_open = True
 
+# Comment out if you want to debug on prod build
+if application.state.is_prod:
+    # Remove prints in prod when deploying in window mode
+    sys.stdout = open(os.devnull, "w")
+    sys.stderr = open(os.devnull, "w")
 
 ###############
 ### Methods ###
 ###############
 
 
+def display_server_info():
+    # Display the local IP address of this server
+    hostname = socket.gethostname()
+    IPAddr = socket.gethostbyname(hostname)
+    remote_ip = f"{XHR_PROTOCOL}://{IPAddr}"
+    local_ip = f"{XHR_PROTOCOL}://localhost"
+    return {
+        "local_ip": local_ip,
+        "remote_ip": remote_ip,
+    }
+
+
 def start_server():
     try:
         # Start the API server
-        print(f"{common.PRNT_API} Starting API server.")
+        server_info = display_server_info()
+        local_ip = server_info["local_ip"]
+        remote_ip = server_info["remote_ip"]
+        print(f"{common.PRNT_APP} Starting API server.")
+        application.state.api_server = ApiServer(
+            is_prod=application.state.is_prod,
+            is_dev=application.state.is_dev,
+            is_debug=application.state.is_debug,
+            server_info=server_info,
+            SSL_ENABLED=SSL_ENABLED,
+            SERVER_PORT=application.state.API_SERVER_PORT,
+            XHR_PROTOCOL=XHR_PROTOCOL,
+        )
+        application.state.api_server.startup()
+        print(
+            f"{common.PRNT_APP} Refer to API docs:\n-> {local_ip}:{application.state.API_SERVER_PORT}/docs \nOR\n-> {remote_ip}:{application.state.API_SERVER_PORT}/docs",
+            flush=True,
+        )
     except Exception as e:
-        print(f"{common.PRNT_API} API server shutdown. {e}")
+        print(f"{common.PRNT_APP} Failed to start API server. {e}")
 
 
+# Send shutdown server request
 def shutdown_server(*args):
-    # send shutdown server request
-    # ...
-    print(f"{common.PRNT_API} Server forced to shutdown.", flush=True)
-    application.keep_open = False
+    try:
+        application.state.api_server.shutdown()
+        print(f"{common.PRNT_APP} Shutting down server.", flush=True)
+    except Exception as e:
+        print(f"{common.PRNT_APP} Error, server forced to shutdown: {e}", flush=True)
 
 
 def run_app_window():
@@ -90,10 +141,11 @@ def run_app_window():
 
 
 def open_browser():
-    ip = "localhost"
-    local_url = f"{ip}:{SERVER_PORT}"
+    server_info = display_server_info()
+    local_ip = server_info["local_ip"]
+    local_url = f"{local_ip}:{application.state.API_SERVER_PORT}"
     # Open browser to WebUI
-    print(f"{common.PRNT_API} Opening WebUI at {local_url}")
+    print(f"{common.PRNT_APP} Opening WebUI at {local_url}")
     webbrowser.open(local_url, new=2)
 
 
@@ -129,8 +181,27 @@ def GUI():
     button.pack(pady=20)
     # Run UI
     root.mainloop()
-    # Close server when user closes window
-    shutdown_server()
+    # Close app when user closes window
+    application.state.keep_open = False
+    application.state.server_process.terminate()
+
+
+# Good for knowing when server has stopped/started
+def monitor_server(server_process):
+    """Monitor the server process and take action if it crashes."""
+    while True:
+        if not server_process.is_alive():
+            print("Server process has stopped unexpectedly. Restarting...")
+            start_server()  # You can restart the server here if needed.
+            server_process.start()
+        time.sleep(1)  # Check every second
+
+
+def signal_handler(sig, frame):
+    print(
+        f"{common.PRNT_APP} Signal received. Main process interrupted. Shutting down."
+    )
+    sys.exit(0)
 
 
 #############
@@ -138,15 +209,40 @@ def GUI():
 #############
 
 
-if __name__ == "__main__":
-    print(f"Starting app...", flush=True)
+async def main():
+    # Listen for signal handler for SIGINT (Ctrl+C)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Start server as process
+    process = Process(target=start_server)
+    application.state.server_process = process
+    process.daemon = True
+    process.start()
+
+    # Start monitoring the server process in a separate thread or process
+    # monitor_process = Process(target=monitor_server, args=(process))
+    # monitor_process.start()
+
     try:
         # Show a window
-        if not is_headless:
+        if not application.state.is_headless:
             run_app_window()
-        # Block main thread to keep program open
-        while application.keep_open:
-            time.sleep(1)
-    except KeyboardInterrupt:
+
+        # Wait for process to complete (optional, in case of graceful shutdown)
+        while application.state.keep_open:
+            process.join()
+
         # Close everything and cleanup
-        shutdown_server()
+        print(f"{common.PRNT_APP} Closing app.")
+        process.terminate()
+    except KeyboardInterrupt:
+        print(f"{common.PRNT_APP} Main process interrupted. Shutting down.")
+        application.state.keep_open = False
+    except Exception as e:
+        print(f"{common.PRNT_APP} Main process error: {e}")
+
+
+# This script is the loader for the rest of the backend. It only handles UI and starting dependencies.
+if __name__ == "__main__":
+    print(f"{common.PRNT_APP} Starting app...", flush=True)
+    asyncio.run(main())

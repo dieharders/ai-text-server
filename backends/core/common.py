@@ -70,7 +70,8 @@ class bcolors:
     UNDERLINE = "\033[4m"
 
 
-PRNT_API = f"{bcolors.HEADER}[OBREW]{bcolors.ENDC}"
+PRNT_APP = f"{bcolors.HEADER}[OBREW]{bcolors.OKGREEN}"
+PRNT_API = f"{bcolors.HEADER}[API]{bcolors.ENDC}"
 PRNT_EMBED = f"{bcolors.OKCYAN}[EMBEDDING]{bcolors.ENDC}"
 
 
