@@ -15,13 +15,12 @@ Launch the desktop app locally, then navigate your browser to any web app that s
 ## App Features Roadmap
 
 - ✅ Run locally
-- ✅ Provide easy to use desktop installers
+- ✅ Easy to use desktop installers
 - ✅ Save chat history
 - ✅ CPU & GPU support
 - ✅ Windows OS installer
 - ❌ MacOS/Linux installer
 - ❌ Docker config for easy server deployment
-- ❌ Support deployment to hosted server with Admin login support
 - ❌ Production ready: This project is currently under active development, there may be bugs
 
 ## Ai Features Roadmap
@@ -31,7 +30,7 @@ Launch the desktop app locally, then navigate your browser to any web app that s
 - ✅ Search: Using a vector database and Llama Index to make semantic or similarity queries
 - ✅ Build custom bots
 - ✅ Agents: Bots with tools
-- ❌ Workloads: Agent jobs
+- ❌ Workflows: Agent jobs
 - ❌ Support multi-modal & vision models
 - ❌ Source citations in retrieved responses
 - ❌ Chat conversations
@@ -71,13 +70,13 @@ If you get a "Permission Denied" error, try running the executable with Admin pr
 
 ### Testing
 
-Right-click over `src/backends/main.py` and choose "run python file in terminal" to start server:
+Right-click over `backends/main.py` and choose "run python file in terminal" to start server:
 
 Or
 
 ```bash
 # from working dir
-python src/backends/main.py
+python backends/main.py
 ```
 
 Or, using yarn (recommended)
