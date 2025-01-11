@@ -1,45 +1,53 @@
-import os
-import tkinter as tk
-from tkinter import ttk
+# import os
+# import tkinter as tk
+# from tkinter import ttk
 import webview
-import threading
-from core import common
 
+# import threading
+# from core import common
+
+
+# def _run_app_window():
+#     # Start the API server in a separate thread from main
+#     window_thread = threading.Thread(target=GUI)
+#     window_thread.daemon = True  # let the parent kill the child thread at exit
+#     window_thread.start()
+#     return window_thread
 
 # Create and run the Tkinter window
-def GUI(menu_api):
-    color_bg = "#333333"
-    root = tk.Tk()
-    root.title("Obrew Server")
-    root.geometry("500x500")
-    # Since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
-    root.iconbitmap(default=common.dep_path(os.path.join("public", "favicon.ico")))
-    root.configure(bg=color_bg)
-    # Render title
-    Font_tuple = ("Verdana", 64, "bold")
-    root.bind("<Escape>", lambda e: e.widget.quit())
-    tk.Label(root, text="O🍺brew", font=Font_tuple).pack(fill=tk.BOTH, expand=True)
-    # Render button for connection page
-    style = ttk.Style()
-    style.configure(
-        "TButton",
-        font=("Verdana", 14),
-        borderwidth=0,
-        padding=10,
-        background="grey",
-        foreground="black",
-    )
-    style.map(
-        "TButton",
-        background=[("pressed", "black"), ("active", "grey")],
-        foreground=[("pressed", "grey"), ("active", "black")],
-    )
-    button = ttk.Button(
-        root, text="Start Here", command=menu_api.open_browser, style="TButton"
-    )
-    button.pack(pady=20)
-    # Run UI
-    root.mainloop()
+# def GUI(menu_api):
+#     color_bg = "#333333"
+#     root = tk.Tk()
+#     root.title("Obrew Server")
+#     root.geometry("500x500")
+#     # Since /public folder is bundled inside _deps, we need to read from root `sys._MEIPASS`
+#     root.iconbitmap(default=common.dep_path(os.path.join("public", "favicon.ico")))
+#     root.configure(bg=color_bg)
+#     # Render title
+#     Font_tuple = ("Verdana", 64, "bold")
+#     root.bind("<Escape>", lambda e: e.widget.quit())
+#     tk.Label(root, text="O🍺brew", font=Font_tuple).pack(fill=tk.BOTH, expand=True)
+#     # Render button for connection page
+#     style = ttk.Style()
+#     style.configure(
+#         "TButton",
+#         font=("Verdana", 14),
+#         borderwidth=0,
+#         padding=10,
+#         background="grey",
+#         foreground="black",
+#     )
+#     style.map(
+#         "TButton",
+#         background=[("pressed", "black"), ("active", "grey")],
+#         foreground=[("pressed", "grey"), ("active", "black")],
+#     )
+#     button = ttk.Button(
+#         root, text="Start Here", command=menu_api.open_browser, style="TButton"
+#     )
+#     button.pack(pady=20)
+#     # Run UI
+#     root.mainloop()
 
 
 # WebView window
@@ -49,7 +57,7 @@ def WEBVIEW(menu_api, ssl):
         "ui/index.html",
         # "https://studio.openbrewai.com",
         js_api=menu_api,
-        min_size=(450, 450),
+        min_size=(1200, 960),
         fullscreen=False,
         # transparent=True,
         # frameless=True,
@@ -66,11 +74,3 @@ def WEBVIEW(menu_api, ssl):
     # Start the window
     webview.start(ssl=ssl, debug=True)
     return webview_window
-
-
-def _run_app_window():
-    # Start the API server in a separate thread from main
-    window_thread = threading.Thread(target=GUI)
-    window_thread.daemon = True  # let the parent kill the child thread at exit
-    window_thread.start()
-    return window_thread
