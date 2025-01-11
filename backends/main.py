@@ -218,7 +218,9 @@ def main():
     try:
         # Show a window
         if not app.state.is_headless:
-            app.state.webview_window = view.WEBVIEW(menu_api=menu_api, ssl=SSL_ENABLED)
+            app.state.webview_window = view.WEBVIEW(
+                is_dev=app.state.is_dev, menu_api=menu_api, ssl=SSL_ENABLED
+            )
             # Close app when user closes window
             _close_app()
 

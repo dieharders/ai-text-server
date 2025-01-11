@@ -51,7 +51,7 @@ import webview
 
 
 # WebView window
-def WEBVIEW(menu_api, ssl):
+def WEBVIEW(is_dev, menu_api, ssl):
     webview_window = webview.create_window(
         "Obrew Studio Server",
         "ui/index.html",
@@ -72,5 +72,5 @@ def WEBVIEW(menu_api, ssl):
     webview_window.expose(toggle_fullscreen)
 
     # Start the window
-    webview.start(ssl=ssl, debug=True)
+    webview.start(ssl=ssl, debug=is_dev)
     return webview_window
