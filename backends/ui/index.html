@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="text/javascript" src="script.js"></script>
+    <title>{{title}}</title>
+    <!-- Include the Google Font -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+    />
+  </head>
+  <body>
+    <div class="content">
+      <h1>{{app_name}}</h1>
+      <p>{{message}}</p>
+      <div class="remote">
+        <h2>Remote Host</h2>
+        <img src="data:image/png;base64,{{qr_data}}" alt="qr code for {{remote_host}}:{{port}}" />
+        <p id="remote_host">{{remote_host}}:{{port}}</p>
+      </div>
+      <h2>API Docs</h2>
+      <a class="docs-link" href="{{host}}:{{port}}/docs" target="_blank">
+        {{host}}:{{port}}/docs
+      </a>
+      <div class="button-container">
+        <a
+          class="connect-button"
+          href="https://studio.openbrewai.com/?hostname={{host}}&port={{port}}"
+          target="_blank"
+          >Go to Obrew Studio
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

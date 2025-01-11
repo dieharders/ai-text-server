@@ -118,7 +118,7 @@ class ApiServer:
         try:
             # Start the ASGI server (https)
             if self.XHR_PROTOCOL == "https":
-                print(f"{common.PRNT_API} Starting API server with SSL.")
+                print(f"{common.PRNT_API} API server starting with SSL.")
                 uvicorn.run(
                     self.app,
                     host="0.0.0.0",
@@ -130,7 +130,7 @@ class ApiServer:
                 )
             # Start the ASGI server (http)
             else:
-                print(f"{common.PRNT_API} Starting API server.")
+                print(f"{common.PRNT_API} API server starting.")
                 uvicorn.run(
                     self.app,
                     host="0.0.0.0",

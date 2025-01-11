@@ -1,0 +1,55 @@
+/* Center the content horizontally and vertically */
+body {
+  font-family: 'Roboto', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+.content {
+  text-align: center;
+  padding: 2rem;
+  margin: 2rem;
+  max-width: 30rem;
+  border: 0.25rem solid black;
+  background-color: white;
+  border-radius: 1rem;
+}
+.remote {
+  display: flex;
+  flex-direction: column;
+  justify-items: center;
+  align-items: center;
+}
+.docs-link {
+  display: inline-block;
+  color: rgb(24, 10, 0);
+  text-decoration: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+.docs-link:hover {
+  text-decoration: underline;
+}
+.button-container {
+  width: 100%;
+  text-align: center;
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+}
+.connect-button {
+  display: inline-block;
+  background-color: #ffb327;
+  color: rgb(24, 10, 0);
+  padding: 10px 20px;
+  border: none;
+  border-radius: 0.85rem;
+  text-decoration: none;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.connect-button:hover {
+  background-color: #f09c00;
+}
