@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
     <link rel="stylesheet" href="style.css" />
-    <script type="text/javascript" src="script.js"></script>
-    <title>Connect to Obrew Server</title>
+    <title>Obrew Studio</title>
     <!-- Include the Google Font -->
     <link
       rel="stylesheet"
@@ -15,34 +14,17 @@
   </head>
   <body>
     <div class="content">
-      <h1>Obrew Studio Server</h1>
-      <p>
-        Scan the code with your mobile device to access the WebUI remotely and/or click the link
-        below.
-      </p>
-      <div class="remote">
-        <h2>Remote Host</h2>
-        <!-- Only show if data exists -->
-        <img
-          id="qrcode"
-          data-attr="none"
-          src="data:image/png;base64,{{qr_data}}"
-          alt="qr code for {{remote_url}}:{{port}}"
-        />
-        <p id="qr_link">{{remote_url}}:{{port}}</p>
-      </div>
-      <h2>API Docs</h2>
-      <a class="docs-link" href="{{local_url}}:{{port}}/docs" target="_blank">
-        {{local_url}}:{{port}}/docs
-      </a>
-      <div class="button-container">
-        <a
-          class="connect-button"
-          href="https://studio.openbrewai.com/?hostname={{local_url}}&port={{port}}"
-          target="_blank"
-          >Go to Obrew Studio
-        </a>
-      </div>
+      <div class="bg-image"></div>
+      <h1>Welcome to Obrew Studio!</h1>
+      <p>Begin by starting the WebUI and customizing your Ai.</p>
+      <ul class="menu">
+        <div class="button-container">
+          <a class="nav-connect" href="/connection-page.html" target="_self">Start WebUI </a>
+        </div>
+        <div>
+          <a class="nav-connect" href="/settings.html" target="_self"> Settings </a>
+        </div>
+      </ul>
     </div>
   </body>
 </html>
