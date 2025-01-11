@@ -6,7 +6,7 @@
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
     <link rel="stylesheet" href="style.css" />
     <script type="text/javascript" src="script.js"></script>
-    <title>{{title}}</title>
+    <title>Connect to Obrew Server</title>
     <!-- Include the Google Font -->
     <link
       rel="stylesheet"
@@ -15,21 +15,30 @@
   </head>
   <body>
     <div class="content">
-      <h1>{{app_name}}</h1>
-      <p>{{message}}</p>
+      <h1>Obrew Studio Server</h1>
+      <p>
+        Scan the code with your mobile device to access the WebUI remotely and/or click the link
+        below.
+      </p>
       <div class="remote">
         <h2>Remote Host</h2>
-        <img src="data:image/png;base64,{{qr_data}}" alt="qr code for {{remote_host}}:{{port}}" />
-        <p id="remote_host">{{remote_host}}:{{port}}</p>
+        <!-- Only show if data exists -->
+        <img
+          id="qrcode"
+          data-attr="none"
+          src="data:image/png;base64,{{qr_data}}"
+          alt="qr code for {{remote_url}}:{{port}}"
+        />
+        <p id="qr_link">{{remote_url}}:{{port}}</p>
       </div>
       <h2>API Docs</h2>
-      <a class="docs-link" href="{{host}}:{{port}}/docs" target="_blank">
-        {{host}}:{{port}}/docs
+      <a class="docs-link" href="{{local_url}}:{{port}}/docs" target="_blank">
+        {{local_url}}:{{port}}/docs
       </a>
       <div class="button-container">
         <a
           class="connect-button"
-          href="https://studio.openbrewai.com/?hostname={{host}}&port={{port}}"
+          href="https://studio.openbrewai.com/?hostname={{local_url}}&port={{port}}"
           target="_blank"
           >Go to Obrew Studio
         </a>

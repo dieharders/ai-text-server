@@ -16,6 +16,12 @@ body {
   background-color: white;
   border-radius: 1rem;
 }
+[data-attr='none'] {
+  display: none;
+}
+[data-attr='qrcode'] {
+  display: block;
+}
 .remote {
   display: flex;
   flex-direction: column;

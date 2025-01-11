@@ -6,7 +6,7 @@ import socket
 from dotenv import load_dotenv
 import signal
 from multiprocessing import Process
-import webview
+import pyqrcode
 
 # Custom
 from ui import view
@@ -26,6 +26,29 @@ class AppState:
 class MenuAPI:
     def __init__(self):
         pass
+
+    # Return a "connect" GUI page for user to config and startup the API server,
+    # then return the user to the supplied callback url with query params of config added.
+    # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
+    def update_connect_page(self):
+        try:
+            port = app.state.API_SERVER_PORT
+            server_info = _display_server_info()
+            remote_url = server_info["remote_ip"]
+            local_url = server_info["local_ip"]
+            # Generate QR code - direct to remote url
+            qr_code = pyqrcode.create(
+                f"{remote_url}:{port}/?hostname={remote_url}&port={port}"
+            )
+            qr_data = qr_code.png_as_base64_str(scale=5)
+            # qr_image = qr_code.png("image.png", scale=8) # Writes image file to disk
+
+            page_data = dict(
+                qr_data=qr_data, local_url=local_url, remote_url=remote_url, port=port
+            )
+            return page_data
+        except Exception as e:
+            print(f"{common.PRNT_APP} Failed to update 'Connect' page: {e}")
 
     # Start the API server
     def start_server(self):
@@ -109,7 +132,6 @@ build_env = parse_runtime_args()
 
 # Initialize global data here
 menu_api = MenuAPI()
-server_info = None
 SSL_ENABLED = os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
 XHR_PROTOCOL = "http"
 if SSL_ENABLED is True:

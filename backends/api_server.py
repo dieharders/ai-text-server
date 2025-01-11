@@ -3,15 +3,11 @@ import signal
 import sys
 import uvicorn
 import httpx
-import pyqrcode
 from fastapi import (
     FastAPI,
-    Request,
     APIRouter,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from embeddings import storage as vector_storage
 from core import common, classes
@@ -36,6 +32,7 @@ class ApiServer:
         self.server_info = server_info
         self.SERVER_PORT = SERVER_PORT
         self.XHR_PROTOCOL = XHR_PROTOCOL
+        self.ssl = SSL_ENABLED
         self.is_prod = is_prod
         self.is_dev = is_dev
         self.is_debug = is_debug
@@ -169,37 +166,6 @@ class ApiServer:
             text_inference, prefix="/v1/text", tags=["text inference"]
         )
         app.include_router(endpoint_router)
-
-        # Return a "connect" GUI page for user to config and startup the API server,
-        # then return the user to the supplied callback url with query params of config added.
-        # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
-        @app.get("/", response_class=HTMLResponse)
-        async def connect_page(request: Request):
-            # Be sure to link `public/templates` to the app's dependency dir (_deps) via PyInstaller
-            templates_dir = common.dep_path(os.path.join("public", "templates"))
-            templates = Jinja2Templates(directory=templates_dir)
-            remote_url = self.server_info["remote_ip"]
-            local_url = self.server_info["local_ip"]
-            # Generate QR code - direct to remote url
-            qr_code = pyqrcode.create(
-                f"{remote_url}:{self.SERVER_PORT}/?hostname={remote_url}&port={self.SERVER_PORT}"
-            )
-            qr_data = qr_code.png_as_base64_str(scale=5)
-            # qr_image = qr_code.png("image.png", scale=8) # Write image file to disk
-
-            return templates.TemplateResponse(
-                "index.html",
-                {
-                    "request": request,
-                    "qr_data": qr_data,
-                    "title": "Connect to Obrew Server",
-                    "app_name": "Obrew Studio Server",
-                    "message": "Scan the code with your mobile device to access the WebUI remotely and/or click the link below.",
-                    "host": local_url,
-                    "remote_host": remote_url,
-                    "port": self.SERVER_PORT,
-                },
-            )
 
         # Keep server/database alive
         @app.get("/v1/ping")
