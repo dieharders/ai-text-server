@@ -27,6 +27,13 @@ class MenuAPI:
     def __init__(self):
         pass
 
+    def update_entry_page(self):
+        try:
+            page_data = dict(obrew_studio_url=obrew_studio_url)
+            return page_data
+        except Exception as e:
+            print(f"{common.PRNT_APP} Failed to update 'Main' page: {e}")
+
     # Return a "connect" GUI page for user to config and startup the API server,
     # then return the user to the supplied callback url with query params of config added.
     # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
@@ -44,7 +51,11 @@ class MenuAPI:
             # qr_image = qr_code.png("image.png", scale=8) # Writes image file to disk
 
             page_data = dict(
-                qr_data=qr_data, local_url=local_url, remote_url=remote_url, port=port
+                qr_data=qr_data,
+                local_url=local_url,
+                remote_url=remote_url,
+                port=port,
+                obrew_studio_url=obrew_studio_url,
             )
             return page_data
         except Exception as e:
@@ -65,6 +76,7 @@ class MenuAPI:
                 SSL_ENABLED=SSL_ENABLED,
                 SERVER_PORT=app.state.API_SERVER_PORT,
                 XHR_PROTOCOL=XHR_PROTOCOL,
+                studio_url=obrew_studio_url,
             )
             app.state.api_server.startup()
             print(
@@ -83,17 +95,6 @@ class MenuAPI:
             print(
                 f"{common.PRNT_APP} Error, server forced to shutdown: {e}", flush=True
             )
-
-    def open_browser(self):
-        try:
-            server_info = _display_server_info()
-            local_ip = server_info["local_ip"]
-            local_url = f"{local_ip}:{app.state.API_SERVER_PORT}"
-            # Open browser to WebUI
-            print(f"{common.PRNT_APP} Opening WebUI at {local_url}")
-            webbrowser.open(local_url, new=2)
-        except Exception as e:
-            print(f"{common.PRNT_APP} Error opening WebUI at {local_url}: {e}")
 
 
 # Parse runtime arguments passed to script
@@ -145,6 +146,7 @@ app.state.is_debug = hasattr(sys, "gettrace") and sys.gettrace() is not None
 app.state.is_dev = build_env["mode"] == "dev" or app.state.is_debug
 app.state.is_prod = build_env["mode"] == "prod" or not app.state.is_dev
 app.state.keep_open = True
+obrew_studio_url = "https://studio.openbrewai.com"
 
 # Comment out if you want to debug on prod build (or set --mode=prod flag in command)
 if app.state.is_prod:

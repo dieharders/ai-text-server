@@ -27,6 +27,7 @@ class ApiServer:
         SSL_ENABLED: bool,
         SERVER_PORT: str,
         XHR_PROTOCOL: str,
+        studio_url: str,
     ):
         # Init logic here
         self.server_info = server_info
@@ -37,7 +38,7 @@ class ApiServer:
         self.is_dev = is_dev
         self.is_debug = is_debug
         self.api_version = "0.7.2"
-        self.openbrew_studio_url = "https://studio.openbrewai.com"
+        self.obrew_studio_url = studio_url
 
         # Comment out if you want to debug on prod build
         if self.is_prod:
@@ -58,7 +59,7 @@ class ApiServer:
             # "https://hoppscotch.io",  # (optional) for testing endpoints
             # "https://brain-dump-dieharders.vercel.app",  # (optional) client app origin (preview)
             # "https://homebrew-ai-discover.vercel.app",  # (optional) client app origin (production/alias)
-            self.openbrew_studio_url,  # (required) client app origin (production/domain)
+            self.obrew_studio_url,  # (required) client app origin (production/domain)
             *CUSTOM_ORIGINS,
         ]
         self.app = self._create_app()
