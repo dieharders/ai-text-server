@@ -55,7 +55,6 @@ def WEBVIEW(is_dev, menu_api, ssl):
     webview_window = webview.create_window(
         "Obrew Studio Server",
         "ui/index.html",
-        # "https://studio.openbrewai.com",
         js_api=menu_api,
         width=1200,
         height=1050,
@@ -74,5 +73,7 @@ def WEBVIEW(is_dev, menu_api, ssl):
     webview_window.expose(toggle_fullscreen)
 
     # Start the window
-    webview.start(ssl=ssl, debug=is_dev)
-    return webview_window
+    def callback():
+        webview.start(ssl=ssl, debug=is_dev)
+
+    return dict(handle=webview_window, callback=callback)

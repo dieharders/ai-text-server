@@ -191,10 +191,13 @@ def _display_server_info():
 
 # Close app when user closes window
 def _close_app():
-    app.state.keep_open = False
-    if hasattr(app.state, "server_process"):
-        app.state.server_process.terminate()
-    app.state.webview_window.destroy()
+    try:
+        if hasattr(app.state, "server_process"):
+            app.state.server_process.terminate()
+        if hasattr(app.state, "webview_window"):
+            app.state.webview_window.destroy()
+    except:
+        print("Failed to close App.")
 
 
 # Good for knowing when server has stopped/started
@@ -227,9 +230,12 @@ def main():
 
         # Show a window (in non-headless mode)
         if not app.state.is_headless:
-            app.state.webview_window = view.WEBVIEW(
+            view_instance = view.WEBVIEW(
                 is_dev=app.state.is_dev, menu_api=menu_api, ssl=SSL_ENABLED
             )
+            app.state.webview_window = view_instance.get("handle")
+            start_ui = view_instance.get("callback")
+            start_ui()
             # Close app when user closes window
             _close_app()
 
@@ -244,6 +250,7 @@ def main():
     except KeyboardInterrupt:
         print(f"{common.PRNT_APP} Main process interrupted. Shutting down.")
         app.state.keep_open = False
+        _close_app()
     except Exception as e:
         print(f"{common.PRNT_APP} Main process error: {e}")
 
