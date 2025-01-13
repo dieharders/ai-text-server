@@ -3,7 +3,6 @@ import sys
 import time
 import socket
 from dotenv import load_dotenv
-import signal
 from multiprocessing import Process
 import pyqrcode
 
@@ -26,6 +25,7 @@ class MenuAPI:
     def __init__(self):
         pass
 
+    # Save .env vals and other pre-launch settings
     def save_settings(self, settings):
         try:
             # @TODO Save .env values to file
@@ -208,32 +208,24 @@ def monitor_server(server_process):
         time.sleep(1)  # Check every second
 
 
-def _signal_handler(sig, frame):
-    print(
-        f"{common.PRNT_APP} Signal received. Main process interrupted. Shutting down."
-    )
-    sys.exit(0)
-
-
 #############
 ### Start ###
 #############
 
 
 def main():
-    # Listen for signal handler for SIGINT (Ctrl+C)
-    signal.signal(signal.SIGINT, _signal_handler)
-
-    # Start server as process (we do this via webui or api)
-    # ...
-
-    # @TODO Implement a recovery system for api server
-    # Start monitoring the server process in a separate thread or process
-    # monitor_process = Process(target=monitor_server, args=(process))
-    # monitor_process.start()
-
     try:
-        # Show a window
+        # Start server process on startup for headless mode (otherwise, we do this via webui or api)
+        if app.state.is_headless:
+            # @TODO Get config vals from the command line args used to start this app
+            config = dict()
+            menu_api.start_server_process(config)
+
+        # @TODO Implement a recovery system for api server, Start monitoring the server process in a separate thread or process
+        # monitor_process = Process(target=monitor_server, args=(process))
+        # monitor_process.start()
+
+        # Show a window (in non-headless mode)
         if not app.state.is_headless:
             app.state.webview_window = view.WEBVIEW(
                 is_dev=app.state.is_dev, menu_api=menu_api, ssl=SSL_ENABLED
@@ -241,15 +233,14 @@ def main():
             # Close app when user closes window
             _close_app()
 
-        # Wait for process to complete (optional, in case of graceful shutdown)
+        # Prevent premature shutdown in headless mode
         while app.state.keep_open:
-            if hasattr(app.state, "server_process"):
-                app.state.server_process.join()
-
-        # Close everything and cleanup
-        print(f"{common.PRNT_APP} Closing app.")
+            time.sleep(1)
+        # Graceful shutdown, close everything and cleanup
         if hasattr(app.state, "server_process"):
             app.state.server_process.terminate()
+            app.state.server_process.join()
+        print(f"{common.PRNT_APP} Closing app.")
     except KeyboardInterrupt:
         print(f"{common.PRNT_APP} Main process interrupted. Shutting down.")
         app.state.keep_open = False

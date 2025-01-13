@@ -135,6 +135,8 @@ class ApiServer:
                     port=self.SERVER_PORT,
                     log_level="info",
                 )
+        except KeyboardInterrupt as e:
+            print(f"{common.PRNT_API} API server ended by Keyboard interrupt. {e}")
         except Exception as e:
             print(f"{common.PRNT_API} API server shutdown. {e}")
 
