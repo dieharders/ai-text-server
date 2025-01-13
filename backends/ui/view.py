@@ -58,7 +58,7 @@ def WEBVIEW(is_dev, menu_api, ssl):
         # "https://studio.openbrewai.com",
         js_api=menu_api,
         width=1200,
-        height=960,
+        height=1050,
         min_size=(350, 450),
         fullscreen=False,
         # transparent=True,

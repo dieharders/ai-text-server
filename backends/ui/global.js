@@ -1,4 +1,5 @@
 let pywebviewready = false
+window.frontend = { data: {} } // hold main page's data
 
 // Front-End funcs
 function toggleFullScreen() {

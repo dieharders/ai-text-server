@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import webbrowser
 import socket
 from dotenv import load_dotenv
 import signal
@@ -27,7 +26,15 @@ class MenuAPI:
     def __init__(self):
         pass
 
-    def update_entry_page(self):
+    def save_settings(self, settings):
+        try:
+            # @TODO Save .env values to file
+            # ...
+            return
+        except Exception as e:
+            print(f"{common.PRNT_APP} Failed to update .env values: {e}")
+
+    def update_settings_page(self):
         try:
             page_data = dict(obrew_studio_url=obrew_studio_url)
             return page_data
@@ -37,7 +44,7 @@ class MenuAPI:
     # Return a "connect" GUI page for user to config and startup the API server,
     # then return the user to the supplied callback url with query params of config added.
     # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
-    def update_connect_page(self):
+    def update_entry_page(self):
         try:
             port = app.state.API_SERVER_PORT
             server_info = _display_server_info()
@@ -61,36 +68,18 @@ class MenuAPI:
         except Exception as e:
             print(f"{common.PRNT_APP} Failed to update 'Connect' page: {e}")
 
-    # Start the API server
-    def start_server(self):
-        try:
-            server_info = _display_server_info()
-            local_ip = server_info["local_ip"]
-            remote_ip = server_info["remote_ip"]
-            print(f"{common.PRNT_APP} Starting API server...", flush=True)
-            app.state.api_server = ApiServer(
-                is_prod=app.state.is_prod,
-                is_dev=app.state.is_dev,
-                is_debug=app.state.is_debug,
-                server_info=server_info,
-                SSL_ENABLED=SSL_ENABLED,
-                SERVER_PORT=app.state.API_SERVER_PORT,
-                XHR_PROTOCOL=XHR_PROTOCOL,
-                studio_url=obrew_studio_url,
-            )
-            app.state.api_server.startup()
-            print(
-                f"{common.PRNT_APP} Refer to API docs:\n-> {local_ip}:{app.state.API_SERVER_PORT}/docs \nOR\n-> {remote_ip}:{app.state.API_SERVER_PORT}/docs",
-                flush=True,
-            )
-        except Exception as e:
-            print(f"{common.PRNT_APP} Failed to start API server. {e}")
+    def start_server_process(self, config):
+        process = Process(target=start_server, args=[config])
+        app.state.server_process = process
+        process.daemon = True
+        process.start()
 
     # Send shutdown server request
     def shutdown_server(*args):
         try:
             app.state.api_server.shutdown()
             print(f"{common.PRNT_APP} Shutting down server.", flush=True)
+            return
         except Exception as e:
             print(
                 f"{common.PRNT_APP} Error, server forced to shutdown: {e}", flush=True
@@ -160,6 +149,34 @@ if app.state.is_prod:
 ###############
 
 
+# Start the API server
+def start_server(config):
+    try:
+        # @TODO Get settings from 'config'
+        server_info = _display_server_info()
+        local_ip = server_info["local_ip"]
+        remote_ip = server_info["remote_ip"]
+        print(f"{common.PRNT_APP} Starting API server...", flush=True)
+        app.state.api_server = ApiServer(
+            is_prod=app.state.is_prod,
+            is_dev=app.state.is_dev,
+            is_debug=app.state.is_debug,
+            server_info=server_info,
+            SSL_ENABLED=SSL_ENABLED,
+            SERVER_PORT=app.state.API_SERVER_PORT,
+            XHR_PROTOCOL=XHR_PROTOCOL,
+            studio_url=obrew_studio_url,
+        )
+        app.state.api_server.startup()
+        print(
+            f"{common.PRNT_APP} Refer to API docs:\n-> {local_ip}:{app.state.API_SERVER_PORT}/docs \nOR\n-> {remote_ip}:{app.state.API_SERVER_PORT}/docs",
+            flush=True,
+        )
+        return
+    except Exception as e:
+        print(f"{common.PRNT_APP} Failed to start API server. {e}")
+
+
 def _display_server_info():
     # Display the local IP address of this server
     hostname = socket.gethostname()
@@ -175,7 +192,8 @@ def _display_server_info():
 # Close app when user closes window
 def _close_app():
     app.state.keep_open = False
-    app.state.server_process.terminate()
+    if hasattr(app.state, "server_process"):
+        app.state.server_process.terminate()
     app.state.webview_window.destroy()
 
 
@@ -206,11 +224,8 @@ def main():
     # Listen for signal handler for SIGINT (Ctrl+C)
     signal.signal(signal.SIGINT, _signal_handler)
 
-    # Start server as process
-    process = Process(target=menu_api.start_server)
-    app.state.server_process = process
-    process.daemon = True
-    process.start()
+    # Start server as process (we do this via webui or api)
+    # ...
 
     # @TODO Implement a recovery system for api server
     # Start monitoring the server process in a separate thread or process
@@ -228,11 +243,13 @@ def main():
 
         # Wait for process to complete (optional, in case of graceful shutdown)
         while app.state.keep_open:
-            process.join()
+            if hasattr(app.state, "server_process"):
+                app.state.server_process.join()
 
         # Close everything and cleanup
         print(f"{common.PRNT_APP} Closing app.")
-        process.terminate()
+        if hasattr(app.state, "server_process"):
+            app.state.server_process.terminate()
     except KeyboardInterrupt:
         print(f"{common.PRNT_APP} Main process interrupted. Shutting down.")
         app.state.keep_open = False

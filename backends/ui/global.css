@@ -1,0 +1,179 @@
+body {
+  font-family: 'Roboto', sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+.content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  max-width: 30rem;
+  background-color: white;
+  overflow: visible;
+  width: 100%;
+  box-sizing: border-box;
+  /* Allow user to select text */
+  -moz-user-select: text;
+  -khtml-user-select: text;
+  -webkit-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+.menu {
+  display: flex;
+  position: relative;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+  margin-top: 3rem;
+}
+.formOptions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+  margin: 0;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding: 0;
+}
+.inputContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  width: 100%;
+  gap: 0.5rem;
+}
+label {
+  flex-basis: 100px;
+  text-align: left;
+}
+input {
+  display: inline-block;
+  position: relative;
+  padding: 0.5rem;
+  margin: 0;
+  box-sizing: border-box;
+  flex-grow: 1;
+  border-style: none;
+  border-radius: 4px;
+  transition: outline ease-in 100ms;
+  line-height: normal;
+  font-size: medium;
+  font-style: normal;
+  font-weight: normal;
+  outline-width: 1px;
+  outline-color: #343a40;
+  outline-style: solid;
+}
+/* input:hover, */
+input:focus,
+input:active {
+  outline-width: 2px;
+}
+input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  margin-right: auto;
+  flex-grow: initial;
+}
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffb327;
+  width: 100%;
+  color: rgb(24, 10, 0);
+  padding: 10px 20px;
+  border: none;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+  /* Prevent click dragging */
+  user-select: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -o-user-select: none;
+}
+.btn:hover {
+  background-color: #f09c00;
+}
+.btn.grey {
+  background-color: #e9ecef;
+}
+.btn:hover.grey {
+  background-color: #ced4da;
+}
+
+/* Cross-doc transition: https://developer.chrome.com/docs/web-platform/view-transitions/cross-document */
+/* View transition */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: fadeOut 0.25s ease-out;
+}
+
+::view-transition-new(root) {
+  animation: fadeIn 0.25s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(0%);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 0;
+    transform: translateX(0%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+}
+
+@media (max-width: 480px) {
+  .inputContainer {
+    flex-direction: column;
+  }
+  label {
+    flex-basis: auto;
+  }
+  input {
+    width: 100%;
+  }
+  input[type='checkbox'] {
+    margin: 0;
+  }
+}
