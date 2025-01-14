@@ -210,7 +210,7 @@ This utility will take your exe and dependencies and compress the files, then wr
 
 For production deployments you will either want to run the server behind a reverse proxy using something like Traefic-Hub (free and opens your self hosted server to public internet using encrypted https protocol).
 
-### Deploy to local network over https
+### Start server to local network or cloud over https
 
 If you wish to deploy this on your private network for local access from any device on that network, you will need to run the server using https which requires SSL certificates. Be sure to set the .env var `ENABLE_SSL`.
 

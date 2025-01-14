@@ -23,16 +23,20 @@ class ApiServer:
         is_prod: bool,
         is_dev: bool,
         is_debug: bool,
-        server_info: dict,
+        remote_url: str,
         SSL_ENABLED: bool,
-        SERVER_PORT: str,
-        XHR_PROTOCOL: str,
+        SERVER_HOST: str,
+        SERVER_PORT: int,
         studio_url: str,
     ):
         # Init logic here
-        self.server_info = server_info
-        self.SERVER_PORT = SERVER_PORT
-        self.XHR_PROTOCOL = XHR_PROTOCOL
+        self.remote_url = remote_url
+        self.SERVER_HOST = SERVER_HOST or "0.0.0.0"
+        self.SERVER_PORT = SERVER_PORT or 8008
+        if SSL_ENABLED:
+            self.XHR_PROTOCOL = "https"
+        else:
+            self.XHR_PROTOCOL = "http"
         self.ssl = SSL_ENABLED
         self.is_prod = is_prod
         self.is_dev = is_dev
@@ -114,12 +118,16 @@ class ApiServer:
 
     def startup(self):
         try:
+            print(
+                f"{common.PRNT_API} Refer to API docs:\n-> {self.XHR_PROTOCOL}://localhost:{self.SERVER_PORT}/docs \nOR\n-> {self.remote_url}:{self.SERVER_PORT}/docs",
+                flush=True,
+            )
             # Start the ASGI server (https)
             if self.XHR_PROTOCOL == "https":
                 print(f"{common.PRNT_API} API server starting with SSL.")
                 uvicorn.run(
                     self.app,
-                    host="0.0.0.0",
+                    host=self.SERVER_HOST,
                     port=self.SERVER_PORT,
                     log_level="info",
                     # Include these to host over https. If server fails to start make sure the .pem files are generated in _deps/public dir
@@ -131,7 +139,7 @@ class ApiServer:
                 print(f"{common.PRNT_API} API server starting.")
                 uvicorn.run(
                     self.app,
-                    host="0.0.0.0",
+                    host=self.SERVER_HOST,
                     port=self.SERVER_PORT,
                     log_level="info",
                 )

@@ -22,6 +22,7 @@ class AppState:
         self.state = self.State()
 
 
+# @TODO move class to view.py
 class MenuAPI:
     def __init__(self):
         pass
@@ -44,16 +45,15 @@ class MenuAPI:
         except Exception as e:
             print(f"{common.PRNT_APP} Failed to update 'Main' page: {e}")
 
-    # Return a "connect" GUI page for user to config and startup the API server,
-    # then return the user to the supplied callback url with query params of config added.
+    # Generate links for user to connect an external device to this machine's
+    # locally running server instance.
     # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
-    def update_entry_page(self):
+    def update_entry_page(self, port: str):
         try:
-            port = app.state.API_SERVER_PORT
             server_info = _display_server_info()
             remote_url = server_info["remote_ip"]
             local_url = server_info["local_ip"]
-            # Generate QR code - direct to remote url
+            # Generate QR code to remote url
             qr_code = pyqrcode.create(
                 f"{remote_url}:{port}/?hostname={remote_url}&port={port}"
             )
@@ -69,7 +69,7 @@ class MenuAPI:
             )
             return page_data
         except Exception as e:
-            print(f"{common.PRNT_APP} Failed to update 'Connect' page: {e}")
+            print(f"{common.PRNT_APP} Failed to update Main page: {e}")
 
     def start_server_process(self, config):
         process = Process(target=start_server, args=[config])
@@ -108,6 +108,10 @@ def parse_runtime_args():
     }
 
 
+def get_ssl_env():
+    return os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
+
+
 # Path to the .env file in either the parent or /_deps directory
 try:
     # Look in app's _deps dir
@@ -123,14 +127,9 @@ load_dotenv(env_path)
 # Check what env is running - prod/dev
 build_env = parse_runtime_args()
 
-# Initialize global data here
+# Initialize global data
 menu_api = MenuAPI()
-SSL_ENABLED = os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
-XHR_PROTOCOL = "http"
-if SSL_ENABLED is True:
-    XHR_PROTOCOL = "https"
 app = AppState()
-app.state.API_SERVER_PORT = 8008
 app.state.is_headless = (
     build_env["headless"] == "True"
 )  # headless == no UI window shown
@@ -155,26 +154,20 @@ if app.state.is_prod:
 # Start the API server
 def start_server(config):
     try:
-        # @TODO Get settings from 'config'
         server_info = _display_server_info()
-        local_ip = server_info["local_ip"]
         remote_ip = server_info["remote_ip"]
         print(f"{common.PRNT_APP} Starting API server...", flush=True)
         app.state.api_server = ApiServer(
             is_prod=app.state.is_prod,
             is_dev=app.state.is_dev,
             is_debug=app.state.is_debug,
-            server_info=server_info,
-            SSL_ENABLED=SSL_ENABLED,
-            SERVER_PORT=app.state.API_SERVER_PORT,
-            XHR_PROTOCOL=XHR_PROTOCOL,
-            studio_url=obrew_studio_url,
+            SSL_ENABLED=get_ssl_env(),
+            remote_url=remote_ip,
+            SERVER_HOST=config["hostname"],
+            SERVER_PORT=config["port"],
+            studio_url=config["webui"] or obrew_studio_url,
         )
         app.state.api_server.startup()
-        print(
-            f"{common.PRNT_APP} Refer to API docs:\n-> {local_ip}:{app.state.API_SERVER_PORT}/docs \nOR\n-> {remote_ip}:{app.state.API_SERVER_PORT}/docs",
-            flush=True,
-        )
         return
     except Exception as e:
         print(f"{common.PRNT_APP} Failed to start API server. {e}")
@@ -184,8 +177,13 @@ def _display_server_info():
     # Display the local IP address of this server
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
-    remote_ip = f"{XHR_PROTOCOL}://{IPAddr}"
-    local_ip = f"{XHR_PROTOCOL}://localhost"
+    ssl = get_ssl_env()
+    if ssl:
+        SCHEME = "https"
+    else:
+        SCHEME = "http"
+    remote_ip = f"{SCHEME}://{IPAddr}"
+    local_ip = f"{SCHEME}://localhost"
     return {
         "local_ip": local_ip,
         "remote_ip": remote_ip,
@@ -212,7 +210,7 @@ def monitor_server(server_process):
     while True:
         if not server_process.is_alive():
             print("Server process has stopped unexpectedly. Restarting...")
-            menu_api.start_server()  # You can restart the server here if needed.
+            menu_api.start_server(dict())  # You can restart the server here if needed.
             server_process.start()
         time.sleep(1)  # Check every second
 
@@ -249,7 +247,7 @@ def main():
         # Show a window (in non-headless mode)
         if not app.state.is_headless:
             view_instance = view.WEBVIEW(
-                is_dev=app.state.is_dev, menu_api=menu_api, ssl=SSL_ENABLED
+                is_dev=app.state.is_dev, menu_api=menu_api, ssl=get_ssl_env()
             )
             app.state.webview_window = view_instance.get("handle")
             start_ui = view_instance.get("callback")

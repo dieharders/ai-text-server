@@ -5,21 +5,22 @@
   <div class="bg-image"></div>
   <!-- Title -->
   <h1>Welcome to Obrew Studio!</h1>
-  <p>Edit the config below to connect to a custom or remote server.</p>
+  <p>Edit the config below to start the server.</p>
 
   <!-- Connection Options -->
   <form action="" class="formOptions">
     <div class="inputContainer">
-      <label for="scheme">Protocol (http/https):</label>
-      <input type="text" id="scheme" name="scheme" value="http" />
-    </div>
-    <div class="inputContainer">
-      <label for="hname">Host name:</label>
-      <input type="text" id="hname" name="hname" value="localhost" />
+      <label for="hostname">Host name:</label>
+      <input type="text" id="hostname" name="hostname" value="0.0.0.0" />
     </div>
     <div class="inputContainer">
       <label for="port">Port:</label>
       <input type="number" id="port" name="port" value="8008" />
+    </div>
+    <div class="inputContainer">
+      <label for="webui">WebUI:</label>
+      <!-- dev (http://localhost:3000) -->
+      <input type="text" id="webui" name="webui" value="" />
     </div>
   </form>
 
