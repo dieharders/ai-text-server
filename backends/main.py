@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import socket
+import signal
 from dotenv import load_dotenv
 from multiprocessing import Process
 import pyqrcode
@@ -189,13 +190,16 @@ def _display_server_info():
     }
 
 
-# Close app when user closes window
+# Graceful shutdown, close everything and cleanup
 def _close_app():
     try:
+        app.state.keep_open = False
         if hasattr(app.state, "server_process"):
             app.state.server_process.terminate()
+            app.state.server_process.join()
         if hasattr(app.state, "webview_window"):
             app.state.webview_window.destroy()
+        print(f"{common.PRNT_APP} Closing app.")
     except:
         print("Failed to close App.")
 
@@ -211,6 +215,15 @@ def monitor_server(server_process):
         time.sleep(1)  # Check every second
 
 
+# Handle premature keyboard interrupt
+def _signal_handler(sig, frame):
+    print(
+        f"{common.PRNT_APP} Signal received. Main process interrupted. Shutting down."
+    )
+    _close_app()
+    # sys.exit(0)
+
+
 #############
 ### Start ###
 #############
@@ -218,7 +231,10 @@ def monitor_server(server_process):
 
 def main():
     try:
-        # Start server process on startup for headless mode (otherwise, we do this via webui or api)
+        # Listen for signal handler for SIGINT (Ctrl+C, KeyboardInterrupt)
+        signal.signal(signal.SIGINT, _signal_handler)
+
+        # Start server process on startup for headless mode (otherwise, we do this via webui or cli)
         if app.state.is_headless:
             # @TODO Get config vals from the command line args used to start this app
             config = dict()
@@ -239,18 +255,9 @@ def main():
             # Close app when user closes window
             _close_app()
 
-        # Prevent premature shutdown in headless mode
+        # Prevent premature exit in headless mode
         while app.state.keep_open:
             time.sleep(1)
-        # Graceful shutdown, close everything and cleanup
-        if hasattr(app.state, "server_process"):
-            app.state.server_process.terminate()
-            app.state.server_process.join()
-        print(f"{common.PRNT_APP} Closing app.")
-    except KeyboardInterrupt:
-        print(f"{common.PRNT_APP} Main process interrupted. Shutting down.")
-        app.state.keep_open = False
-        _close_app()
     except Exception as e:
         print(f"{common.PRNT_APP} Main process error: {e}")
 
