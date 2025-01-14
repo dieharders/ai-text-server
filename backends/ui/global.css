@@ -66,6 +66,7 @@ body {
 label {
   flex-basis: 100px;
   text-align: left;
+  user-select: none;
 }
 input {
   display: inline-block;
