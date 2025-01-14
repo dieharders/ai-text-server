@@ -5,10 +5,14 @@
   <div class="bg-image"></div>
   <!-- Title -->
   <h1>Welcome to Obrew Studio!</h1>
-  <p>View remote connections in Advanced Options.</p>
+  <p>Edit the config below to connect to a custom or remote server.</p>
 
   <!-- Connection Options -->
   <form action="" class="formOptions">
+    <div class="inputContainer">
+      <label for="scheme">Protocol (http/https):</label>
+      <input type="text" id="scheme" name="scheme" value="http" />
+    </div>
     <div class="inputContainer">
       <label for="hname">Host name:</label>
       <input type="text" id="hname" name="hname" value="localhost" />
@@ -23,7 +27,7 @@
   <button class="btn grey" onclick="toggleAdvanced()">Advanced Options</button>
   <div id="advContainer" data-attr="closed">
     <!-- <h2>Advanced Options</h2> -->
-    <p>Scan the code with your mobile device to access WebUI remotely.</p>
+    <p>Scan the code with your mobile device to connect to Obrew running on this device.</p>
     <div class="remote">
       <h3>Remote Host</h3>
       <!-- Only show if data exists -->
