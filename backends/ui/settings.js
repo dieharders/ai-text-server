@@ -1,7 +1,19 @@
 // Backend funcs
 async function saveSettings() {
-  const data = await window.pywebview.api.save_settings()
-  return data
+  const form = document.querySelector('form')
+  // Get form data
+  const formData = new FormData(form)
+  // Write checkbox data
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]')
+  const checkData = {}
+  checkboxes.forEach(v => {
+    if (v.checked) checkData[v.name] = 'true'
+    else checkData[v.name] = 'false'
+  })
+  // Convert to a plain JavaScript object
+  const formDataObject = Object.fromEntries(formData.entries())
+  await window.pywebview.api.save_settings({ ...formDataObject, ...checkData })
+  return
 }
 
 // Front-End funcs

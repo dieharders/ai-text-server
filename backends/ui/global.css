@@ -95,6 +95,7 @@ input[type='checkbox'] {
   height: 1rem;
   margin-right: auto;
   flex-grow: initial;
+  outline: none;
 }
 .btn {
   display: flex;

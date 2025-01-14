@@ -27,10 +27,12 @@ class MenuAPI:
         pass
 
     # Save .env vals and other pre-launch settings
-    def save_settings(self, settings):
+    def save_settings(self, settings: dict):
         try:
-            # @TODO Save .env values to file
-            # ...
+            # Save .env values
+            for key, value in settings.items():
+                if value and key:
+                    os.environ[key] = value.strip().replace(" ", "")
             return
         except Exception as e:
             print(f"{common.PRNT_APP} Failed to update .env values: {e}")
