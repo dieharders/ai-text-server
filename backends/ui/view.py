@@ -53,7 +53,7 @@ import webview
 # WebView window
 def WEBVIEW(is_dev, menu_api, ssl):
     webview_window = webview.create_window(
-        "Obrew Studio Server",
+        "Obrew Studio",
         "ui/index.html",
         js_api=menu_api,
         width=960,

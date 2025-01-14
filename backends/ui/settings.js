@@ -23,7 +23,8 @@ async function mountPage() {
   const llamaIndexEl = document.getElementById('llamaCloud')
   if (data.llamaIndexAPIKey) llamaIndexEl.value = `${data.llamaIndexAPIKey}`
   const sslEl = document.getElementById('ssl')
-  if (data.ssl) sslEl.value = `${data.ssl}`
+  if (data.ssl) sslEl.checked = true
+  else sslEl.checked = false
   const corsEl = document.getElementById('cors')
   if (data.cors) corsEl.value = `${data.cors}`
   const adminEl = document.getElementById('admin')

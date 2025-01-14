@@ -22,7 +22,7 @@ class AppState:
         self.state = self.State()
 
 
-# @TODO move class to view.py
+# Inject these Python funcs into javascript context.
 class MenuAPI:
     def __init__(self):
         pass
@@ -40,7 +40,16 @@ class MenuAPI:
 
     def update_settings_page(self):
         try:
-            page_data = dict(obrew_studio_url=obrew_studio_url)
+            # Read in .env vals
+            cors = os.getenv("CUSTOM_ORIGINS", "")
+            adminWhitelist = os.getenv("WHITELIST_ADMIN_IP", "")
+            llamaIndexAPIKey = os.getenv("LLAMA_CLOUD_API_KEY", "")
+            page_data = dict(
+                ssl=get_ssl_env(),
+                cors=cors,
+                adminWhitelist=adminWhitelist,
+                llamaIndexAPIKey=llamaIndexAPIKey,
+            )
             return page_data
         except Exception as e:
             print(f"{common.PRNT_APP} Failed to update 'Main' page: {e}")
@@ -50,12 +59,13 @@ class MenuAPI:
     # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
     def update_entry_page(self, port: str):
         try:
+            PORT = port or app.state.port
             server_info = _display_server_info()
             remote_url = server_info["remote_ip"]
             local_url = server_info["local_ip"]
             # Generate QR code to remote url
             qr_code = pyqrcode.create(
-                f"{remote_url}:{port}/?hostname={remote_url}&port={port}"
+                f"{remote_url}:{PORT}/?hostname={remote_url}&port={PORT}"
             )
             qr_data = qr_code.png_as_base64_str(scale=5)
             # qr_image = qr_code.png("image.png", scale=8) # Writes image file to disk
@@ -64,8 +74,9 @@ class MenuAPI:
                 qr_data=qr_data,
                 local_url=local_url,
                 remote_url=remote_url,
-                port=port,
-                obrew_studio_url=obrew_studio_url,
+                host=app.state.host,
+                port=PORT,
+                webui_url=webui_url,
             )
             return page_data
         except Exception as e:
@@ -93,16 +104,24 @@ class MenuAPI:
 def parse_runtime_args():
     # Command-line arguments are accessed via sys.argv
     arguments = sys.argv[1:]
-    # Initialize variables to store parsed arguments
+    # Initialize default variables to store parsed arguments
     mode = None
+    host = "0.0.0.0"
+    port = "8008"
     headless = "False"
     # Iterate through arguments and parse them
     for arg in arguments:
+        if arg.startswith("--host="):
+            host = arg.split("=")[1]
+        if arg.startswith("--port="):
+            port = arg.split("=")[1]
         if arg.startswith("--mode="):
             mode = arg.split("=")[1]
         if arg.startswith("--headless="):
             headless = arg.split("=")[1]
     return {
+        "host": host,
+        "port": port,
         "mode": mode,
         "headless": headless,
     }
@@ -130,14 +149,14 @@ build_env = parse_runtime_args()
 # Initialize global data
 menu_api = MenuAPI()
 app = AppState()
-app.state.is_headless = (
-    build_env["headless"] == "True"
-)  # headless == no UI window shown
+app.state.host = build_env["host"]
+app.state.port = build_env["port"]
+app.state.is_headless = build_env["headless"] == "True"  # no UI
 app.state.is_debug = hasattr(sys, "gettrace") and sys.gettrace() is not None
 app.state.is_dev = build_env["mode"] == "dev" or app.state.is_debug
 app.state.is_prod = build_env["mode"] == "prod" or not app.state.is_dev
 app.state.keep_open = True
-obrew_studio_url = "https://studio.openbrewai.com"
+webui_url = "https://studio.openbrewai.com"
 
 # Comment out if you want to debug on prod build (or set --mode=prod flag in command)
 if app.state.is_prod:
@@ -163,9 +182,9 @@ def start_server(config):
             is_debug=app.state.is_debug,
             SSL_ENABLED=get_ssl_env(),
             remote_url=remote_ip,
-            SERVER_HOST=config["hostname"],
-            SERVER_PORT=config["port"],
-            studio_url=config["webui"] or obrew_studio_url,
+            SERVER_HOST=config["host"],
+            SERVER_PORT=int(config["port"]),
+            webui_url=config.get("webui", webui_url),  # not always present
         )
         app.state.api_server.startup()
         return
@@ -210,7 +229,8 @@ def monitor_server(server_process):
     while True:
         if not server_process.is_alive():
             print("Server process has stopped unexpectedly. Restarting...")
-            menu_api.start_server(dict())  # You can restart the server here if needed.
+            # You can restart the server here if needed...
+            menu_api.start_server_process(dict())
             server_process.start()
         time.sleep(1)  # Check every second
 
@@ -236,15 +256,14 @@ def main():
 
         # Start server process on startup for headless mode (otherwise, we do this via webui or cli)
         if app.state.is_headless:
-            # @TODO Get config vals from the command line args used to start this app
-            config = dict()
+            config = dict(host=app.state.host, port=app.state.port)
             menu_api.start_server_process(config)
 
         # @TODO Implement a recovery system for api server, Start monitoring the server process in a separate thread or process
         # monitor_process = Process(target=monitor_server, args=(process))
         # monitor_process.start()
 
-        # Show a window (in non-headless mode)
+        # Show a window (non-headless mode)
         if not app.state.is_headless:
             view_instance = view.WEBVIEW(
                 is_dev=app.state.is_dev, menu_api=menu_api, ssl=get_ssl_env()

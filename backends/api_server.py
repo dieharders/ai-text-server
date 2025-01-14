@@ -27,7 +27,7 @@ class ApiServer:
         SSL_ENABLED: bool,
         SERVER_HOST: str,
         SERVER_PORT: int,
-        studio_url: str,
+        webui_url: str,
     ):
         # Init logic here
         self.remote_url = remote_url
@@ -42,8 +42,7 @@ class ApiServer:
         self.is_dev = is_dev
         self.is_debug = is_debug
         self.api_version = "0.7.2"
-        self.obrew_studio_url = studio_url
-
+        self.webui_url = webui_url
         # Comment out if you want to debug on prod build
         if self.is_prod:
             # Remove prints in prod when deploying in window mode
@@ -63,7 +62,7 @@ class ApiServer:
             # "https://hoppscotch.io",  # (optional) for testing endpoints
             # "https://brain-dump-dieharders.vercel.app",  # (optional) client app origin (preview)
             # "https://homebrew-ai-discover.vercel.app",  # (optional) client app origin (production/alias)
-            self.obrew_studio_url,  # (required) client app origin (production/domain)
+            self.webui_url,  # (required) client app origin (production/domain)
             *CUSTOM_ORIGINS,
         ]
         self.app = self._create_app()

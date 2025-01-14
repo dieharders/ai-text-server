@@ -8,7 +8,7 @@ async function startServer() {
   await window.pywebview.api.start_server_process(config)
   // Nav to Obrew Studio WebUI
   // The params help front-end know what server to connect to
-  window.location = `${window.frontend.data.obrew_studio_url}/?hostname=${window.frontend.data.local_url}&port=${window.frontend.data.port}`
+  window.location = `${window.frontend.data.webui_url}/?hostname=${window.frontend.data.local_url}&port=${window.frontend.data.port}`
 }
 async function shutdownServer() {
   await window.pywebview.api.shutdown_server()
@@ -18,7 +18,6 @@ async function shutdownServer() {
 async function getPageData() {
   const port = document.getElementById('port').value
   const data = await window.pywebview.api.update_entry_page(port)
-  window.frontend.data = data
   return data
 }
 function updateQRCode(data) {
@@ -38,13 +37,29 @@ function updateQRCode(data) {
   }
 }
 async function mountPage() {
-  // Get data from input
-  const data = await getPageData()
-  if (!data) return
-  // Parse page with data
-  updateQRCode(data)
-  const webuiEl = document.getElementById('webui')
-  webuiEl.value = data.obrew_studio_url
+  try {
+    // Get data from input
+    const data = await getPageData()
+    if (!data) return
+    // Update state on first mount
+    if (Object.keys(window.frontend.data).length === 0) window.frontend.data = data
+    // Generate qr code
+    updateQRCode(data)
+    // Parse page with data
+    const hostEl = document.getElementById('host')
+    hostEl.value = window.frontend.data.host || data.host
+    const portEl = document.getElementById('port')
+    portEl.value = window.frontend.data.port || data.port
+    const webuiEl = document.getElementById('webui')
+    webuiEl.value = window.frontend.data.webui || data.webui_url
+  } catch (error) {
+    console.log('Failed to mount page', error)
+  }
+}
+function updatePageData(ev) {
+  // Update page state
+  window.frontend.data[ev.target.name] = ev.target.value
+  hideAdvanced()
 }
 function hideAdvanced() {
   const containerEl = document.getElementById('advContainer')
@@ -64,8 +79,8 @@ async function toggleAdvanced() {
 }
 
 // Global Vars
-window.frontend.data = {}
+if (!window.frontend) window.frontend.data = {}
 // Listeners
-document.querySelector('.formOptions').addEventListener('change', hideAdvanced)
+document.querySelector('.formOptions').addEventListener('change', updatePageData)
 // Mount page
 mountPage()
