@@ -1,0 +1,59 @@
+<link rel="stylesheet" href="main.css" />
+<script type="text/javascript" src="main.js"></script>
+<div class="content">
+  <!-- Logo -->
+  <div class="bg-image"></div>
+  <!-- Title -->
+  <h1>Welcome to Obrew Studio!</h1>
+  <p>Startup the server to begin.</p>
+
+  <!-- Connection Options -->
+  <button class="btn grey" onclick="toggleConnections()">Connection Options</button>
+  <div id="connContainer" data-attr="closed">
+    <p>Edit the config below to start the server.</p>
+    <form action="" class="formOptions">
+      <div class="inputContainer">
+        <label for="host">Host:</label>
+        <input type="text" id="host" name="host" value="" placeholder="{{0.0.0.0}}" />
+      </div>
+      <div class="inputContainer">
+        <label for="port">Port:</label>
+        <input type="number" id="port" name="port" value="" placeholder="{{8008}}" />
+      </div>
+      <div class="inputContainer">
+        <label for="webui">WebUI:</label>
+        <input
+          type="text"
+          id="webui"
+          name="webui"
+          value=""
+          placeholder="{{http://localhost:3000}}"
+        />
+      </div>
+    </form>
+  </div>
+
+  <!-- Advanced Connection Options -->
+  <button class="btn grey" onclick="toggleAdvanced()">Advanced Options</button>
+  <div id="advContainer" data-attr="closed">
+    <p>Scan the code with your mobile device to connect to Obrew running on this device.</p>
+    <div class="remote">
+      <h3>Remote Host</h3>
+      <!-- Only show if data exists -->
+      <p id="qr_link">{{remote_url}}:{{port}}</p>
+      <img id="qrcode" data-attr="none" src="" alt="qr code for {{remote_url}}:{{port}}" />
+    </div>
+    <h3>API Docs</h3>
+    <a class="docs-link" href="{{local_url}}:{{port}}/docs" target="_blank">
+      {{local_url}}:{{port}}/docs
+    </a>
+  </div>
+
+  <!-- Button Menu -->
+  <div class="menuContainer">
+    <ul class="menu">
+      <button id="startBtn" class="btn" onclick="startServer()">Start</button>
+      <a class="btn" href="/settings.html" draggable="false" data-link>Settings</a>
+    </ul>
+  </div>
+</div>

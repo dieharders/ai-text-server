@@ -19,7 +19,7 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico"
+   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/ui/favicon.ico"
   },
   {
    "optionDest": "name",
@@ -67,7 +67,7 @@
   },
   {
    "optionDest": "datas",
-   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/"
+   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/ui/public;public/"
   },
   {
    "optionDest": "datas",

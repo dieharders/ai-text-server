@@ -3,16 +3,15 @@ import signal
 import sys
 import uvicorn
 import httpx
-import pyqrcode
+from collections.abc import Callable
 from fastapi import (
     FastAPI,
-    Request,
     APIRouter,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
+
+# Custom
 from embeddings import storage as vector_storage
 from core import common, classes
 from services.route import router as services
@@ -27,21 +26,28 @@ class ApiServer:
         is_prod: bool,
         is_dev: bool,
         is_debug: bool,
-        server_info: dict,
+        remote_url: str,
         SSL_ENABLED: bool,
-        SERVER_PORT: str,
-        XHR_PROTOCOL: str,
+        SERVER_HOST: str,
+        SERVER_PORT: int,
+        webui_url: str = "",
+        on_startup_callback: Callable | None = None,
     ):
         # Init logic here
-        self.server_info = server_info
-        self.SERVER_PORT = SERVER_PORT
-        self.XHR_PROTOCOL = XHR_PROTOCOL
+        self.remote_url = remote_url
+        self.SERVER_HOST = SERVER_HOST or "0.0.0.0"
+        self.SERVER_PORT = SERVER_PORT or 8008
+        if SSL_ENABLED:
+            self.XHR_PROTOCOL = "https"
+        else:
+            self.XHR_PROTOCOL = "http"
+        self.ssl = SSL_ENABLED
         self.is_prod = is_prod
         self.is_dev = is_dev
         self.is_debug = is_debug
         self.api_version = "0.7.2"
-        self.openbrew_studio_url = "https://studio.openbrewai.com"
-
+        self.webui_url = webui_url
+        self.on_startup_callback = on_startup_callback
         # Comment out if you want to debug on prod build
         if self.is_prod:
             # Remove prints in prod when deploying in window mode
@@ -61,7 +67,7 @@ class ApiServer:
             # "https://hoppscotch.io",  # (optional) for testing endpoints
             # "https://brain-dump-dieharders.vercel.app",  # (optional) client app origin (preview)
             # "https://homebrew-ai-discover.vercel.app",  # (optional) client app origin (production/alias)
-            self.openbrew_studio_url,  # (required) client app origin (production/domain)
+            self.webui_url,  # (required) client app origin (production/domain)
             *CUSTOM_ORIGINS,
         ]
         self.app = self._create_app()
@@ -88,9 +94,13 @@ class ApiServer:
             app.state.is_dev = self.is_dev
             app.state.is_debug = self.is_debug
 
+            # Tell front-end to go to webui
+            if self.on_startup_callback:
+                self.on_startup_callback()
+
             yield
             # Do shutdown cleanup here...
-            print(f"{common.PRNT_API} Lifespan shutdown")
+            print(f"{common.PRNT_API} Lifespan shutdown", flush=True)
 
         # Create FastAPI instance
         app_inst = FastAPI(
@@ -116,12 +126,16 @@ class ApiServer:
 
     def startup(self):
         try:
+            print(
+                f"{common.PRNT_API} Refer to API docs:\n-> {self.XHR_PROTOCOL}://localhost:{self.SERVER_PORT}/docs \nOR\n-> {self.remote_url}:{self.SERVER_PORT}/docs",
+                flush=True,
+            )
             # Start the ASGI server (https)
             if self.XHR_PROTOCOL == "https":
-                print(f"{common.PRNT_API} Starting API server with SSL.")
+                print(f"{common.PRNT_API} API server starting with SSL.", flush=True)
                 uvicorn.run(
                     self.app,
-                    host="0.0.0.0",
+                    host=self.SERVER_HOST,
                     port=self.SERVER_PORT,
                     log_level="info",
                     # Include these to host over https. If server fails to start make sure the .pem files are generated in _deps/public dir
@@ -130,15 +144,20 @@ class ApiServer:
                 )
             # Start the ASGI server (http)
             else:
-                print(f"{common.PRNT_API} Starting API server.")
+                print(f"{common.PRNT_API} API server starting.", flush=True)
                 uvicorn.run(
                     self.app,
-                    host="0.0.0.0",
+                    host=self.SERVER_HOST,
                     port=self.SERVER_PORT,
                     log_level="info",
                 )
+        except KeyboardInterrupt as e:
+            print(
+                f"{common.PRNT_API} API server ended by Keyboard interrupt. {e}",
+                flush=True,
+            )
         except Exception as e:
-            print(f"{common.PRNT_API} API server shutdown. {e}")
+            print(f"{common.PRNT_API} API server shutdown. {e}", flush=True)
 
     # Expose the FastAPI instance
     def get_app(self) -> FastAPI:
@@ -170,37 +189,6 @@ class ApiServer:
         )
         app.include_router(endpoint_router)
 
-        # Return a "connect" GUI page for user to config and startup the API server,
-        # then return the user to the supplied callback url with query params of config added.
-        # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
-        @app.get("/", response_class=HTMLResponse)
-        async def connect_page(request: Request):
-            # Be sure to link `public/templates` to the app's dependency dir (_deps) via PyInstaller
-            templates_dir = common.dep_path(os.path.join("public", "templates"))
-            templates = Jinja2Templates(directory=templates_dir)
-            remote_url = self.server_info["remote_ip"]
-            local_url = self.server_info["local_ip"]
-            # Generate QR code - direct to remote url
-            qr_code = pyqrcode.create(
-                f"{remote_url}:{self.SERVER_PORT}/?hostname={remote_url}&port={self.SERVER_PORT}"
-            )
-            qr_data = qr_code.png_as_base64_str(scale=5)
-            # qr_image = qr_code.png("image.png", scale=8) # Write image file to disk
-
-            return templates.TemplateResponse(
-                "index.html",
-                {
-                    "request": request,
-                    "qr_data": qr_data,
-                    "title": "Connect to Obrew Server",
-                    "app_name": "Obrew Studio Server",
-                    "message": "Scan the code with your mobile device to access the WebUI remotely and/or click the link below.",
-                    "host": local_url,
-                    "remote_host": remote_url,
-                    "port": self.SERVER_PORT,
-                },
-            )
-
         # Keep server/database alive
         @app.get("/v1/ping")
         def ping() -> classes.PingResponse:
@@ -209,7 +197,7 @@ class ApiServer:
                 db.heartbeat()
                 return {"success": True, "message": "pong"}
             except Exception as e:
-                print(f"{common.PRNT_API} Error pinging server: {e}")
+                print(f"{common.PRNT_API} Error pinging server: {e}", flush=True)
                 return {"success": False, "message": ""}
 
         # Tell client we are ready to accept requests
