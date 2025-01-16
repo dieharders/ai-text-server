@@ -5,7 +5,7 @@ from api_server import ApiServer
 
 
 # Inject these Python funcs into javascript context.
-class MenuAPI:
+class Api:
     def __init__(
         self,
         port,

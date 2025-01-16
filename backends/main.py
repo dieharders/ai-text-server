@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 # Custom
 from ui.view import WEBVIEW
-from ui.api_ui import MenuAPI
+from ui.api_ui import Api
 from core import common
 
 
@@ -116,7 +116,7 @@ def _close_app(api=None):
 
 def main():
     try:
-        window_api = MenuAPI(
+        window_api = Api(
             port=port,
             host=host,
             is_prod=is_prod,

@@ -183,6 +183,7 @@ This is a GUI tool that greatly simplifies the process. You can also save and lo
 - Settings -> Output directory
 - Additional Files
 - Script Location
+- Icon Location
 
 To run:
 

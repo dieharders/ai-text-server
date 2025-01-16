@@ -1,7 +1,8 @@
-# import os
 # import tkinter as tk
 # from tkinter import ttk
 # import threading
+import os
+import sys
 import webview
 from webview.errors import JavascriptException
 from api_server import ApiServer
@@ -53,9 +54,16 @@ from core import common
 
 # WebView window
 def WEBVIEW(js_api, is_prod, is_dev, is_debug, remote_ip, webui_url, ssl):
+    try:
+        # Production html files will be put in `_deps/public` folder
+        base_path = sys._MEIPASS
+        ui_path = os.path.join(base_path, "public", "index.html")
+    except Exception:
+        ui_path = "ui/public/index.html"
+
     webview_window = webview.create_window(
-        "Obrew Studio",
-        "ui/index.html",
+        title="Obrew Studio",
+        url=ui_path,
         js_api=js_api,
         width=720,
         height=1050,
