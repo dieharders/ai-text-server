@@ -72,6 +72,7 @@ There are two shortcuts installed, the normal executable and one for "headless" 
 - --host=0.0.0.0
 - --port=8008
 - --headless=True
+- --mode=dev or prod (this enables/disables logging)
 
 ### Testing
 
