@@ -67,6 +67,12 @@ yarn python-deps
 
 If you get a "Permission Denied" error, try running the executable with Admin privileges.
 
+There are two shortcuts installed, the normal executable and one for "headless" mode. In headless mode the backend will run in the background without a GUI window. This is ideal for automation or development since you can use command line arguments to specify how you run the service:
+
+- --host=0.0.0.0
+- --port=8008
+- --headless=True
+
 ### Testing
 
 Right-click over `backends/main.py` and choose "run python file in terminal" to start server:
@@ -84,9 +90,9 @@ Or using yarn (recommended)
 yarn server:dev
 # or
 yarn server:local-prod
-# or
+# or to run headless
 yarn server:hosted-prod
-# or
+# or to run headless
 yarn server:hosted-dev
 ```
 
