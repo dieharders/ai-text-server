@@ -5,28 +5,37 @@
   <div class="bg-image"></div>
   <!-- Title -->
   <h1>Welcome to Obrew Studio!</h1>
-  <p>Edit the config below to start the server.</p>
+  <p>Startup the server to begin.</p>
 
   <!-- Connection Options -->
-  <form action="" class="formOptions">
-    <div class="inputContainer">
-      <label for="host">Host:</label>
-      <input type="text" id="host" name="host" value="" placeholder="{{0.0.0.0}}" />
-    </div>
-    <div class="inputContainer">
-      <label for="port">Port:</label>
-      <input type="number" id="port" name="port" value="" placeholder="{{8008}}" />
-    </div>
-    <div class="inputContainer">
-      <label for="webui">WebUI:</label>
-      <input type="text" id="webui" name="webui" value="" placeholder="{{http://localhost:3000}}" />
-    </div>
-  </form>
+  <button class="btn grey" onclick="toggleConnections()">Connection Options</button>
+  <div id="connContainer" data-attr="closed">
+    <p>Edit the config below to start the server.</p>
+    <form action="" class="formOptions">
+      <div class="inputContainer">
+        <label for="host">Host:</label>
+        <input type="text" id="host" name="host" value="" placeholder="{{0.0.0.0}}" />
+      </div>
+      <div class="inputContainer">
+        <label for="port">Port:</label>
+        <input type="number" id="port" name="port" value="" placeholder="{{8008}}" />
+      </div>
+      <div class="inputContainer">
+        <label for="webui">WebUI:</label>
+        <input
+          type="text"
+          id="webui"
+          name="webui"
+          value=""
+          placeholder="{{http://localhost:3000}}"
+        />
+      </div>
+    </form>
+  </div>
 
   <!-- Advanced Connection Options -->
   <button class="btn grey" onclick="toggleAdvanced()">Advanced Options</button>
   <div id="advContainer" data-attr="closed">
-    <!-- <h2>Advanced Options</h2> -->
     <p>Scan the code with your mobile device to connect to Obrew running on this device.</p>
     <div class="remote">
       <h3>Remote Host</h3>

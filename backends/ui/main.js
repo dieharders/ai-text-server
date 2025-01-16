@@ -83,6 +83,14 @@ function updatePageData(ev) {
   window.frontend.data[ev.target.name] = ev.target.value
   hideAdvanced()
 }
+async function toggleConnections() {
+  const containerEl = document.getElementById('connContainer')
+  const isOpen = containerEl.getAttribute('data-attr') === 'open'
+
+  if (isOpen) containerEl.setAttribute('data-attr', 'closed')
+  else containerEl.setAttribute('data-attr', 'open')
+  return
+}
 function hideAdvanced() {
   const containerEl = document.getElementById('advContainer')
   containerEl.setAttribute('data-attr', 'closed')

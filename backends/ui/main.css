@@ -16,6 +16,7 @@
 }
 .content {
   padding-bottom: 150px;
+  gap: 0.5rem;
 }
 .menu {
   max-width: 30rem;
@@ -34,8 +35,13 @@
   margin: 0;
   padding: 0;
 }
-/* Show/hide advanced settings */
-#advContainer {
+/* Show/hide settings */
+#connContainer {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+#advContainer,
+#connContainer {
   overflow: hidden;
   transition: max-height 0.25s ease;
 }
