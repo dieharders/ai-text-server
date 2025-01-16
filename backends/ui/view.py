@@ -1,10 +1,11 @@
 # import os
 # import tkinter as tk
 # from tkinter import ttk
-import webview
-
 # import threading
-# from core import common
+import webview
+from webview.errors import JavascriptException
+from api_server import ApiServer
+from core import common
 
 
 # def _run_app_window():
@@ -51,29 +52,77 @@ import webview
 
 
 # WebView window
-def WEBVIEW(is_dev, menu_api, ssl):
+def WEBVIEW(js_api, is_prod, is_dev, is_debug, remote_ip, webui_url, ssl):
     webview_window = webview.create_window(
         "Obrew Studio",
         "ui/index.html",
-        js_api=menu_api,
+        js_api=js_api,
         width=960,
         height=1200,
         min_size=(350, 450),
         fullscreen=False,
+        # http_port=3000,
+        # draggable=True,
         # transparent=True,
         # frameless=True,
         # easy_drag=True,
     )
 
-    def toggle_fullscreen(window):
-        # Has access to window object here
-        webview_window.toggle_fullscreen()
-
-    # Expose an inline func before runtime
-    webview_window.expose(toggle_fullscreen)
-
     # Start the window
     def callback():
         webview.start(ssl=ssl, debug=is_dev)
+
+    # Set window to fullscreen
+    def toggle_fullscreen():
+        webview_window.toggle_fullscreen()
+
+    # Tells front-end javascript to navigate to the webui
+    def launch_webui():
+        try:
+            if not webview_window:
+                raise Exception("Window is not initialized yet.")
+            # Invoke function from the javascript context
+            webview_window.evaluate_js("launchWebUI()")
+            return ""
+        except JavascriptException as e:
+            print(f"{common.PRNT_APP} Javascript exception occured: {e}")
+        except Exception as e:
+            print(f"{common.PRNT_APP} Failed to launch WebUI: {e}")
+
+    def launch_webui_failed():
+        try:
+            if not webview_window:
+                raise Exception("Window is not initialized yet.")
+            webview_window.evaluate_js("launchWebUIFailed()")
+            return ""
+        except Exception as e:
+            print(f"{common.PRNT_APP} Failed to callback launch WebUI: {e}")
+
+    # Start the API server. Only used for window mode.
+    def start_server(config):
+        try:
+            print(f"{common.PRNT_APP} Starting API server...", flush=True)
+            api_server = ApiServer(
+                is_prod=is_prod,
+                is_dev=is_dev,
+                is_debug=is_debug,
+                SSL_ENABLED=ssl,
+                remote_url=remote_ip,
+                SERVER_HOST=config["host"],
+                SERVER_PORT=int(config["port"]),
+                webui_url=config.get("webui", webui_url),
+                on_startup_callback=launch_webui,
+            )
+            api_server.startup()
+            return api_server
+        except Exception as e:
+            print(f"{common.PRNT_APP} Failed to start API server. {e}", flush=True)
+            launch_webui_failed()
+
+    # Expose an inline func before runtime
+    webview_window.expose(launch_webui)
+    webview_window.expose(start_server)
+    webview_window.expose(launch_webui_failed)
+    webview_window.expose(toggle_fullscreen)
 
     return dict(handle=webview_window, callback=callback)

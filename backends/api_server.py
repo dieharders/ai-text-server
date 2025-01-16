@@ -3,12 +3,15 @@ import signal
 import sys
 import uvicorn
 import httpx
+from collections.abc import Callable
 from fastapi import (
     FastAPI,
     APIRouter,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+# Custom
 from embeddings import storage as vector_storage
 from core import common, classes
 from services.route import router as services
@@ -27,7 +30,8 @@ class ApiServer:
         SSL_ENABLED: bool,
         SERVER_HOST: str,
         SERVER_PORT: int,
-        webui_url: str,
+        webui_url: str = "",
+        on_startup_callback: Callable | None = None,
     ):
         # Init logic here
         self.remote_url = remote_url
@@ -43,6 +47,7 @@ class ApiServer:
         self.is_debug = is_debug
         self.api_version = "0.7.2"
         self.webui_url = webui_url
+        self.on_startup_callback = on_startup_callback
         # Comment out if you want to debug on prod build
         if self.is_prod:
             # Remove prints in prod when deploying in window mode
@@ -89,9 +94,13 @@ class ApiServer:
             app.state.is_dev = self.is_dev
             app.state.is_debug = self.is_debug
 
+            # Tell front-end to go to webui
+            if self.on_startup_callback:
+                self.on_startup_callback()
+
             yield
             # Do shutdown cleanup here...
-            print(f"{common.PRNT_API} Lifespan shutdown")
+            print(f"{common.PRNT_API} Lifespan shutdown", flush=True)
 
         # Create FastAPI instance
         app_inst = FastAPI(
@@ -123,7 +132,7 @@ class ApiServer:
             )
             # Start the ASGI server (https)
             if self.XHR_PROTOCOL == "https":
-                print(f"{common.PRNT_API} API server starting with SSL.")
+                print(f"{common.PRNT_API} API server starting with SSL.", flush=True)
                 uvicorn.run(
                     self.app,
                     host=self.SERVER_HOST,
@@ -135,7 +144,7 @@ class ApiServer:
                 )
             # Start the ASGI server (http)
             else:
-                print(f"{common.PRNT_API} API server starting.")
+                print(f"{common.PRNT_API} API server starting.", flush=True)
                 uvicorn.run(
                     self.app,
                     host=self.SERVER_HOST,
@@ -143,9 +152,12 @@ class ApiServer:
                     log_level="info",
                 )
         except KeyboardInterrupt as e:
-            print(f"{common.PRNT_API} API server ended by Keyboard interrupt. {e}")
+            print(
+                f"{common.PRNT_API} API server ended by Keyboard interrupt. {e}",
+                flush=True,
+            )
         except Exception as e:
-            print(f"{common.PRNT_API} API server shutdown. {e}")
+            print(f"{common.PRNT_API} API server shutdown. {e}", flush=True)
 
     # Expose the FastAPI instance
     def get_app(self) -> FastAPI:
@@ -185,7 +197,7 @@ class ApiServer:
                 db.heartbeat()
                 return {"success": True, "message": "pong"}
             except Exception as e:
-                print(f"{common.PRNT_API} Error pinging server: {e}")
+                print(f"{common.PRNT_API} Error pinging server: {e}", flush=True)
                 return {"success": False, "message": ""}
 
         # Tell client we are ready to accept requests

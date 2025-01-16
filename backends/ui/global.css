@@ -119,6 +119,13 @@ input[type='checkbox'] {
   -moz-user-select: none;
   -o-user-select: none;
 }
+.btn:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+.btn:disabled:hover {
+  background-color: #ced4da;
+}
 .btn:hover {
   background-color: #f09c00;
 }

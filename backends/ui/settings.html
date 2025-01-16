@@ -12,7 +12,7 @@
       <div class="inputContainer">
         <label for="llamaCloud">Llama-Cloud:</label>
         <input
-          type="text"
+          type="password"
           id="llamaCloud"
           name="LLAMA_CLOUD_API_KEY"
           value=""
@@ -63,7 +63,7 @@
     </div>
   </form>
   <div class="menu">
-    <button class="btn" onclick="saveSettings()">Save Changes</button>
+    <button disabled id="saveChanges" class="btn" onclick="saveSettings()">Save Changes</button>
     <a class="btn grey" href="main.html" draggable="false" data-link>Back</a>
   </div>
 </div>

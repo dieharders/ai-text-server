@@ -1,17 +1,38 @@
 // Backend funcs
-async function startServer() {
-  const form = document.querySelector('form')
-  // Get form data
-  const formData = new FormData(form)
-  const config = Object.fromEntries(formData.entries())
-  config.port = parseInt(config.port)
-  await window.pywebview.api.start_server_process(config)
+async function launchWebUIFailed() {
+  // Reset state if server start fails
+  const btnEl = document.getElementById('startBtn')
+  if (btnEl) btnEl.disabled = false
+  console.error('Failed to start API server')
+  return '' // always return something
+}
+async function launchWebUI() {
   // Nav to Obrew Studio WebUI
   // The params help front-end know what server to connect to
   window.location = `${window.frontend.data.webui_url}/?hostname=${window.frontend.data.local_url}&port=${window.frontend.data.port}`
+  return '' // always return something
+}
+async function startServer() {
+  const btnEl = document.getElementById('startBtn')
+  try {
+    const form = document.querySelector('form')
+    // Disable buttons
+    btnEl.disabled = true
+    setTimeout(() => (btnEl.disabled = false), 30000) // un-disable after 30sec
+    // Get form data
+    const formData = new FormData(form)
+    const config = Object.fromEntries(formData.entries())
+    config.port = parseInt(config.port)
+    await window.pywebview.api.start_server(config)
+    return
+  } catch (err) {
+    if (btnEl) btnEl.disabled = false
+    console.log(`Failed to start API server: ${err}`)
+  }
 }
 async function shutdownServer() {
   await window.pywebview.api.shutdown_server()
+  return
 }
 
 // Front-End funcs
@@ -52,6 +73,7 @@ async function mountPage() {
     portEl.value = window.frontend.data.port || data.port
     const webuiEl = document.getElementById('webui')
     webuiEl.value = window.frontend.data.webui || data.webui_url
+    return
   } catch (error) {
     console.log('Failed to mount page', error)
   }
@@ -76,6 +98,7 @@ async function toggleAdvanced() {
     const data = await getPageData()
     updateQRCode(data)
   }
+  return
 }
 
 // Global Vars

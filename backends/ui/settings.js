@@ -1,6 +1,9 @@
 // Backend funcs
 async function saveSettings() {
   const form = document.querySelector('form')
+  // Disable button
+  const btnEl = document.getElementById('saveChanges')
+  if (btnEl) btnEl.disabled = true
   // Get form data
   const formData = new FormData(form)
   // Write checkbox data
@@ -29,7 +32,13 @@ async function mountPage() {
   if (data.cors) corsEl.value = `${data.cors}`
   const adminEl = document.getElementById('admin')
   if (data.adminWhitelist) adminEl.value = `${data.adminWhitelist}`
+  return
 }
 
 // Mount page
 mountPage()
+// Listeners
+document.querySelector('.formOptions').addEventListener('change', () => {
+  const btnEl = document.getElementById('saveChanges')
+  if (btnEl) btnEl.disabled = false
+})

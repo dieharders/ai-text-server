@@ -4,7 +4,7 @@ window.frontend = { data: {} } // hold main page's data
 // Front-End funcs
 function toggleFullScreen() {
   try {
-    window.pywebview.api.toggle_fullscreen(window)
+    window.pywebview.api.toggle_fullscreen()
   } catch (e) {
     console.log(`Fullscreen err: ${e}`)
   }

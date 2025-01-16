@@ -78,7 +78,7 @@ Or
 python backends/main.py
 ```
 
-Or, using yarn (recommended)
+Or using yarn (recommended)
 
 ```bash
 yarn server:dev
@@ -86,6 +86,8 @@ yarn server:dev
 yarn server:local-prod
 # or
 yarn server:hosted-prod
+# or
+yarn server:hosted-dev
 ```
 
 The Obrew api server will be running on [https://localhost:8008](https://localhost:8008)
