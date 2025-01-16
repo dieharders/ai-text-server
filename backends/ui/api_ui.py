@@ -96,7 +96,7 @@ class Api:
         try:
             server_info = self.get_server_info()
             remote_ip = server_info["remote_ip"]
-            print(f"{common.PRNT_APP} Starting API server...", flush=True)
+            print(f"{common.PRNT_APP} Starting headless API server...", flush=True)
             self.api_server = ApiServer(
                 is_prod=self.is_prod,
                 is_dev=self.is_dev,
