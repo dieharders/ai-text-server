@@ -10,7 +10,7 @@ If you wish to deploy this on your private network for local access from any dev
 
 Rename the included `.env.example` file to `.env` in the `/_deps` folder and modify the vars accordingly.
 
-This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `_deps/public` folder. You should generate your own and overwrite the files in `_deps/public`, do not use the provided certs in a production environment.
+This command will create a self-signed key and cert files in your current dir that are good for 100 years. These files should go in the `_deps/public` folder. You should generate your own and overwrite the files in `_deps/public`.
 
 ```bash
 openssl req -x509 -newkey rsa:4096 -nodes -out public/cert.pem -keyout public/key.pem -days 36500

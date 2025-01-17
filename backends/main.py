@@ -42,10 +42,6 @@ def parse_runtime_args():
     }
 
 
-def get_ssl_env():
-    return os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
-
-
 # Path to the .env file in either the parent or /_deps directory
 try:
     # Look in app's _deps dir
@@ -85,7 +81,7 @@ def _get_server_info():
     # Display the local IP address of this server
     hostname = socket.gethostname()
     IPAddr = socket.gethostbyname(hostname)
-    ssl = get_ssl_env()
+    ssl = common.get_ssl_env()
     if ssl:
         SCHEME = "https"
     else:
@@ -123,7 +119,6 @@ def main():
             is_dev=is_dev,
             is_debug=is_debug,
             webui_url=webui_url,
-            get_ssl_env=get_ssl_env,
             get_server_info=_get_server_info,
         )
 
@@ -153,7 +148,7 @@ def main():
                 is_dev=is_dev,
                 is_debug=is_debug,
                 remote_ip=remote_ip,
-                ssl=get_ssl_env(),
+                IS_WEBVIEW_SSL=False,
                 webui_url=webui_url,
             )
             start_ui = view_instance.get("callback")

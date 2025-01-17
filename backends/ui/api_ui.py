@@ -15,13 +15,11 @@ class Api:
         is_debug,
         webui_url,
         get_server_info,
-        get_ssl_env,
     ):
         self.api_server = None
         self.is_prod = is_prod
         self.is_dev = is_dev
         self.is_debug = is_debug
-        self.get_ssl_env = get_ssl_env
         self.port = port
         self.host = host
         self.webui_url = webui_url
@@ -48,7 +46,7 @@ class Api:
             adminWhitelist = os.getenv("WHITELIST_ADMIN_IP", "")
             llamaIndexAPIKey = os.getenv("LLAMA_CLOUD_API_KEY", "")
             page_data = dict(
-                ssl=self.get_ssl_env(),
+                ssl=common.get_ssl_env(),
                 cors=cors,
                 adminWhitelist=adminWhitelist,
                 llamaIndexAPIKey=llamaIndexAPIKey,
@@ -101,7 +99,7 @@ class Api:
                 is_prod=self.is_prod,
                 is_dev=self.is_dev,
                 is_debug=self.is_debug,
-                SSL_ENABLED=self.get_ssl_env(),
+                SSL_ENABLED=common.get_ssl_env(),
                 remote_url=remote_ip,
                 SERVER_HOST=config["host"],
                 SERVER_PORT=int(config["port"]),

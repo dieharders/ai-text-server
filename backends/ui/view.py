@@ -3,9 +3,11 @@
 # import threading
 import os
 import sys
+from typing import Type
 import webview
 from webview.errors import JavascriptException
 from api_server import ApiServer
+from ui.api_ui import Api
 from core import common
 
 
@@ -53,7 +55,15 @@ from core import common
 
 
 # WebView window
-def WEBVIEW(js_api, is_prod, is_dev, is_debug, remote_ip, webui_url, ssl):
+def WEBVIEW(
+    js_api: Type[Api],
+    is_prod: bool,
+    is_dev: bool,
+    is_debug: bool,
+    remote_ip: str,
+    webui_url: str,
+    IS_WEBVIEW_SSL: bool,
+):
     try:
         # Production html files will be put in `_deps/public` folder
         base_path = sys._MEIPASS
@@ -78,7 +88,7 @@ def WEBVIEW(js_api, is_prod, is_dev, is_debug, remote_ip, webui_url, ssl):
 
     # Start the window
     def callback():
-        webview.start(ssl=ssl, debug=is_dev)
+        webview.start(ssl=IS_WEBVIEW_SSL, debug=is_dev)
 
     # Set window to fullscreen
     def toggle_fullscreen():
@@ -114,7 +124,6 @@ def WEBVIEW(js_api, is_prod, is_dev, is_debug, remote_ip, webui_url, ssl):
                 is_prod=is_prod,
                 is_dev=is_dev,
                 is_debug=is_debug,
-                SSL_ENABLED=ssl,
                 remote_url=remote_ip,
                 SERVER_HOST=config["host"],
                 SERVER_PORT=int(config["port"]),

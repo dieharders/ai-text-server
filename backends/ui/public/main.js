@@ -9,7 +9,7 @@ async function launchWebUIFailed() {
 async function launchWebUI() {
   // Nav to Obrew Studio WebUI
   // The params help front-end know what server to connect to
-  window.location = `${window.frontend.data.webui_url}/?hostname=${window.frontend.data.local_url}&port=${window.frontend.data.port}`
+  window.location = `${window.frontend.state.webui_url}/?hostname=${window.frontend.state.local_url}&port=${window.frontend.state.port}`
   return '' // always return something
 }
 async function startServer() {
@@ -63,16 +63,16 @@ async function mountPage() {
     const data = await getPageData()
     if (!data) return
     // Update state on first mount
-    if (Object.keys(window.frontend.data).length === 0) window.frontend.data = data
+    if (Object.keys(window.frontend.state).length === 0) window.frontend.state = data
     // Generate qr code
     updateQRCode(data)
     // Parse page with data
     const hostEl = document.getElementById('host')
-    hostEl.value = window.frontend.data.host || data.host
+    hostEl.value = window.frontend.state.host || data.host
     const portEl = document.getElementById('port')
-    portEl.value = window.frontend.data.port || data.port
+    portEl.value = window.frontend.state.port || data.port
     const webuiEl = document.getElementById('webui')
-    webuiEl.value = window.frontend.data.webui || data.webui_url
+    webuiEl.value = window.frontend.state.webui || data.webui_url
     return
   } catch (error) {
     console.log('Failed to mount page', error)
@@ -80,7 +80,7 @@ async function mountPage() {
 }
 function updatePageData(ev) {
   // Update page state
-  window.frontend.data[ev.target.name] = ev.target.value
+  window.frontend.state[ev.target.name] = ev.target.value
   hideAdvanced()
 }
 async function toggleConnections() {
@@ -109,8 +109,6 @@ async function toggleAdvanced() {
   return
 }
 
-// Global Vars
-if (!window.frontend) window.frontend.data = {}
 // Listeners
 document.querySelector('.formOptions').addEventListener('change', updatePageData)
 // Mount page
