@@ -1,73 +1,78 @@
 {
   "root": true,
-  "parser": "@typescript-eslint/parser",
+  "env": {
+    "browser": true,
+    "es6": true
+  },
+  // "parser": "@typescript-eslint/parser",
   "extends": [
-    "next",
-    "next/core-web-vitals",
+    // "next",
+    // "next/core-web-vitals",
     "eslint:recommended",
-    "plugin:tailwindcss/recommended",
-    "plugin:react/recommended",
-    "plugin:react/jsx-runtime",
-    "plugin:@typescript-eslint/recommended",
+    // "plugin:tailwindcss/recommended",
+    // "plugin:react/recommended",
+    // "plugin:react/jsx-runtime",
+    // "plugin:@typescript-eslint/recommended",
     "plugin:prettier/recommended", // needed?
     "prettier"
   ],
   "parserOptions": {
     "ecmaVersion": 2018,
-    "sourceType": "module",
-    "ecmaFeatures": {
-      "jsx": true
-    }
+    "sourceType": "module"
+    // "ecmaFeatures": {
+    //   "jsx": true
+    // }
   },
   "plugins": [
-    "tailwindcss",
-    "react",
-    "react-hooks",
-    "eslint-plugin-react",
-    "@typescript-eslint",
+    // "tailwindcss",
+    // "react",
+    // "react-hooks",
+    // "eslint-plugin-react",
+    // "@typescript-eslint",
     "prettier"
   ],
   "rules": {
     // Tailwind
-    "tailwindcss/no-custom-classname": "off",
+    // "tailwindcss/no-custom-classname": "off",
     // Prettier
     "prettier/prettier": ["error", { "semi": false }], // including this also respects printWidth?
     // ESLint
     "quotes": [2, "single", { "avoidEscape": true }],
-    "@typescript-eslint/no-explicit-any": "warn",
     "object-curly-spacing": ["warn", "always"],
     "semi": ["error", "never"],
     "no-multi-spaces": ["error"],
     "no-trailing-spaces": ["warn"],
-    "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": [
-      "warn",
-      {
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_",
-        "destructuredArrayIgnorePattern": "^_"
-      }
-    ],
+    "no-unused-vars": "warn"
+    // "@typescript-eslint/no-explicit-any": "warn",
+    // "@typescript-eslint/no-unused-vars": [
+    //   "warn",
+    //   {
+    //     "argsIgnorePattern": "^_",
+    //     "varsIgnorePattern": "^_",
+    //     "destructuredArrayIgnorePattern": "^_"
+    //   }
+    // ],
+
     // React
-    "react/prop-types": "off",
-    "react/jsx-boolean-value": "warn",
-    "react/jsx-curly-brace-presence": "warn",
-    "react/jsx-fragments": "warn",
-    "react/jsx-no-useless-fragment": "warn",
-    "react/jsx-uses-vars": "error",
-    "react/prefer-stateless-function": "warn",
-    "react-hooks/rules-of-hooks": "error", // Checks rules of Hooks
-    "react-hooks/exhaustive-deps": "warn", // Checks effect dependencies
-    "react/react-in-jsx-scope": "off",
-    "react/jsx-uses-react": "off"
+    // "react/prop-types": "off",
+    // "react/jsx-boolean-value": "warn",
+    // "react/jsx-curly-brace-presence": "warn",
+    // "react/jsx-fragments": "warn",
+    // "react/jsx-no-useless-fragment": "warn",
+    // "react/jsx-uses-vars": "error",
+    // "react/prefer-stateless-function": "warn",
+    // "react-hooks/rules-of-hooks": "error", // Checks rules of Hooks
+    // "react-hooks/exhaustive-deps": "warn", // Checks effect dependencies
+    // "react/react-in-jsx-scope": "off",
+    // "react/jsx-uses-react": "off"
   },
   "settings": {
-    "tailwindcss": {
-      "callees": ["cn", "cva"],
-      "config": "tailwind.config.js"
-    },
-    "react": {
-      "version": "detect"
-    }
+    // "tailwindcss": {
+    //   "callees": ["cn", "cva"],
+    //   "config": "tailwind.config.js"
+    // },
+    // "react": {
+    //   "version": "detect"
+    // }
   }
 }

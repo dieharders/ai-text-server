@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
+// This module is not currently used. Here for ref.
+
 const EValidationState = Object.freeze({
   Success: 'success',
   Fail: 'fail',

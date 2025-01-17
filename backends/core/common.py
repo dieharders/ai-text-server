@@ -554,24 +554,6 @@ def get_model_config(id: str, folderpath, filepath) -> ModelConfig:
     return config
 
 
-def read_constants(app):
-    # Determine path to file based on prod or dev
-    current_directory = os.getcwd()
-    substrings = current_directory.split("\\")
-    last_substring = substrings[-1]
-
-    # This path detection is b/c of Node.js in dev vs prod mode
-    if last_substring == "backends":
-        path = "../shared/constants.json"
-    else:
-        path = "./shared/constants.json"
-
-    # Open and read the JSON constants file
-    with open(path, "r") as json_file:
-        data = json.load(json_file)
-        app.PORT_HOMEBREW_API = data["PORT_HOMEBREW_API"]
-
-
 def get_file_extension_from_path(path: str):
     split_path = path.rsplit(".", 1)
     end = len(split_path)

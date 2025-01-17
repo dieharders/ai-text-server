@@ -13,7 +13,7 @@ There are two shortcuts installed, the normal executable and one for "headless" 
 
 ## Running from source code
 
-### Install dependencies
+### Install Python dependencies
 
 Install dependencies for python listed in requirements.txt file:
 
@@ -23,6 +23,14 @@ Be sure to run this command with admin privileges. This command is optional and 
 pip install -r requirements.txt
 # or
 yarn python-deps
+```
+
+### Install WebUI dependencies
+
+Not strictly required, but if you intend to work with the UI files (html/css/js) and want linting, etc. then run:
+
+```bash
+yarn install
 ```
 
 ### Start the backend
@@ -41,11 +49,11 @@ Or using yarn (recommended)
 ```bash
 yarn server:dev
 # or
-yarn server:local-prod
-# or to run headless
-yarn server:hosted-prod
-# or to run headless
-yarn server:hosted-dev
+yarn server:prod
+# or to run headless (production)
+yarn server:headless-prod
+# or to run headless (development)
+yarn server:headless-dev
 ```
 
 The Obrew api server will be running on [https://localhost:8008](https://localhost:8008)

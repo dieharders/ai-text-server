@@ -1,95 +1,28 @@
 {
-  "name": "obrew-server",
-  "version": "0.8.0",
+  "name": "obrew-studio-server",
+  "version": "0.8.1",
   "author": "OpenBrewAi",
   "license": "MIT",
   "productName": "Obrew Studio Server",
-  "description": "A local & private Ai engine.",
-  "main": "main/electron.js",
+  "description": "Your personal Ai engine.",
   "private": false,
   "scripts": {
     "clean": "rimraf includes renderer/.next renderer/out build release main.spec",
-    "dev": "next dev",
     "server:dev": "python ./backends/main.py --mode=dev --headless=False",
-    "server:local-prod": "python ./backends/main.py --mode=prod --headless=False",
-    "server:hosted-prod": "python ./backends/main.py --mode=prod --headless=True --host=0.0.0.0 --port=8008",
-    "server:hosted-dev": "python ./backends/main.py --mode=dev --headless=True --host=0.0.0.0 --port=8008",
-    "build": "yarn run build:api && next build renderer",
-    "build:api:dev": "pyinstaller --noconfirm --onedir --console --icon C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico --name Obrew-Server --contents-directory _deps --clean --debug bootloader --add-data C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/ --add-data C:/ProgramData/anaconda3/envs/llama-index/Lib/site-packages/llama_cpp;llama_cpp/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/posthog;posthog/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/chromadb;chromadb/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/importlib_resources;importlib_resources/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/backoff;backoff/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/pypika;pypika/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/hnswlib.cp312-win_amd64.pyd;. --hidden-import tiktoken_ext.openai_public --hidden-import tiktoken_ext  C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py",
-    "build:api:prod": "pyinstaller --noconfirm --onedir --windowed --icon C:/Project Files/brain-dump-ai/backend-homebrew-ai/public/favicon.ico --name Obrew-Server --contents-directory _deps --clean --add-data C:/Project Files/brain-dump-ai/backend-homebrew-ai/public;public/ --add-data C:/ProgramData/anaconda3/envs/llama-index/Lib/site-packages/llama_cpp;llama_cpp/ --hidden-import tiktoken_ext.openai_public --hidden-import tiktoken_ext --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/posthog;posthog/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/chromadb;chromadb/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/importlib_resources;importlib_resources/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/backoff;backoff/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/pypika;pypika/ --add-data C:/Users/cybro/AppData/Roaming/Python/Python312/site-packages/hnswlib.cp312-win_amd64.pyd;.  C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py",
+    "server:prod": "python ./backends/main.py --mode=prod --headless=False",
+    "server:headless-dev": "python ./backends/main.py --mode=dev --headless=True --host=0.0.0.0 --port=8008",
+    "server:headless-prod": "python ./backends/main.py --mode=prod --headless=True --host=0.0.0.0 --port=8008",
     "python-deps": "pip install -r requirements.txt",
-    "release": "yarn run build && electron-builder",
-    "release:win": "yarn run build && electron-builder --win --x64",
-    "makecert": "openssl req -x509 -newkey rsa:4096 -nodes -out public/cert.pem -keyout public/key.pem -days 36500",
-    "unpacked": "yarn run build && electron-builder --dir",
-    "export": "next export",
-    "start": "electron .",
-    "lint": "next lint"
+    "makecert": "openssl req -x509 -newkey rsa:4096 -nodes -out public/cert.pem -keyout public/key.pem -days 36500"
   },
-  "postinstall": "electron-builder install-app-deps",
-  "build": {
-    "appId": "com.spreadshotstudios.homebrewai",
-    "directories": {
-      "buildResources": "resources",
-      "output": "release"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "nsis": {
-      "runAfterFinish": false
-    },
-    "asar": false,
-    "files": [
-      "main/",
-      "renderer/out/",
-      "shared/"
-    ],
-    "extraResources": [
-      {
-        "from": "includes/main.exe",
-        "to": "app/backends/main.exe",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ]
-  },
-  "resolutions": {
-    "@types/react": "18.2.7",
-    "@types/react-dom": "18.2.4"
-  },
-  "dependencies": {
-    "axios": "^1.4.0",
-    "cors": "^2.8.5",
-    "electron-is-dev": "^2.0.0",
-    "electron-next": "^3.1.5",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@electron-forge/cli": "^6.4.2",
-    "@types/cors": "^2.8.13",
-    "@types/electron": "^1.6.10",
-    "@types/node": "20.2.4",
-    "@types/react": "18.2.7",
-    "@types/react-dom": "18.2.4",
-    "@typescript-eslint/eslint-plugin": "^6.4.0",
-    "@typescript-eslint/parser": "^6.4.0",
     "autoprefixer": "10.4.14",
     "concurrently": "^8.0.1",
-    "electron": "^26.2.0",
-    "electron-builder": "^24.6.4",
     "eslint": "8.41.0",
-    "eslint-config-next": "^14.0.1",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "eslint-plugin-react": "^7.33.2",
-    "eslint-plugin-tailwindcss": "^3.12.0",
-    "next": "^14.0.1",
-    "postcss": "8.4.23",
-    "prettier": "^3.0.2",
-    "tailwindcss": "3.3.2",
-    "typescript": "5.0.4"
+    "postcss-cli": "^11.0.0",
+    "prettier": "^3.0.2"
   }
 }
