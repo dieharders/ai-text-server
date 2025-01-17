@@ -60,7 +60,7 @@ This is a local first project. The ultimate goal is to support many providers vi
 
 ## Learn More
 
-- Server: [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
-- Inference: [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for Ai inference.
+- Backend: [FastAPI](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+- Inference: [llama-cpp](https://github.com/ggerganov/llama.cpp) and [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) for LLM inference.
 - Memory: [Llama-Index](https://github.com/run-llama/llama_index) for data retrieval and [ChromaDB](https://github.com/chroma-core/chroma) for vector database.
-- WebUI: [Next.js](https://nextjs.org/) for front-end UI and [Pywebview](https://github.com/r0x0r/pywebview) for displaying the webview.
+- WebUI: Vanilla HTML and [Next.js](https://nextjs.org/) for front-end UI and [Pywebview](https://github.com/r0x0r/pywebview) for rendering the webview.
