@@ -1,5 +1,6 @@
+// Global Vars
 let pywebviewready = false
-window.frontend = { data: {} } // hold main page's data
+if (!window.frontend) window.frontend = { state: {} } // hold front-end data
 
 // Front-End funcs
 function toggleFullScreen() {

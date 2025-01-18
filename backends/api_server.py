@@ -27,26 +27,28 @@ class ApiServer:
         is_dev: bool,
         is_debug: bool,
         remote_url: str,
-        SSL_ENABLED: bool,
         SERVER_HOST: str,
         SERVER_PORT: int,
-        webui_url: str = "",
+        hosted_webui_url: str = "",
+        selected_webui_url: str = "",
+        SSL_ENABLED: bool | None = None,
         on_startup_callback: Callable | None = None,
     ):
         # Init logic here
         self.remote_url = remote_url
         self.SERVER_HOST = SERVER_HOST or "0.0.0.0"
         self.SERVER_PORT = SERVER_PORT or 8008
-        if SSL_ENABLED:
+        self.SSL_ENABLED = SSL_ENABLED or common.get_ssl_env()
+        if self.SSL_ENABLED:
             self.XHR_PROTOCOL = "https"
         else:
             self.XHR_PROTOCOL = "http"
-        self.ssl = SSL_ENABLED
         self.is_prod = is_prod
         self.is_dev = is_dev
         self.is_debug = is_debug
         self.api_version = "0.7.2"
-        self.webui_url = webui_url
+        self.hosted_webui_url = hosted_webui_url
+        self.selected_webui_url = selected_webui_url
         self.on_startup_callback = on_startup_callback
         # Comment out if you want to debug on prod build
         if self.is_prod:
@@ -67,7 +69,8 @@ class ApiServer:
             # "https://hoppscotch.io",  # (optional) for testing endpoints
             # "https://brain-dump-dieharders.vercel.app",  # (optional) client app origin (preview)
             # "https://homebrew-ai-discover.vercel.app",  # (optional) client app origin (production/alias)
-            self.webui_url,  # (required) client app origin (production/domain)
+            self.hosted_webui_url,  # (required, default selected) client app origin (hosted production/domain)
+            self.selected_webui_url,  # (required) client app origin (user selected from menu)
             *CUSTOM_ORIGINS,
         ]
         self.app = self._create_app()
@@ -131,8 +134,8 @@ class ApiServer:
                 flush=True,
             )
             # Start the ASGI server (https)
-            if self.XHR_PROTOCOL == "https":
-                print(f"{common.PRNT_API} API server starting with SSL.", flush=True)
+            if self.SSL_ENABLED:
+                print(f"{common.PRNT_API} API server starting with SSL...", flush=True)
                 uvicorn.run(
                     self.app,
                     host=self.SERVER_HOST,
@@ -144,7 +147,7 @@ class ApiServer:
                 )
             # Start the ASGI server (http)
             else:
-                print(f"{common.PRNT_API} API server starting.", flush=True)
+                print(f"{common.PRNT_API} API server starting...", flush=True)
                 uvicorn.run(
                     self.app,
                     host=self.SERVER_HOST,

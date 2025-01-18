@@ -559,3 +559,10 @@ def get_file_extension_from_path(path: str):
     end = len(split_path)
     file_extension = split_path[end - 1]
     return file_extension
+
+
+def get_ssl_env():
+    val = os.getenv("ENABLE_SSL", "False").lower() in ("true", "1", "t")
+    if val is None:
+        return False
+    return val

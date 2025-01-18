@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/main.py"
+   "value": "C:/Project Files/brain-dump-ai/obrew-studio-server/backends/main.py"
   },
   {
    "optionDest": "onefile",
@@ -19,7 +19,7 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/ui/favicon.ico"
+   "value": "C:/Project Files/brain-dump-ai/obrew-studio-server/backends/ui/favicon.ico"
   },
   {
    "optionDest": "name",
@@ -63,7 +63,11 @@
   },
   {
    "optionDest": "datas",
-   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/backends/ui/public;public/"
+   "value": "C:/Project Files/brain-dump-ai/obrew-studio-server/public;public/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Project Files/brain-dump-ai/obrew-studio-server/backends/ui/public;public/"
   },
   {
    "optionDest": "datas",
@@ -103,11 +107,11 @@
   },
   {
    "optionDest": "datas",
-   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/.env.example;."
+   "value": "C:/Project Files/brain-dump-ai/obrew-studio-server/.env.example;."
   },
   {
    "optionDest": "datas",
-   "value": "C:/Project Files/brain-dump-ai/backend-homebrew-ai/tools/functions;tools/functions/"
+   "value": "C:/Project Files/brain-dump-ai/obrew-studio-server/tools/functions;tools/functions/"
   }
  ],
  "nonPyinstallerOptions": {
