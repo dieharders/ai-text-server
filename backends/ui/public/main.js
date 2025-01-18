@@ -38,7 +38,8 @@ async function shutdownServer() {
 // Front-End funcs
 async function getPageData() {
   const port = document.getElementById('port').value
-  const data = await window.pywebview.api.update_entry_page(port)
+  const selected_webui_url = document.getElementById('webui').value
+  const data = await window.pywebview.api.update_entry_page(port, selected_webui_url)
   return data
 }
 function updateQRCode(data) {

@@ -29,7 +29,8 @@ class ApiServer:
         remote_url: str,
         SERVER_HOST: str,
         SERVER_PORT: int,
-        webui_url: str = "",
+        hosted_webui_url: str = "",
+        selected_webui_url: str = "",
         SSL_ENABLED: bool | None = None,
         on_startup_callback: Callable | None = None,
     ):
@@ -46,7 +47,8 @@ class ApiServer:
         self.is_dev = is_dev
         self.is_debug = is_debug
         self.api_version = "0.7.2"
-        self.webui_url = webui_url
+        self.hosted_webui_url = hosted_webui_url
+        self.selected_webui_url = selected_webui_url
         self.on_startup_callback = on_startup_callback
         # Comment out if you want to debug on prod build
         if self.is_prod:
@@ -67,7 +69,8 @@ class ApiServer:
             # "https://hoppscotch.io",  # (optional) for testing endpoints
             # "https://brain-dump-dieharders.vercel.app",  # (optional) client app origin (preview)
             # "https://homebrew-ai-discover.vercel.app",  # (optional) client app origin (production/alias)
-            self.webui_url,  # (required) client app origin (production/domain)
+            self.hosted_webui_url,  # (required, default selected) client app origin (hosted production/domain)
+            self.selected_webui_url,  # (required) client app origin (user selected from menu)
             *CUSTOM_ORIGINS,
         ]
         self.app = self._create_app()

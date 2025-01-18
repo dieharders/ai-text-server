@@ -61,7 +61,7 @@ class Api:
     # Generate links for user to connect an external device to this machine's
     # locally running server instance.
     # QRcode generation -> https://github.com/arjones/qr-generator/tree/main
-    def update_entry_page(self, port: str):
+    def update_entry_page(self, port: str, selected_webui_url: str):
         try:
             PORT = port or self.port
             server_info = self.get_server_info()
@@ -69,7 +69,7 @@ class Api:
             local_url = server_info["local_ip"]
             # Generate QR code to remote url
             qr_code = pyqrcode.create(
-                f"{remote_url}:{PORT}/?hostname={remote_url}&port={PORT}"
+                f"{selected_webui_url}/?hostname={remote_url}&port={PORT}"
             )
             qr_data = qr_code.png_as_base64_str(scale=5)
             # qr_image = qr_code.png("image.png", scale=8) # Writes image file to disk

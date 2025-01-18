@@ -127,7 +127,8 @@ def WEBVIEW(
                 remote_url=remote_ip,
                 SERVER_HOST=config["host"],
                 SERVER_PORT=int(config["port"]),
-                webui_url=config.get("webui", webui_url),
+                selected_webui_url=config.get("webui"),
+                hosted_webui_url=webui_url,
                 on_startup_callback=launch_webui,
             )
             api_server.startup()
