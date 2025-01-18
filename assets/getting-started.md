@@ -25,7 +25,7 @@ pip install -r requirements.txt
 yarn python-deps
 ```
 
-### Install WebUI dependencies
+### Install WebUI dependencies (for Front-End GUI)
 
 Not strictly required, but if you intend to work with the UI files (html/css/js) and want linting, etc. then run:
 
