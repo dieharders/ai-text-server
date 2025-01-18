@@ -1,3 +1,6 @@
+# Use Python version 3.12.3
+#
+# UUID
 nanoid==2.0.0
 # QR-code image gen
 PyQRCode==1.2.1
