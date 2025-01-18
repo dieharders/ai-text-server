@@ -148,7 +148,7 @@ def main():
                 is_dev=is_dev,
                 is_debug=is_debug,
                 remote_ip=remote_ip,
-                IS_WEBVIEW_SSL=False,
+                IS_WEBVIEW_SSL=False,  # always run app FE as http
                 webui_url=webui_url,
             )
             start_ui = view_instance.get("callback")
